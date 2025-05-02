@@ -81,6 +81,7 @@ print("LLM 모델 초기화 중...")
 initialize_llm()
 print("LLM 모델 초기화 완료")
 
+
 # AppDu health_check 함수 절대 지우지 말것 
 # health_check
 @app.route('/health_check', methods = ['GET'])
