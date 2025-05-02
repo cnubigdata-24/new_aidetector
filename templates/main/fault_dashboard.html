@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>AI Detector Alarm Dashboard</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <script src="/static/js/fault_dashboard.js" defer></script>
+    <script src="/static/js/fault_d3_map.js" defer></script>
+
+    <!-- jQuery -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <!-- simplePagination.js -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/simplePagination.js/1.6/simplePagination.css"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplePagination.js/1.6/jquery.simplePagination.min.js"></script>
+
+    <link rel="stylesheet" href="/static/css/fault_dashboard.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="left-sidebar">
+        <div>
+          <label>국사</label>
+          <select id="searchGuksa" onchange="updateSectorOptions()">
+            <option value="">전체 국사</option>
+          </select>
+        </div>
+        <br />
+        <div>
+          <label>분야</label>
+          <div id="searchSectorContainer">
+            <div class="checkbox-row">
+              <label><input type="checkbox" id="allSectors" value="all" checked /> 전체</label>
+            </div>
+            <div class="checkbox-row">
+              <label><input type="checkbox" value="MW" checked class="sector-checkbox" /> MW</label>
+              <label><input type="checkbox" value="IP" checked class="sector-checkbox" /> IP</label>
+              <label
+                ><input type="checkbox" value="전송" checked class="sector-checkbox" /> 전송</label
+              >
+            </div>
+            <div class="checkbox-row">
+              <label
+                ><input type="checkbox" value="선로" checked class="sector-checkbox" /> 선로</label
+              >
+              <label
+                ><input type="checkbox" value="무선" checked class="sector-checkbox" /> 무선</label
+              >
+              <label
+                ><input type="checkbox" value="교환" checked class="sector-checkbox" /> 교환</label
+              >
+            </div>
+          </div>
+        </div>
+        <br />
+        <div>
+          <label>장비명</label>
+          <select id="searchEquipName">
+            <option value="">전체 장비명</option>
+          </select>
+        </div>
+        <br />
+        <div>
+          <label>경보 발생 시간</label>
+          <select id="timeFilter">
+            <option value="30">최근 30분</option>
+            <option value="60" selected>최근 1시간</option>
+            <option value="120">최근 2시간</option>
+            <option value="180">최근 3시간</option>
+            <option value="360">최근 6시간</option>
+          </select>
+        </div>
+
+        <!-- 검색 버튼을 하단으로 이동 -->
+        <div class="search-button-container">
+          <button onclick="searchAlarms()" style="width: 100%">실시간 경보 수집</button>
+        </div>
+      </div>
+
+      <div class="drag-handle" id="drag-handle">
+        <div class="toggle-btn" id="toggle-btn">◀</div>
+      </div>
+
+      <!-- right-content 영역 내부 변경 -->
+      <div class="right-content">
+        <div class="top-dashboard">
+          <!-- 전체 현황 요약 라인 추가 -->
+          <div class="dashboard-summary">
+            <span class="summary-title">실시간 경보현황 총괄:</span>
+            <span id="total-equipment-count">경보 장비 수(0대),</span>
+            <span id="total-alarm-count">전체 경보 수(0건),</span>
+            <span id="total-valid-count" class="highlight-valid">유효 경보 수(0개)</span>
+          </div>
+
+          <div
+            id="dashboard"
+            class="draggable-container"
+            style="display: flex; flex-direction: row; flex-wrap: nowrap; overflow-x: auto"
+          ></div>
+        </div>
+
+        <!-- 새로운 맵 컨테이너 추가 -->
+        <div class="middle-map-container" id="map-container">
+          <!-- 여기에 d3.js 맵이 추가될 예정 -->
+        </div>
+
+        <div class="bottom-div">
+          <div class="table-container">
+            <table class="alarm-table">
+              <thead>
+                <tr>
+                  <th>| 국사</th>
+                  <th>| 분야</th>
+                  <th>| 유효/무효</th>
+                  <th>| 발생시간</th>
+                  <th>| 장비유형</th>
+                  <th>| 장비명</th>
+                  <th>| 경보내용</th>
+                </tr>
+              </thead>
+              <tbody id="alarmTableBody"></tbody>
+            </table>
+          </div>
+          <div id="pagination"></div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
