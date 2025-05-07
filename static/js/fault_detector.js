@@ -238,6 +238,17 @@
       // 특수 스타일 적용을 위한 처리: '=' 문자는 제거
       let cleanedOpinion = opinion.replace(/=+/g, '');
 
+      // 오류 메시지인 경우 error-message 클래스로 반환
+      if (opinion.includes('❌ 오류:') || this.parsedData.error) {
+        return `
+          <div class="error-message">
+            <br>
+            ${cleanedOpinion.replace(/\n/g, '<br>')}
+            <br>
+          </div>
+        `;
+      }
+
       // 일관성 확인: 장애점 추론2의 신뢰도 확인
       // 상위 유사 장애사례 신뢰도가 summary 테이블의 1순위 신뢰도와 일치하는지 확인
       if (this.parsedData.summary && this.parsedData.summary.length > 0) {
@@ -292,13 +303,15 @@
 
     // 요약 섹션 HTML 생성
     SummarySectionHTML() {
+      // 오류가 있거나 summary 데이터가 없는 경우 빈 문자열 반환
       if (
+        this.parsedData.error ||
         !this.parsedData ||
         !this.parsedData.summary ||
         !Array.isArray(this.parsedData.summary) ||
         this.parsedData.summary.length === 0
       ) {
-        return '<div>요약 데이터가 없습니다.</div>';
+        return '';
       }
 
       const rows = this.parsedData.summary;
@@ -332,13 +345,15 @@
 
     // 세부 내역 섹션 HTML 생성
     DetailsSectionHTML() {
+      // 오류가 있거나 details 데이터가 없는 경우 빈 문자열 반환
       if (
+        this.parsedData.error ||
         !this.parsedData ||
         !this.parsedData.details ||
         !Array.isArray(this.parsedData.details) ||
         this.parsedData.details.length === 0
       ) {
-        return '<div>세부 내역이 없습니다.</div>';
+        return '';
       }
 
       const details = this.parsedData.details;
@@ -405,11 +420,6 @@
           throw new Error('유효한 API 응답 데이터가 아닙니다.');
         }
 
-        // 필수 필드 확인
-        if (!json_string.opinion) {
-          throw new Error('API 응답에 필요한 opinion 필드가 누락되었습니다.');
-        }
-
         // 파싱된 데이터 저장
         this.parsedData = json_string;
 
@@ -418,28 +428,34 @@
         const summaryTable = this.SummarySectionHTML();
         const detailsSection = this.DetailsSectionHTML();
 
-        const processingTime = json_string.processing_time || '';
+        // 오류 필드가 있거나 opinion이 오류 메시지인 경우, error-message 형식으로 보여줌
+        if (
+          json_string.error ||
+          (json_string.opinion &&
+            (json_string.opinion.includes('❌ 오류:') ||
+              json_string.opinion.includes('ERROR_DB_ACCESS')))
+        ) {
+          return opinionSection; // 이미 OpinionSectionHTML에서 error-message 클래스로 반환됨
+        }
 
-        return ` 
-          <div class="result-section">
-            <p class="section-title">✅ <b>종합 의견</b></p>${opinionSection}          
-            <p class="section-title">✅ <b>유사 장애사례 요약</b></p>${summaryTable}          
-            <p class="section-title">✅ <b>유사 장애사례 세부내역</b></p>${detailsSection}
-            
-            <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
-              ※ Vector DB Query 시간: ${
-                typeof processingTime === 'number' ? processingTime.toFixed(2) : processingTime
-              }초
-            </div><br>
-          </div>
+        // 필수 필드 확인
+        if (!json_string.opinion) {
+          throw new Error('API 응답에 필요한 opinion 필드가 누락되었습니다.');
+        }
+
+        return `
+          ${opinionSection}
+          ${summaryTable}
+          ${detailsSection}
         `;
       } catch (e) {
         console.error('장애점 추론 응답 생성 오류:', e);
         return `
           <div class="error-message">
-            <p>데이터 처리 중 오류가 발생했습니다:</p>
+            <br>
+            <p>❌ 오류: 데이터 처리 중 오류가 발생했습니다.</p>
             <p>${e.message}</p>
-            <p>상세 정보: ${JSON.stringify(json_string || {}).substring(0, 100)}...</p>
+            <br>
           </div>
         `;
       }

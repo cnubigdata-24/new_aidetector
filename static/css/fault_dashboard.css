@@ -894,3 +894,39 @@ div.dashboard-box,
   line-height: 1.3 !important;
   margin-bottom: 3px !important;
 }
+
+/* 버튼 컨테이너 스타일 */
+.view-toggle-buttons {
+  margin-left: auto; /* 오른쪽 정렬 */
+  display: flex;
+  align-items: center;
+}
+
+/* 뷰 버튼 스타일 */
+.view-btn {
+  background-color: #f8f8f8;
+  border: 1px solid #ddd;
+  padding: 3px 8px;
+  margin: 0 3px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.view-btn:hover {
+  background-color: #e9f2ff;
+  border-color: #aac8ff;
+}
+
+.view-btn.active {
+  background-color: #e1edff;
+  border-color: #82b1ff;
+  color: #0056b3;
+  font-weight: bold;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-summary span {
+  margin-right: 12px;
+}

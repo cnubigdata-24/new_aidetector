@@ -5,6 +5,7 @@ let alarmData = [];
 let currentPage = 1;
 const pageSize = 10;
 let allEquipmentData = [];
+let currentView = 'equipment'; // 현재 뷰 (장비 기준 또는 국사 기준)
 
 // 초기화 함수
 function initializeDashboard() {
@@ -860,7 +861,6 @@ function initializeDashboardBoxClickEvents() {
 }
 
 // 테이블 행 클릭 시 국사 ID 가져오는 함수
-// 테이블 행 클릭 시 국사 ID 가져오는 함수
 function setupTableRowClick() {
   const tableBody = document.querySelector('.alarm-table tbody');
 
@@ -881,8 +881,11 @@ function setupTableRowClick() {
       return;
     }
 
-    // 국사 ID로 장비 정보 조회 함수 호출
-    fetchEquipmentByGuksaId(guksaId);
+    // 현재 뷰가 '국사 기준'일 때만 맵 데이터 표시
+    if (currentView === 'guksa') {
+      // 국사 ID로 장비 정보 조회 함수 호출
+      fetchEquipmentByGuksaId(guksaId);
+    }
   });
 }
 
@@ -997,6 +1000,16 @@ document.addEventListener('DOMContentLoaded', () => {
     dashboardEl.style.overflowX = 'auto';
   }
 
+  // 맵 컨테이너 초기화 (장비 기준에서는 맵의 내용을 비우기만 함)
+  const mapContainer = document.getElementById('map-container');
+  if (mapContainer) {
+    // 맵 컨테이너 자체는 유지 (사라지지 않게)
+    mapContainer.style.display = 'block';
+    // 빈 내용으로 설정
+    mapContainer.innerHTML =
+      '<div class="initial-message" style="color: #ccc; font-style: italic;">장비 기준 경보현황에서는 맵이 표시되지 않습니다.</div>';
+  }
+
   // 기존 초기화 함수 호출
   initialize();
   initializeDashboardBoxClickEvents();
@@ -1004,6 +1017,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupColumnResizing();
   loadColumnWidths();
   setupTableHeaderSort(); // 테이블 헤더 정렬 설정 추가
+  setupViewToggleButtons(); // 장비/국사 기준 전환 버튼 초기화
 
   // 사이드바 리사이즈 기능 초기화
   initializeSidebarResize();
@@ -1024,13 +1038,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 테이블 행 클릭 이벤트 설정 (기존 코드)
   setupTableRowClick();
-
-  // 기본 맵 컨테이너 메시지 설정 (기존 코드)
-  const mapContainer = document.getElementById('map-container');
-  if (mapContainer) {
-    mapContainer.innerHTML =
-      '<div class="initial-message">테이블에서 국사를 선택하면 네트워크 맵이 표시됩니다.</div>';
-  }
 });
 
 // 검색 결과 초기화 함수에 정렬 상태 초기화 추가
@@ -1042,4 +1049,84 @@ function resetSearchState() {
   document.querySelectorAll('.alarm-table th').forEach((th) => {
     th.classList.remove('sort-asc', 'sort-desc');
   });
+}
+
+// 장비/국사 기준 전환 버튼 초기화 및 이벤트 설정
+function setupViewToggleButtons() {
+  const equipmentViewBtn = document.getElementById('equipment-view-btn');
+  const guksaViewBtn = document.getElementById('guksa-view-btn');
+
+  if (!equipmentViewBtn || !guksaViewBtn) {
+    console.error('뷰 전환 버튼을 찾을 수 없습니다.');
+    return;
+  }
+
+  // 기본 대시보드(장비 기준) 활성화는 전역 변수 사용
+  // 이미 전역으로 currentView = 'equipment' 선언되어 있음
+
+  // 장비 기준 버튼 클릭 이벤트
+  equipmentViewBtn.addEventListener('click', function () {
+    if (currentView !== 'equipment') {
+      currentView = 'equipment';
+      updateViewButtons();
+      showEquipmentDashboard();
+    }
+  });
+
+  // 국사 기준 버튼 클릭 이벤트
+  guksaViewBtn.addEventListener('click', function () {
+    if (currentView !== 'guksa') {
+      currentView = 'guksa';
+      updateViewButtons();
+      showGuksaDashboard();
+    }
+  });
+
+  // 버튼 활성화 상태 업데이트
+  function updateViewButtons() {
+    equipmentViewBtn.classList.toggle('active', currentView === 'equipment');
+    guksaViewBtn.classList.toggle('active', currentView === 'guksa');
+  }
+
+  // 장비 기준 대시보드 표시
+  function showEquipmentDashboard() {
+    // 대시보드 영역 표시
+    const dashboardElement = document.getElementById('dashboard');
+    if (dashboardElement) {
+      dashboardElement.style.display = 'flex';
+    }
+
+    // 맵 컨테이너 유지하되 내용을 비움 (장비 기준에서는 맵의 내용을 표시하지 않음)
+    const mapContainer = document.getElementById('map-container');
+    if (mapContainer) {
+      // 맵 컨테이너 자체는 유지 (사라지지 않게)
+      mapContainer.style.display = 'block';
+      // 빈 내용으로 설정
+      mapContainer.innerHTML =
+        '<div class="initial-message" style="color: #ccc; font-style: italic;">장비 기준 경보현황에서는 맵이 표시되지 않습니다.</div>';
+    }
+
+    // 현재 보유한 데이터로 대시보드 갱신
+    updateDashboard();
+  }
+
+  // 국사 기준 대시보드 표시
+  function showGuksaDashboard() {
+    // 맵 컨테이너 표시 (국사 기준에서는 맵을 표시)
+    const mapContainer = document.getElementById('map-container');
+    if (mapContainer) {
+      mapContainer.style.display = 'block';
+      mapContainer.innerHTML =
+        '<div class="initial-message">테이블에서 국사를 선택하면 네트워크 맵이 표시됩니다.</div>';
+    }
+
+    // 대시보드 영역 계속 표시 (현재 국사 기준 뷰는 개발 중이므로 대시보드도 함께 표시)
+    const dashboardElement = document.getElementById('dashboard');
+    if (dashboardElement) {
+      dashboardElement.style.display = 'flex';
+    }
+
+    // 현재 보유한 데이터로 대시보드 갱신 (계속 보이도록)
+    updateDashboard();
+  }
 }

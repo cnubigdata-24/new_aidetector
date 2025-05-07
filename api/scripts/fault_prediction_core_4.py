@@ -36,6 +36,9 @@ from .fault_prediction_constants import (
     ALERT_TYPE_KEYWORDS
 )
 
+# 상수 정의 - 파일 최상단에 추가
+ERROR_DB_ACCESS = "VECTOR_DB_ACCESS_ERROR"
+
 # 로깅 설정
 logging.basicConfig(
     level=logging.INFO,
@@ -160,7 +163,23 @@ async def run_query(mode, query, user_id="default_user"):
     # 벡터 DB 컬렉션 가져오기
     collection, error = get_vector_db_collection()
     if error:
-        return {"error": error}
+        # 오류 타입으로 비교
+        error_msg = error["message"] if isinstance(error, dict) else str(error)
+        error_type = error.get("type") if isinstance(error, dict) else None
+
+        # 벡터DB 접근 오류인 경우
+        if error_type == ERROR_DB_ACCESS:
+            opinion_msg = f"❌ 오류: {error_msg}"
+        else:
+            opinion_msg = f"❌ 오류: 시스템 오류가 발생했습니다: {error_msg}"
+
+        return {
+            "opinion": opinion_msg,
+            "summary": [],
+            "details": [],
+            "processing_time": 0,
+            "error": error_msg
+        }
 
     # 프롬프트 시작 메시지 추가
     if not query.startswith(DEFAULT_PROMPT_START_MESSAGE):
@@ -223,7 +242,10 @@ async def run_query(mode, query, user_id="default_user"):
         "processing_time": time.time() - start_time
     }
 
-    # JSON 반환
+    # opinion이 비어있으면 기본 안내 메시지로 대체
+    if not result_dict["opinion"]:
+        result_dict["opinion"] = "유사한 장애사례를 찾을 수 없습니다. 더 구체적인 내용을 입력해주세요."
+
     return result_dict
 
 
@@ -1049,10 +1071,8 @@ def get_vector_db_collection():
         elif os.path.exists(VECTOR_DB_NEW_DIR):
             client = chromadb.PersistentClient(path=VECTOR_DB_NEW_DIR)
         else:
-            return (
-                None,
-                f"벡터DB를 찾을 수 없습니다. 경로를 확인해주세요.\n주 경로: {VECTOR_DB_DIR}\n대체 경로: {VECTOR_DB_NEW_DIR}",
-            )
+            error_msg = f"벡터DB를 찾을 수 없습니다. 경로를 확인해주세요.\n주 경로: {VECTOR_DB_DIR}\n대체 경로: {VECTOR_DB_NEW_DIR}"
+            return None, {"type": ERROR_DB_ACCESS, "message": error_msg}
 
         # 임베딩 함수 설정
         ef = create_embedding_function()
@@ -1073,7 +1093,8 @@ def get_vector_db_collection():
         return _collection_instance, None
 
     except Exception as e:
-        return None, f"벡터DB 접근 중 오류가 발생했습니다: {str(e)}"
+        error_msg = f"벡터DB 접근 중 오류가 발생했습니다: {str(e)}"
+        return None, {"type": ERROR_DB_ACCESS, "message": error_msg}
 
 
 def build_summary_rows(top_results):

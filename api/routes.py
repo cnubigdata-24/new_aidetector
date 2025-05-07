@@ -410,6 +410,8 @@ async def rag_query():
                     parsed = json.loads(json_result)
 
                 opinion = parsed.get("opinion", "")
+                if not opinion:
+                    opinion = "유사한 장애사례를 찾을 수 없습니다. 더 구체적인 내용을 입력해주세요."
                 summary = parsed.get("summary", [])
                 details = parsed.get("details", [])
                 processing_time = parsed.get("processing_time", 0.0)
