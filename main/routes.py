@@ -9,8 +9,11 @@ import pymysql
 import pandas as pd
 import numpy as np
 
-main_bp = Blueprint("main", __name__, template_folder="../templates/main")
+from flask import send_from_directory, current_app
+import os
 
+
+main_bp = Blueprint("main", __name__, template_folder="../templates/main")
 
 
 # 데이터베이스 연결 설정
@@ -20,13 +23,14 @@ def get_db_connection():
         user='AIDetector1',         # DB 사용자 이름
         password='AIDetector1',     # DB 비밀번호
         database='ad1',
-        port=40223 # 사용할 데이터베이스 이름
+        port=40223  # 사용할 데이터베이스 이름
     )
     return connection
 
+
 @main_bp.route("/", methods=["GET", "POST"])
 def index():
-    
+
     url = 'index'
     result = None
     if request.method == "POST":
@@ -40,7 +44,7 @@ def index():
     #     sql_alarms = "SELECT * FROM tbl_alarm;"
     #     cursor.execute(sql_alarms)
     #     raw_alarms = cursor.fetchall()  # 모든 경고 가져오기
-        
+
     #     # 동적으로 열 이름을 가져와서 딕셔너리 리스트로 변환
     #     alarm_columns = [column[0] for column in cursor.description]
     #     alarms = [dict(zip(alarm_columns, alarm)) for alarm in raw_alarms]
@@ -52,7 +56,7 @@ def index():
         #         sql_equip = "SELECT * FROM tbl_equipment WHERE id = %s;"
         #         cursor.execute(sql_equip, (equip_id,))
         #         equipment = cursor.fetchone()  # 해당 장비 가져오기
-                
+
         #         # 장비 정보를 딕셔너리 형태로 변환
         #         if equipment:
         #             equip_columns = [column[0] for column in cursor.description]
@@ -77,7 +81,7 @@ def index():
     # connection.close()  # 연결 닫기
 
     # # render_template으로 데이터 전송
-    # return render_template("main/index.html", guksas=guksas)     
+    # return render_template("main/index.html", guksas=guksas)
 
     # ===========================================
     # ORM
@@ -86,10 +90,9 @@ def index():
     # for alarm in alarms:
     #     alarm.equip = Equipment.query.get(int(alarm.equip_id))
 
-
     guksas = (
         TblGuksa.query
-        .with_entities(TblGuksa, func.min(TblGuksa.guksa_id).label('min_id'))  
+        .with_entities(TblGuksa, func.min(TblGuksa.guksa_id).label('min_id'))
         .group_by(TblGuksa.guksa)  # guksa 컬럼으로 그룹화
         .all()
     )
@@ -101,9 +104,19 @@ def index():
 def fault_detector():
     return render_template('main/fault_detector.html')
 
+
 @main_bp.route('/fault-dashboard')
 def fault_dashboard():
     return render_template('main/fault_dashboard.html')
+
+
+@main_bp.route('/favicon.ico')
+def favicon():
+    return send_from_directory(
+        os.path.join(current_app.root_path, 'static'),
+        'favicon.ico',
+        mimetype='image/vnd.microsoft.icon'
+    )
 
 # @main_bp.route("/cable", methods=["GET", "POST"])
 # def cable():
@@ -122,11 +135,9 @@ def fault_dashboard():
     #         ORDER BY k.guksa_id;'''
     #     cursor.execute(sql_guksas)
     #     raw_guksas = cursor.fetchall()  # 국사 목록 가져오기
-        
+
     #     columns = [column[0] for column in cursor.description]
     #     guksas = [dict(zip(columns, guksa)) for guksa in raw_guksas]
-    
-
 
     # page_number = request.args.get('page', 1, type=int)
     # status = request.args.get('selectSector', None)
@@ -142,7 +153,7 @@ def fault_dashboard():
 
     # # DataFrame 생성 시 컬럼명을 가져오기
     # columns = [col[0] for col in cursor.description]
-    # alarms_df = pd.DataFrame(raw_alarms, columns=columns)  
+    # alarms_df = pd.DataFrame(raw_alarms, columns=columns)
 
     # alarms_df['alarm_occur_datetime'] = pd.to_datetime(alarms_df['alarm_occur_datetime'])  # 변환 추가
 
@@ -161,7 +172,6 @@ def fault_dashboard():
     #     alarms_df = alarms_df[alarms_df['alarm_occur_datetime'] <= endDate]
 
     # alarms = alarms_df.to_dict(orient='records')
-
 
     # is_selected = 'cable'
 
@@ -222,10 +232,10 @@ def fault_dashboard():
 #             ORDER BY k.guksa_id;'''
 #         cursor.execute(sql_guksas)
 #         raw_guksas = cursor.fetchall()  # 국사 목록 가져오기
-        
+
 #         columns = [column[0] for column in cursor.description]
 #         guksas = [dict(zip(columns, guksa)) for guksa in raw_guksas]
-    
+
 #     page_number = request.args.get('page', 1, type=int)
 #     selectSector = request.args.get('selectSector', None)
 #     startDate = request.args.get('startDate', None)
@@ -240,7 +250,7 @@ def fault_dashboard():
 
 #     # DataFrame 생성 시 컬럼명을 가져오기
 #     columns = [col[0] for col in cursor.description]
-#     alarms_df = pd.DataFrame(raw_alarms, columns=columns)  
+#     alarms_df = pd.DataFrame(raw_alarms, columns=columns)
 
 
 #     if selectSector:
@@ -324,7 +334,7 @@ def fault_dashboard():
 #     #     query = query.filter(TblAlarmAllLast.occur_datetime <= datetime.strptime(endDate, '%Y-%m-%d'))
 
 #     # alarms = query.order_by(TblAlarmAllLast.occur_datetime.desc()).all()
-        
+
 #     # is_selected = "alarm"
 
 #     # # 페이지 설정
@@ -362,7 +372,6 @@ def fault_dashboard():
 #     #         page_range = list(page_range) + ['...'] + [total_pages]
 
 
-        
 #     # # 알람과 관련된 모든 변수를 딕셔너리로 묶음
 #     # context = {
 #     #     'is_selected': is_selected,

@@ -1,17 +1,16 @@
 /**
- * NW 장애점 분석/탐지 (Advanced RAG) JavaScript
- * 코드 리팩토링 버전 - 가독성과 유지보수성 향상
+ * NW 장애점 분석/탐지 (Advanced RAG)
  */
 
 // 즉시 실행 함수로 전역 스코프 오염 방지
 (function () {
   'use strict';
 
-  // 전역 변수 및 상태 관리 모듈
+  // 전역 변수 및 상태 관리
   const AppState = {
     requestTime: null,
     responseCount: 0,
-    guksa_id: 969, // URLSearchParams(window.location.search).get('guksa_id'),
+    guksa_id: URLSearchParams(window.location.search).get('guksa_id'),
     isDragging: false,
     isSidebarVisible: true,
 
@@ -20,194 +19,7 @@
     },
   };
 
-  // 유틸리티 함수 모듈
-  const Utils = {
-    // API 호출 함수
-    fetchAPI(url, method = 'GET', data = null) {
-      const options = {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-      };
-
-      if (data) {
-        options.body = JSON.stringify(data);
-      }
-
-      return fetch(url, options).then((res) => {
-        if (!res.ok) {
-          throw new Error(`서버 오류: ${res.status}`);
-        }
-        return res.json();
-      });
-    },
-
-    // 날짜/시간 포맷팅
-    formatDateTime(dt) {
-      return dt.toISOString().slice(0, 19).replace('T', ' ');
-    },
-
-    // 소요 시간 계산
-    calculateDuration(startTime, endTime) {
-      const durationSec = Math.floor((endTime - startTime) / 1000);
-      const durationMin = Math.floor(durationSec / 60);
-      const remainSec = durationSec % 60;
-      return { durationMin, remainSec };
-    },
-
-    // 현재 시간 문자열 반환
-    getCurrentTime() {
-      const date = new Date();
-      const pad = (n) => (n < 10 ? '0' + n : n);
-      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
-        date.getHours()
-      )}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-    },
-
-    // 데이터 로딩 중 버튼 비활성화/활성화
-    toggleButtonsDuringFetch(disabled) {
-      const buttons = [
-        document.getElementById('getAlarmBtn'),
-        document.getElementById('getCableBtn'),
-        document.getElementById('getMWInfoBtn'),
-        document.getElementById('sendBtn'),
-      ];
-
-      buttons.forEach((btn) => {
-        if (!btn) return;
-        btn.disabled = disabled;
-        if (disabled) {
-          btn.classList.add('disabled');
-        } else {
-          btn.classList.remove('disabled');
-        }
-      });
-    },
-
-    // 표준화된 사용자 요청 처리 함수
-    handleUserRequest(input, processFunction) {
-      Utils.toggleButtonsDuringFetch(true);
-
-      const thisResponseId = ++AppState.responseCount;
-      const userMsg = DOMRenderer.addUserMessage(input, thisResponseId);
-      const summaryItem = DOMRenderer.addSummaryItem(input, thisResponseId);
-      const botLoading = DOMRenderer.addLoadingMessage('loading');
-
-      return processFunction(thisResponseId, botLoading, summaryItem)
-        .catch((error) => {
-          if (botLoading && botLoading.parentNode) {
-            botLoading.remove(); // 아직 로딩 메시지가 있으면 제거
-          }
-          DOMRenderer.addErrorMessage(error);
-          summaryItem.classList.add('error');
-          console.error('요청 처리 오류:', error);
-        })
-        .finally(() => {
-          Utils.toggleButtonsDuringFetch(false);
-        });
-    },
-  };
-
-  // DOM 렌더링 모듈
-  const DOMRenderer = {
-    // 타임스탬프 업데이트
-    updateTimestamp(requestTime, responseTime) {
-      const timestamp = document.getElementById('timestamp');
-      if (!timestamp) return;
-
-      const { durationMin, remainSec } = Utils.calculateDuration(requestTime, responseTime);
-      timestamp.innerHTML = `요청: ${Utils.formatDateTime(
-        requestTime
-      )} → 응답: ${Utils.formatDateTime(responseTime)} (소요시간: ${durationMin}분 ${remainSec}초)`;
-    },
-
-    // 사용자 메시지 추가
-    addUserMessage(input, responseId) {
-      const responseBox = document.getElementById('response-box');
-      const userMsg = document.createElement('div');
-
-      userMsg.className = 'user-msg';
-      userMsg.textContent = input;
-      userMsg.id = `response-${responseId}`;
-      responseBox.appendChild(userMsg);
-
-      return userMsg;
-    },
-
-    // 로딩 메시지 추가
-    addLoadingMessage(mode) {
-      const responseBox = document.getElementById('response-box');
-      const botLoading = document.createElement('div');
-      botLoading.className = 'bot-msg loading';
-
-      if (mode === 'chat') {
-        botLoading.innerHTML =
-          '🔄 <b>답변 생성 중...</b> <br><br> 요청한 질문에 대해 답변을 생성합니다.';
-      } else if (mode === 'loading') {
-        botLoading.innerHTML = '🔄 <b>데이터 로딩 중...</b>';
-      } else {
-        botLoading.innerHTML =
-          '🔄 <b>장애점 추론 중...</b> <br><br> 발생한 장애증상과 경보 패턴을 분석하여 유사 장애발생 사례를 기준으로 장애점을 추론합니다.';
-      }
-
-      responseBox.appendChild(botLoading);
-      responseBox.scrollTop = responseBox.scrollHeight;
-
-      return botLoading;
-    },
-
-    // 요약 항목 추가
-    addSummaryItem(input, responseId) {
-      const summaryList = document.getElementById('summary-list');
-      const summaryItem = document.createElement('div');
-
-      summaryItem.className = 'summary-entry';
-      summaryItem.textContent = [...input].slice(0, 20).join('') + (input.length > 20 ? '...' : '');
-      summaryItem.dataset.timestamp = new Date().toLocaleTimeString();
-
-      summaryItem.onclick = () => {
-        const targetEl = document.getElementById(`response-${responseId}`);
-        if (targetEl) {
-          window.scrollTo(0, window.scrollY - 5);
-          setTimeout(() => {
-            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 50);
-        }
-      };
-
-      summaryList.appendChild(summaryItem);
-      return summaryItem;
-    },
-
-    // response-box 하위에 > bot-msg 추가
-    addBotMessage(htmlContent, className = 'bot-msg') {
-      const responseBox = document.getElementById('response-box');
-      const botMsg = document.createElement('div');
-
-      botMsg.className = className;
-      botMsg.innerHTML = htmlContent;
-
-      responseBox.appendChild(botMsg);
-      responseBox.scrollTop = responseBox.scrollHeight;
-
-      return botMsg;
-    },
-
-    // 쿼리 모드에 따른 placeholder 업데이트
-    updatePlaceholder() {
-      const mode = document.querySelector('input[name="queryMode"]:checked').value;
-      const promptInput = document.getElementById('prompt-input');
-
-      if (mode === 'fixed') {
-        promptInput.placeholder =
-          'NW 장애발생 시 장애점을 찾을 수 있도록 분야별 세부 경보내역을 입력해 주세요!\n\n[장애점 추론] 외부 환경(정전/페이딩/선로장애) + 경보내역 + 장애증상과 유사한 장애사례를 기준으로 추론 \n[유사 장애사례 추출] 입력된 경보내역 등을 바탕으로 유사도가 높은 사례 3건 추출';
-      } else {
-        promptInput.placeholder =
-          '장애에 대해 자유롭게 질문하세요:\n- 이 장애의 원인은 무엇인가요?\n- 어떤 조치가 필요한가요?\n 유사한 장애 사례가 있었나요?';
-      }
-    },
-  };
-
-  // HTML 생성 모듈
+  // HTML 생성 모듈 - 복잡한 HTML 구조 생성
   const HTMLGenerator = {
     // 파싱된 JSON 데이터 저장 변수
     parsedData: null,
@@ -228,7 +40,7 @@
       }
     },
 
-    // OpinionSectionHTML 함수 - 장애점 추론 정보 표시
+    // 장애점 추론 정보 표시 HTML 생성
     OpinionSectionHTML() {
       if (!this.parsedData || !this.parsedData.opinion) {
         return '<div class="empty-opinion">종합 의견을 생성할 수 없습니다.</div>';
@@ -250,20 +62,16 @@
       }
 
       // 일관성 확인: 장애점 추론2의 신뢰도 확인
-      // 상위 유사 장애사례 신뢰도가 summary 테이블의 1순위 신뢰도와 일치하는지 확인
       if (this.parsedData.summary && this.parsedData.summary.length > 0) {
         const topCaseConfidence = this.parsedData.summary[0]['신뢰도'];
-
-        // 신뢰도 숫자만 추출
         const topConfValue = parseFloat(topCaseConfidence.replace('%', ''));
 
-        // 신뢰도: 41.8% 패턴을 찾아서 장애점 추론2의 신뢰도 값을 대체 (정확한 추론2 신뢰도 보장)
-        // 패턴을 더 정확하게 매칭하기 위해 정규식 수정
+        // 신뢰도 정보 업데이트
         cleanedOpinion = cleanedOpinion.replace(/장애점 추론 2.+?신뢰도: (\d+\.?\d*)%/s, (match) =>
           match.replace(/신뢰도: \d+\.?\d*%/, `신뢰도: ${topConfValue.toFixed(1)}%`)
         );
 
-        // 패턴 기반 추론(장애점 추론1)과 유사 사례 기반 추론(장애점 추론2)의 신뢰도가 다른지 확인
+        // 패턴 기반 추론과 유사 사례 기반 추론의 신뢰도 조정
         const pattern1ConfMatch = cleanedOpinion.match(/장애점 추론 1.+?신뢰도: (\d+\.?\d*)%/s);
         const pattern2ConfMatch = cleanedOpinion.match(/장애점 추론 2.+?신뢰도: (\d+\.?\d*)%/s);
 
@@ -301,9 +109,9 @@
       `;
     },
 
-    // 요약 섹션 HTML 생성
+    // 요약 표 HTML 생성
     SummarySectionHTML() {
-      // 오류가 있거나 summary 데이터가 없는 경우 빈 문자열 반환
+      // 오류가 있거나 summary 데이터가 없는 경우
       if (
         this.parsedData.error ||
         !this.parsedData ||
@@ -327,7 +135,6 @@
       tableHTML += '<th>장애사례</th>';
       tableHTML += '</tr>';
 
-      // 테이블 내용
       for (const row of rows) {
         tableHTML += '<tr>';
         tableHTML += `<td>${row['순위'] || '불명'}</td>`;
@@ -345,7 +152,7 @@
 
     // 세부 내역 섹션 HTML 생성
     DetailsSectionHTML() {
-      // 오류가 있거나 details 데이터가 없는 경우 빈 문자열 반환
+      // 오류가 있거나 details 데이터가 없는 경우
       if (
         this.parsedData.error ||
         !this.parsedData ||
@@ -413,35 +220,34 @@
     },
 
     // API 응답 전체 처리 및 HTML 생성
-    AllSectionHTML(json_string) {
+    AllSectionHTML(jsonData) {
       try {
         // 데이터 유효성 검사
-        if (!json_string || typeof json_string !== 'object') {
+        if (!jsonData || typeof jsonData !== 'object') {
           throw new Error('유효한 API 응답 데이터가 아닙니다.');
         }
 
         // 파싱된 데이터 저장
-        this.parsedData = json_string;
+        this.parsedData = jsonData;
+
+        // 오류 확인
+        if (
+          jsonData.error ||
+          (jsonData.opinion &&
+            (jsonData.opinion.includes('❌ 오류:') || jsonData.opinion.includes('ERROR_DB_ACCESS')))
+        ) {
+          return this.OpinionSectionHTML(); // 이미 에러 형식으로 반환됨
+        }
+
+        // 필수 필드 확인
+        if (!jsonData.opinion) {
+          throw new Error('API 응답에 필요한 opinion 필드가 누락되었습니다.');
+        }
 
         // 각 섹션 HTML 생성
         const opinionSection = this.OpinionSectionHTML();
         const summaryTable = this.SummarySectionHTML();
         const detailsSection = this.DetailsSectionHTML();
-
-        // 오류 필드가 있거나 opinion이 오류 메시지인 경우, error-message 형식으로 보여줌
-        if (
-          json_string.error ||
-          (json_string.opinion &&
-            (json_string.opinion.includes('❌ 오류:') ||
-              json_string.opinion.includes('ERROR_DB_ACCESS')))
-        ) {
-          return opinionSection; // 이미 OpinionSectionHTML에서 error-message 클래스로 반환됨
-        }
-
-        // 필수 필드 확인
-        if (!json_string.opinion) {
-          throw new Error('API 응답에 필요한 opinion 필드가 누락되었습니다.');
-        }
 
         return `
           ${opinionSection}
@@ -464,7 +270,7 @@
     // 케이블 상태 테이블 HTML 생성
     CableStatusHTML(dataList) {
       if (!dataList || dataList.length === 0) {
-        //return '<div>선로 경보 내역이 없습니다.</div>';
+        // 데이터가 없는 경우 빈 표시
       }
 
       let table = `
@@ -505,7 +311,7 @@
       return table;
     },
 
-    // HTMLGenerator 모듈의 MWSnmpInfoHTML 함수
+    // MW SNMP 정보 HTML 생성
     MWSnmpInfoHTML(data) {
       try {
         if (!data || !Array.isArray(data.results)) {
@@ -641,8 +447,7 @@
         .then((data) => {
           console.log('경보 데이터 수신:', data);
           if (data.alarms) {
-            document.getElementById('prompt-input').value =
-              '경보수집 내역입니다.\n\n' + data.alarms;
+            DOMUtils.getElement('prompt-input').value = '경보수집 내역입니다.\n\n' + data.alarms;
           }
           return data;
         })
@@ -695,84 +500,22 @@
     // 국사명 가져오기
     getGuksaName() {
       if (!AppState.guksa_id) {
-        document.getElementById('guksa_name').innerText = '없음';
+        DOMUtils.getElement('guksa_name').innerText = '없음';
         return Promise.resolve();
       }
 
       return Utils.fetchAPI(`/api/guksa_name?guksa_id=${AppState.guksa_id}`)
         .then((data) => {
           if (data.guksa_name) {
-            document.getElementById('guksa_name').innerText = data.guksa_name;
+            DOMUtils.getElement('guksa_name').innerText = data.guksa_name;
           } else {
-            document.getElementById('guksa_name').innerText = '알 수 없음';
+            DOMUtils.getElement('guksa_name').innerText = '알 수 없음';
           }
         })
         .catch((err) => {
           console.error('국사명 조회 실패:', err);
-          document.getElementById('guksa_name').innerText = '조회 실패';
+          DOMUtils.getElement('guksa_name').innerText = '조회 실패';
         });
-    },
-  };
-
-  // 로컬 스토리지 관리 모듈
-  const StorageService = {
-    keys: {
-      conversation: 'nw-rag-conversation',
-      summary: 'nw-rag-summary',
-      count: 'nw-rag-count',
-    },
-
-    // 대화 내용 저장
-    saveConversation() {
-      const responseBox = document.getElementById('response-box');
-      const summaryList = document.getElementById('summary-list');
-
-      localStorage.setItem(this.keys.conversation, responseBox.innerHTML);
-      localStorage.setItem(this.keys.summary, summaryList.innerHTML);
-      localStorage.setItem(this.keys.count, AppState.responseCount.toString());
-    },
-
-    // 대화 내용 불러오기
-    loadConversation() {
-      const savedConversation = localStorage.getItem(this.keys.conversation);
-      const savedSummary = localStorage.getItem(this.keys.summary);
-      const savedCount = localStorage.getItem(this.keys.count);
-
-      if (savedConversation) {
-        document.getElementById('response-box').innerHTML = savedConversation;
-      }
-
-      if (savedSummary) {
-        document.getElementById('summary-list').innerHTML = savedSummary;
-      }
-
-      if (savedCount) {
-        AppState.responseCount = parseInt(savedCount);
-      }
-    },
-
-    // 대화 내용 초기화
-    clearConversation() {
-      if (confirm('모든 대화 내용을 초기화하시겠습니까?')) {
-        document.getElementById('response-box').innerHTML = '';
-        document.getElementById('summary-list').innerHTML = '';
-        document.getElementById('prompt-input').value = '';
-        AppState.responseCount = 0;
-
-        // 서버에 대화 초기화 요청
-        Utils.fetchAPI('/api/clear_conversation', 'POST', { clear: true }).catch((err) =>
-          console.error('대화 초기화 오류:', err)
-        );
-
-        // 타임스탬프 초기화
-        const timestamp = document.getElementById('timestamp');
-        if (timestamp) {
-          timestamp.textContent = '';
-        }
-
-        // 로컬 스토리지 초기화
-        Object.values(this.keys).forEach((key) => localStorage.removeItem(key));
-      }
     },
   };
 
@@ -780,13 +523,15 @@
   const UIController = {
     // 프롬프트 입력 처리
     handlePrompt() {
-      const input = document.getElementById('prompt-input').value.trim();
+      const promptInput = DOMUtils.getElement('prompt-input');
+      const input = promptInput.value.trim();
+
       if (!input) {
         DOMRenderer.addErrorMessage('검색어를 입력해 주세요.');
         return;
       }
 
-      const mode = document.querySelector('input[name="queryMode"]:checked').value;
+      const mode = DOMUtils.querySelector('input[name="queryMode"]:checked').value;
       Utils.toggleButtonsDuringFetch(true);
 
       const requestTimeObj = new Date();
@@ -831,7 +576,7 @@
         })
         .finally(() => {
           Utils.toggleButtonsDuringFetch(false);
-          document.getElementById('prompt-input').value = '';
+          promptInput.value = '';
           DOMRenderer.updatePlaceholder();
         });
     },
@@ -928,7 +673,7 @@
 
     // 사이드바 토글 - 펼치기/접기
     toggleSidebar() {
-      const sidebar = document.getElementById('summary-list');
+      const sidebar = DOMUtils.getElement('summary-list');
       AppState.isSidebarVisible = !AppState.isSidebarVisible;
 
       if (!AppState.isSidebarVisible) {
@@ -941,61 +686,336 @@
     },
   };
 
-  // 초기화 및 이벤트 리스너 설정
-  function initApp() {
-    // 앱 상태 초기화
-    AppState.init();
+  // 로컬 스토리지 관리 모듈
+  const StorageService = {
+    // 대화 내용 저장
+    saveConversation() {
+      const responseBox = DOMUtils.getElement('response-box');
+      const summaryList = DOMUtils.getElement('summary-list');
 
-    // 로컬 스토리지에서 대화 이력 로드
-    StorageService.loadConversation();
+      localStorage.setItem('nw-rag-conversation', responseBox.innerHTML);
+      localStorage.setItem('nw-rag-summary', summaryList.innerHTML);
+      localStorage.setItem('nw-rag-count', AppState.responseCount.toString());
+    },
 
-    // 플레이스홀더 업데이트
-    DOMRenderer.updatePlaceholder();
+    // 대화 내용 불러오기
+    loadConversation() {
+      const savedConversation = localStorage.getItem('nw-rag-conversation');
+      const savedSummary = localStorage.getItem('nw-rag-summary');
+      const savedCount = localStorage.getItem('nw-rag-count');
 
-    // 라디오 버튼 변경 이벤트 리스너
-    document.querySelectorAll('input[name="queryMode"]').forEach((radio) => {
-      radio.addEventListener('change', DOMRenderer.updatePlaceholder);
-    });
-
-    // 버튼 이벤트 리스너 설정
-    document
-      .getElementById('getAlarmBtn')
-      .addEventListener('click', UIController.getRealTimeAlarmList);
-    document.getElementById('getCableBtn').addEventListener('click', UIController.getDrCableInfo);
-    document
-      .getElementById('getMWInfoBtn')
-      .addEventListener('click', UIController.getMWInfoFromSNMP);
-    document
-      .getElementById('clearChatBtn')
-      .addEventListener('click', UIController.clearConversation);
-    document.getElementById('sendBtn').addEventListener('click', UIController.handlePrompt);
-
-    // 엔터 키 이벤트 처리
-    document.getElementById('prompt-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        UIController.handlePrompt();
+      if (savedConversation) {
+        DOMUtils.getElement('response-box').innerHTML = savedConversation;
       }
-    });
 
-    // 초기 데이터 로드
-    APIService.getRealTimeAlarmList();
+      if (savedSummary) {
+        DOMUtils.getElement('summary-list').innerHTML = savedSummary;
+      }
 
-    // 국사명 가져오기
-    APIService.getGuksaName();
+      if (savedCount) {
+        AppState.responseCount = parseInt(savedCount);
+      }
+    },
 
-    // 자동 저장 타이머 설정
-    setInterval(() => StorageService.saveConversation(), 60000);
+    // 대화 내용 초기화
+    clearConversation() {
+      if (confirm('모든 대화 내용을 초기화하시겠습니까?')) {
+        DOMUtils.getElement('response-box').innerHTML = '';
+        DOMUtils.getElement('summary-list').innerHTML = '';
+        DOMUtils.getElement('prompt-input').value = '';
+        AppState.responseCount = 0;
 
-    // 사이드바 드래그 설정
-    setupSidebarDrag();
-  }
+        // 서버에 대화 초기화 요청
+        Utils.fetchAPI('/api/clear_conversation', 'POST', { clear: true }).catch((err) =>
+          console.error('대화 초기화 오류:', err)
+        );
+
+        // 타임스탬프 초기화
+        const timestamp = DOMUtils.getElement('timestamp');
+        if (timestamp) {
+          timestamp.textContent = '';
+        }
+
+        // 로컬 스토리지 초기화
+        localStorage.removeItem('nw-rag-conversation');
+        localStorage.removeItem('nw-rag-summary');
+        localStorage.removeItem('nw-rag-count');
+      }
+    },
+  };
+
+  // DOM 렌더링 모듈
+  const DOMRenderer = {
+    // 타임스탬프 업데이트
+    updateTimestamp(requestTime, responseTime) {
+      const timestamp = DOMUtils.getElement('timestamp');
+      if (!timestamp) return;
+
+      const { durationMin, remainSec } = Utils.calculateDuration(requestTime, responseTime);
+      timestamp.innerHTML = `요청: ${Utils.formatDateTime(
+        requestTime
+      )} → 응답: ${Utils.formatDateTime(responseTime)} (소요시간: ${durationMin}분 ${remainSec}초)`;
+    },
+
+    // 사용자 메시지 추가
+    addUserMessage(input, responseId) {
+      const responseBox = DOMUtils.getElement('response-box');
+
+      const userMsg = DOMUtils.createElement('div', {
+        className: 'user-msg',
+        id: `response-${responseId}`,
+        textContent: input,
+      });
+
+      DOMUtils.appendElement(responseBox, userMsg);
+      return userMsg;
+    },
+
+    // 로딩 메시지 추가
+    addLoadingMessage(mode) {
+      const responseBox = DOMUtils.getElement('response-box');
+      let content = '';
+
+      if (mode === 'chat') {
+        content = '🔄 <b>답변 생성 중...</b> <br><br> 요청한 질문에 대해 답변을 생성합니다.';
+      } else if (mode === 'loading') {
+        content = '🔄 <b>데이터 로딩 중...</b>';
+      } else {
+        content =
+          '🔄 <b>장애점 추론 중...</b> <br><br> 발생한 장애증상과 경보 패턴을 분석하여 유사 장애발생 사례를 기준으로 장애점을 추론합니다.';
+      }
+
+      const botLoading = DOMUtils.createElement(
+        'div',
+        {
+          className: 'bot-msg loading',
+        },
+        content
+      );
+
+      DOMUtils.appendElement(responseBox, botLoading);
+      responseBox.scrollTop = responseBox.scrollHeight;
+
+      return botLoading;
+    },
+
+    // 요약 항목 추가
+    addSummaryItem(input, responseId) {
+      const summaryList = DOMUtils.getElement('summary-list');
+
+      const summaryItem = DOMUtils.createElement('div', {
+        className: 'summary-entry',
+        textContent: [...input].slice(0, 20).join('') + (input.length > 20 ? '...' : ''),
+        dataset: { timestamp: new Date().toLocaleTimeString() },
+        onclick: () => {
+          const targetEl = DOMUtils.getElement(`response-${responseId}`);
+          if (targetEl) {
+            window.scrollTo(0, window.scrollY - 5);
+            setTimeout(() => {
+              targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+          }
+        },
+      });
+
+      DOMUtils.appendElement(summaryList, summaryItem);
+      return summaryItem;
+    },
+
+    // 봇 메시지 추가
+    addBotMessage(htmlContent, className = 'bot-msg') {
+      const responseBox = DOMUtils.getElement('response-box');
+
+      const botMsg = DOMUtils.createElement(
+        'div',
+        {
+          className: className,
+        },
+        htmlContent
+      );
+
+      DOMUtils.appendElement(responseBox, botMsg);
+      responseBox.scrollTop = responseBox.scrollHeight;
+
+      return botMsg;
+    },
+
+    // 에러 메시지 추가
+    addErrorMessage(error) {
+      const errorMessage = typeof error === 'string' ? error : error.message || '알 수 없는 오류';
+
+      return this.addBotMessage(`<div class="error-message">❌ 오류: ${errorMessage}</div>`);
+    },
+
+    // 쿼리 모드에 따른 placeholder 업데이트
+    updatePlaceholder() {
+      const mode = DOMUtils.querySelector('input[name="queryMode"]:checked').value;
+      const promptInput = DOMUtils.getElement('prompt-input');
+
+      if (mode === 'fixed') {
+        promptInput.placeholder =
+          'NW 장애발생 시 장애점을 찾을 수 있도록 분야별 세부 경보내역을 입력해 주세요!\n\n[장애점 추론] 외부 환경(정전/페이딩/선로장애) + 경보내역 + 장애증상과 유사한 장애사례를 기준으로 추론 \n[유사 장애사례 추출] 입력된 경보내역 등을 바탕으로 유사도가 높은 사례 3건 추출';
+      } else {
+        promptInput.placeholder =
+          '장애에 대해 자유롭게 질문하세요:\n- 이 장애의 원인은 무엇인가요?\n- 어떤 조치가 필요한가요?\n 유사한 장애 사례가 있었나요?';
+      }
+    },
+  };
+
+  // DOM 조작 관련 유틸리티 함수
+  const DOMUtils = {
+    // 요소 ID로 DOM 요소 가져오기
+    getElement(id) {
+      return document.getElementById(id);
+    },
+
+    // CSS 선택자로 DOM 요소 가져오기
+    querySelector(selector) {
+      return document.querySelector(selector);
+    },
+
+    // CSS 선택자로 여러 DOM 요소 가져오기
+    querySelectorAll(selector) {
+      return document.querySelectorAll(selector);
+    },
+
+    // 새 DOM 요소 생성
+    createElement(tag, props = {}, content) {
+      const element = document.createElement(tag);
+
+      // 속성 설정
+      Object.entries(props).forEach(([key, value]) => {
+        if (key === 'className') {
+          element.className = value;
+        } else if (key === 'dataset') {
+          Object.entries(value).forEach(([dataKey, dataValue]) => {
+            element.dataset[dataKey] = dataValue;
+          });
+        } else if (key === 'style') {
+          Object.entries(value).forEach(([styleKey, styleValue]) => {
+            element.style[styleKey] = styleValue;
+          });
+        } else if (key.startsWith('on') && typeof value === 'function') {
+          // 이벤트 리스너
+          const eventName = key.substring(2).toLowerCase();
+          element.addEventListener(eventName, value);
+        } else {
+          element[key] = value;
+        }
+      });
+
+      // 내용 설정
+      if (content) {
+        if (typeof content === 'string') {
+          element.innerHTML = content;
+        } else {
+          element.appendChild(content);
+        }
+      }
+
+      return element;
+    },
+
+    // 부모 요소에 자식 요소 추가하기
+    appendElement(parent, child) {
+      parent.appendChild(child);
+      return child;
+    },
+  };
+
+  // 유틸리티 함수 모듈
+  const Utils = {
+    // API 호출 함수
+    fetchAPI(url, method = 'GET', data = null) {
+      const options = {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+      };
+
+      if (data) {
+        options.body = JSON.stringify(data);
+      }
+
+      return fetch(url, options).then((res) => {
+        if (!res.ok) {
+          throw new Error(`서버 오류: ${res.status}`);
+        }
+        return res.json();
+      });
+    },
+
+    // 날짜/시간 포맷팅
+    formatDateTime(dt) {
+      return dt.toISOString().slice(0, 19).replace('T', ' ');
+    },
+
+    // 소요 시간 계산
+    calculateDuration(startTime, endTime) {
+      const durationSec = Math.floor((endTime - startTime) / 1000);
+      const durationMin = Math.floor(durationSec / 60);
+      const remainSec = durationSec % 60;
+      return { durationMin, remainSec };
+    },
+
+    // 현재 시간 문자열 반환
+    getCurrentTime() {
+      const date = new Date();
+      const pad = (n) => (n < 10 ? '0' + n : n);
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
+        date.getHours()
+      )}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    },
+
+    // 데이터 로딩 중 버튼 비활성화/활성화
+    toggleButtonsDuringFetch(disabled) {
+      const buttons = [
+        DOMUtils.getElement('getAlarmBtn'),
+        DOMUtils.getElement('getCableBtn'),
+        DOMUtils.getElement('getMWInfoBtn'),
+        DOMUtils.getElement('sendBtn'),
+      ];
+
+      buttons.forEach((btn) => {
+        if (!btn) return;
+
+        btn.disabled = disabled;
+        if (disabled) {
+          btn.classList.add('disabled');
+        } else {
+          btn.classList.remove('disabled');
+        }
+      });
+    },
+
+    // 표준화된 사용자 요청 처리 함수
+    handleUserRequest(input, processFunction) {
+      Utils.toggleButtonsDuringFetch(true);
+
+      const thisResponseId = ++AppState.responseCount;
+      const userMsg = DOMRenderer.addUserMessage(input, thisResponseId);
+      const summaryItem = DOMRenderer.addSummaryItem(input, thisResponseId);
+      const botLoading = DOMRenderer.addLoadingMessage('loading');
+
+      return processFunction(thisResponseId, botLoading, summaryItem)
+        .catch((error) => {
+          if (botLoading && botLoading.parentNode) {
+            botLoading.remove(); // 아직 로딩 메시지가 있으면 제거
+          }
+          DOMRenderer.addErrorMessage(error);
+          summaryItem.classList.add('error');
+          console.error('요청 처리 오류:', error);
+        })
+        .finally(() => {
+          Utils.toggleButtonsDuringFetch(false);
+        });
+    },
+  };
 
   // 사이드바 드래그 기능 설정
   function setupSidebarDrag() {
-    const sidebar = document.getElementById('summary-list');
-    const dragHandle = document.getElementById('drag-handle');
-    const toggleBtn = document.getElementById('toggle-btn');
+    const sidebar = DOMUtils.getElement('summary-list');
+    const dragHandle = DOMUtils.getElement('drag-handle');
+    const toggleBtn = DOMUtils.getElement('toggle-btn');
 
     // 드래그 이벤트 리스너 설정
     dragHandle.addEventListener('mousedown', (e) => {
@@ -1019,6 +1039,54 @@
 
     // 토글 버튼 클릭 이벤트
     toggleBtn.addEventListener('click', UIController.toggleSidebar);
+  }
+
+  // 초기화 및 이벤트 리스너 설정
+  function initApp() {
+    // 앱 상태 초기화
+    AppState.init();
+
+    // 로컬 스토리지에서 대화 이력 로드
+    StorageService.loadConversation();
+
+    // 플레이스홀더 업데이트
+    DOMRenderer.updatePlaceholder();
+
+    // 라디오 버튼 변경 이벤트 리스너
+    DOMUtils.querySelectorAll('input[name="queryMode"]').forEach((radio) => {
+      radio.addEventListener('change', DOMRenderer.updatePlaceholder);
+    });
+
+    // 버튼 이벤트 리스너 설정
+    DOMUtils.getElement('getAlarmBtn').addEventListener('click', UIController.getRealTimeAlarmList);
+
+    DOMUtils.getElement('getCableBtn').addEventListener('click', UIController.getDrCableInfo);
+
+    DOMUtils.getElement('getMWInfoBtn').addEventListener('click', UIController.getMWInfoFromSNMP);
+
+    DOMUtils.getElement('clearChatBtn').addEventListener('click', UIController.clearConversation);
+
+    DOMUtils.getElement('sendBtn').addEventListener('click', UIController.handlePrompt);
+
+    // 엔터 키 이벤트 처리
+    DOMUtils.getElement('prompt-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        UIController.handlePrompt();
+      }
+    });
+
+    // 초기 데이터 로드
+    APIService.getRealTimeAlarmList();
+
+    // 국사명 가져오기
+    APIService.getGuksaName();
+
+    // 자동 저장 타이머 설정
+    setInterval(() => StorageService.saveConversation(), 60000);
+
+    // 사이드바 드래그 설정
+    setupSidebarDrag();
   }
 
   // 페이지 로드 시 앱 초기화

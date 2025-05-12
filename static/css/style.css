@@ -1,1 +1,50 @@
-body { background-color: #f8f9fa; font-family: 'Malgun Gothic', sans-serif; }
+body {
+  background-color: #f8f9fa;
+  font-family: 'Malgun Gothic', sans-serif;
+}
+
+/* 테이블 컬럼 리사이징 관련 스타일 - 완전히 새롭게 작성 */
+/* 테이블 기본 스타일 */
+.alarm-table.resizable {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+/* 컬럼 크기를 직접 조절할 수 있게 설정 */
+.alarm-table col {
+  width: auto; /* 초기 너비 설정 */
+}
+
+/* 테이블 헤더와 셀 스타일 */
+.alarm-table th,
+.alarm-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 8px;
+  border: 1px solid #ddd;
+}
+
+/* 리사이징 가능한 헤더 스타일 */
+.alarm-table th.resizable {
+  position: relative;
+  user-select: none; /* 드래그 중 텍스트 선택 방지 */
+}
+
+/* 리사이징 핸들 스타일 */
+.alarm-table th.resizable::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 100%;
+  background-color: transparent;
+  cursor: col-resize;
+}
+
+/* 마우스 오버 시 리사이징 핸들 강조 */
+.alarm-table th.resizable:hover::after {
+  background-color: #0066cc;
+}

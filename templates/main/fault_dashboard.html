@@ -5,8 +5,10 @@
     <title>AI Detector Alarm Dashboard</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
 
-    <script src="/static/js/fault_dashboard.js" defer></script>
     <script src="/static/js/fault_d3_map.js" defer></script>
+    <script src="/static/js/fault_dashboard.js" defer></script>
+    <script src="/static/js/fault_dashboard_equip.js" defer></script>
+    <script src="/static/js/table-resizer.js" defer></script>
 
     <!-- jQuery -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
@@ -18,6 +20,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/simplePagination.js/1.6/jquery.simplePagination.min.js"></script>
 
     <link rel="stylesheet" href="/static/css/fault_dashboard.css" />
+    <link rel="stylesheet" href="/static/css/fault_dashboard_equip.css" />
   </head>
   <body>
     <div class="container">
@@ -28,9 +31,8 @@
             <option value="">전체 국사</option>
           </select>
         </div>
-        <br />
         <div>
-          <label>분야</label>
+          <!-- <label>분야</label>
           <div id="searchSectorContainer">
             <div class="checkbox-row">
               <label><input type="checkbox" id="allSectors" value="all" checked /> 전체</label>
@@ -53,18 +55,27 @@
                 ><input type="checkbox" value="교환" checked class="sector-checkbox" /> 교환</label
               >
             </div>
+          </div> -->
+        </div>
+        <div>
+          <label>경보발생 장비 선택</label>
+          <div class="radio-group" id="searchNWType">
+            <label><input type="radio" name="networkType" value="IP" checked /> IP</label>
+            <label><input type="radio" name="networkType" value="선로" /> 선로</label>
+            <label><input type="radio" name="networkType" value="무선" /> 무선</label>
+            <label><input type="radio" name="networkType" value="교환" /> 교환</label>
+            <label><input type="radio" name="networkType" value="전송" /> 전송</label>
+            <label><input type="radio" name="networkType" value="MW" /> MW</label>
           </div>
         </div>
-        <br />
+
         <div>
-          <label>장비명</label>
-          <select id="searchEquipName">
-            <option value="">전체 장비명</option>
-          </select>
+          <div>
+            <select id="searchEquipName" class="equip-select" size="15" multiple></select>
+          </div>
         </div>
-        <br />
         <div>
-          <label>경보 발생 시간</label>
+          <label>경보발생 시간</label>
           <select id="timeFilter">
             <option value="30">최근 30분</option>
             <option value="60" selected>최근 1시간</option>
@@ -96,10 +107,8 @@
 
             <!-- 우상단에 장비/국사 기준 메뉴 추가 -->
             <div class="view-toggle-buttons">
-              <button id="equipment-view-btn" class="view-btn active">
-                [ 1. 장비 기준 경보현황 ]
-              </button>
-              <button id="guksa-view-btn" class="view-btn">[ 2. 국사 기준 경보현황 ]</button>
+              <button id="equipment-view-btn" class="view-btn active">1. 장비 기준 경보현황</button>
+              <button id="guksa-view-btn" class="view-btn">2. 국사 기준 경보현황</button>
             </div>
           </div>
 
@@ -117,13 +126,14 @@
 
         <div class="bottom-div">
           <div class="table-container">
-            <table class="alarm-table">
+            <table id="alarmTable" class="alarm-table">
               <thead>
                 <tr>
                   <th>| 국사</th>
                   <th>| 분야</th>
                   <th>| 유효/무효</th>
                   <th>| 발생시간</th>
+                  <th>| 장비ID</th>
                   <th>| 장비유형</th>
                   <th>| 장비명</th>
                   <th>| 경보내용</th>
