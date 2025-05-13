@@ -458,14 +458,18 @@ async def rag_query():
                 response_text = parsed.get("opinion", "")
                 if not response_text:
                     response_text = "유사한 장애사례를 찾을 수 없습니다. 더 구체적인 내용을 입력해주세요."
+                # 처리 시간 정보 가져오기
+                processing_time = parsed.get("processing_time", 0.0)
             except:
                 response_text = "응답 처리 중 오류가 발생했습니다."
+                processing_time = 0.0
 
             return jsonify(
                 {
                     "success": True,
                     "query": f"{query}",
                     "details": response_text,
+                    "processing_time": processing_time
                 }
             )
 
@@ -504,63 +508,64 @@ async def rag_query():
 def clear_conversation():
     """사용자 대화 이력을 초기화하는 엔드포인트"""
     try:
-        from .scripts.fault_prediction_core_4 import conversation_history
-
-        # 요청에서 IP 주소 추출
-        ip_address = request.remote_addr
-
-        # IP 주소로 시작하는 모든 사용자 ID 찾기
-        user_ids_to_clear = [
-            uid
-            for uid in conversation_history.keys()
-            if uid.startswith(f"web_user_{ip_address}")
-        ]
-
-        # 해당 사용자 ID의 대화 기록 삭제
-        for user_id in user_ids_to_clear:
-            if user_id in conversation_history:
-                del conversation_history[user_id]
-
+        # conversation_history 관련 코드 제거, 성공 응답만 반환
         return jsonify({"success": True, "message": "대화 기록이 초기화되었습니다."})
-
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
 
 @api_bp.route("/latest_alarms")
 def get_latest_alarms():
-    guksa_id = request.args.get("guksa_id")
+    try:
+        guksa_id = request.args.get("guksa_id")
 
-    if not guksa_id:
-        return jsonify({"alarms": ""})
+        # 테스트 코드
+        guksa_id = '958'
 
-    # 필요한 필드만 선택하여 조회
-    query = (
-        db.session.query(
-            TblAlarmAllLast.sector,
-            TblAlarmAllLast.equip_type,
-            TblAlarmAllLast.equip_kind,
-            TblAlarmAllLast.alarm_syslog_code,
-            TblAlarmAllLast.fault_reason,
-            TblAlarmAllLast.alarm_message
+        print(f"GET /api/latest_alarms 요청 - guksa_id: {guksa_id}")
+
+        if not guksa_id:
+            print("guksa_id가 제공되지 않음, 빈 응답 반환")
+            return jsonify({"alarms": ""})
+
+        # 필요한 필드만 선택하여 조회
+        query = (
+            db.session.query(
+                TblAlarmAllLast.sector,
+                TblAlarmAllLast.equip_type,
+                TblAlarmAllLast.equip_kind,
+                TblAlarmAllLast.alarm_syslog_code,
+                TblAlarmAllLast.fault_reason,
+                TblAlarmAllLast.alarm_message
+            )
+            .filter(TblAlarmAllLast.guksa_id == str(guksa_id))  # 문자열로 비교
+            .order_by(TblAlarmAllLast.occur_datetime.asc())
         )
-        .filter(TblAlarmAllLast.guksa_id == str(guksa_id))  # 문자열로 비교
-        .order_by(TblAlarmAllLast.occur_datetime.asc())
-    )
 
-    alarms = query.all()
+        print(f"실행할 쿼리: {query}")
 
-    # 요청된 형식으로 알람 텍스트 구성
-    alert_texts = []
-    for alarm in alarms:
-        if alarm.alarm_message:  # 메시지가 있는 경우만 포함
-            alert_text = f"[{alarm.sector} 분야] {alarm.equip_type}, {alarm.equip_kind} 장비에서 {alarm.alarm_syslog_code}, {alarm.fault_reason}, {alarm.alarm_message}의 경보가 발생함"
-            alert_texts.append(alert_text)
+        alarms = query.all()
+        print(f"조회된 알람 수: {len(alarms)}")
 
-    # 전체 프롬프트 생성 및 JSON 응답 반환
-    prompt = "\n".join(alert_texts)
+        # 요청된 형식으로 알람 텍스트 구성
+        alert_texts = []
+        for alarm in alarms:
+            if alarm.alarm_message:  # 메시지가 있는 경우만 포함
+                alert_text = f"[{alarm.sector} 분야] {alarm.equip_type}, {alarm.equip_kind} 장비에서 {alarm.alarm_syslog_code}, {alarm.fault_reason}, {alarm.alarm_message}의 경보가 발생함"
+                alert_texts.append(alert_text)
 
-    return jsonify({"alarms": prompt})
+        # 전체 프롬프트 생성 및 JSON 응답 반환
+        prompt = "\n".join(alert_texts)
+        print(f"생성된 프롬프트: {prompt[:100]}... (길이: {len(prompt)})")
+
+        return jsonify({"alarms": prompt})
+
+    except Exception as e:
+        print(f"latest_alarms API 오류 발생: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({"alarms": "", "error": str(e)}), 500
+
 
 # @api_bp.route("/latest_alarms")
 # def get_latest_alarms():
@@ -827,7 +832,7 @@ def alarm_dashboard():
     # 기본 쿼리 생성
     query = TblAlarmAllLast.query
 
-    # 필터 적용 (주석 해제하고 수정)
+    # 필터 적용
     if guksa_id:
         query = query.filter(TblAlarmAllLast.guksa_id == str(guksa_id))
     if sectors and len(sectors) > 0:
@@ -842,8 +847,6 @@ def alarm_dashboard():
         from datetime import datetime, timedelta
         minutes = int(time_filter)
         time_threshold = datetime.now() - timedelta(minutes=minutes)
-        # datetime 형식이 문자열인 경우 처리하는 조건 추가
-        # query = query.filter(TblAlarmAllLast.occur_datetime >= time_threshold.strftime("%Y-%m-%d %H:%M:%S"))
 
     try:
         print("실행 쿼리:", str(query))  # SQL 쿼리 확인용
@@ -860,6 +863,7 @@ def alarm_dashboard():
         # 결과 필드명도 모델 필드명과 일치하게 설정
         result = [{
             'guksa_id': a.guksa_id,
+            'guksa_name': a.guksa_name,
             'sector': a.sector,
             'equip_id': a.equip_id,  # 항상 equip_id 필드가 포함되도록 명시적 지정
             'equip_type': a.equip_type,
@@ -1307,7 +1311,7 @@ def get_equipment_details(n):
                 "remote_guksa": link.remote_guksa_name,
                 "link_type": link.link_type,
                 "updown_type": link.updown_type,
-                "cable_num": link.cable_num if hasattr(link, 'cable_num') else None,
+                "cable_num": link.cable_num if hasattr(link, 'cable_num') else None
             }
             link_list.append(link_data)
 

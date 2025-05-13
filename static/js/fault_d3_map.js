@@ -14,8 +14,8 @@ function createNetworkMap(equipData) {
 
   const links = [];
 
-  // 중복 장비 이름 처리를 위한 맵
-  const uniqueEquipNames = new Map();
+  // 중복 장비 이름 처리를 위한 맵 - 동일 장비는 하나의 노드로 통합
+  const uniqueEquipMap = new Map();
 
   // 분야별 카운터
   const sectorCounts = {
@@ -27,68 +27,92 @@ function createNetworkMap(equipData) {
     교환: 0,
   };
 
-  // 장비 노드 추가
-  equipData.equip_list.forEach((equip, index) => {
+  // 장비 노드 추가 - 장비별로 그룹화
+  equipData.equip_list.forEach((equip) => {
     // 장비 이름 없으면 건너뛰기
     if (!equip.equip_name) return;
 
-    // 중복 장비 처리 (동일 이름의 장비가 있으면 카운트 추가)
-    let equipName = equip.equip_name;
-    if (uniqueEquipNames.has(equipName)) {
-      const count = uniqueEquipNames.get(equipName) + 1;
-      uniqueEquipNames.set(equipName, count);
-      equipName = `${equipName} (${count})`;
+    // 동일 장비 처리 - 장비명으로 그룹화
+    if (uniqueEquipMap.has(equip.equip_name)) {
+      // 이미 존재하는 장비면 알람 메시지 추가
+      const existingEquip = uniqueEquipMap.get(equip.equip_name);
+      if (equip.alarm_message) {
+        if (!existingEquip.alarmMessages) {
+          existingEquip.alarmMessages = [];
+          // 기존 alarmMessage가 있으면 배열의 첫 항목으로 추가
+          if (existingEquip.alarmMessage) {
+            existingEquip.alarmMessages.push(existingEquip.alarmMessage);
+          }
+        }
+        existingEquip.alarmMessages.push(equip.alarm_message);
+      }
     } else {
-      uniqueEquipNames.set(equipName, 1);
+      // 최초 발견된 장비는 새 객체로 저장 분야별 카운터 증가
+      const sector = equip.sector || '알 수 없음';
+      if (sectorCounts[sector] !== undefined) {
+        sectorCounts[sector]++;
+      } else {
+        sectorCounts[sector] = 1;
+      }
+
+      // 분야에 따라 색상 지정 - 경보 색상을 더 잘 구분되도록 변경
+      let color = '#ff5555'; // 기본 경보 색상 (빨간색)
+      let borderColor = '#cc0000'; // 기본 테두리 색상 (더 진한 빨간색)
+
+      switch (sector) {
+        case 'MW':
+          color = '#ffaa00'; // 주황색 (더 밝게)
+          borderColor = '#e67700'; // 더 진한 주황색
+          break;
+        case 'IP':
+          color = '#ff3333'; // 선명한 빨간색
+          borderColor = '#cc0000'; // 진한 빨간색
+          break;
+        case '교환':
+          color = '#cc0000'; // 더 밝은 빨간색으로 변경
+          borderColor = '#990000'; // 테두리도 어두운 빨간색으로
+          break;
+        case '전송':
+          color = '#ff66cc'; // 핑크색
+          borderColor = '#cc0099'; // 진한 핑크색
+          break;
+        case '선로':
+          color = '#ff8833'; // 연한 주황색
+          borderColor = '#cc5500'; // 진한 주황색
+          break;
+        case '무선':
+          color = '#ffcc66'; // 매우 연한 주황색
+          borderColor = '#cc9933'; // 진한 황금색
+          break;
+      }
+
+      // 새 장비 정보 저장
+      const newEquip = {
+        id: equip.equip_name,
+        type: 'equip',
+        sector: sector,
+        sectorIndex: sectorCounts[sector],
+        alarmMessage: equip.alarm_message || '',
+        color: color,
+        borderColor: borderColor, // 테두리 색상 추가
+      };
+
+      // 장비 맵에 저장
+      uniqueEquipMap.set(equip.equip_name, newEquip);
     }
+  });
 
-    // 분야별 카운터 증가
-    const sector = equip.sector || '알 수 없음';
-    if (sectorCounts[sector] !== undefined) {
-      sectorCounts[sector]++;
-    } else {
-      sectorCounts[sector] = 1;
-    }
+  // 유니크한 장비 노드만 추가
+  for (const equip of uniqueEquipMap.values()) {
+    nodes.push(equip);
 
-    // 분야에 따라 색상 지정
-    let color = '#666'; // 기본 색상
-    switch (sector) {
-      case 'MW':
-        color = '#ff8c00'; // 주황색
-        break;
-      case 'IP':
-        color = '#2ca02c'; // 녹색
-        break;
-      case '교환':
-        color = '#d62728'; // 빨간색
-        break;
-      case '전송':
-        color = '#9467bd'; // 보라색
-        break;
-      case '선로':
-        color = '#8c564b'; // 갈색
-        break;
-      case '무선':
-        color = '#1f77b4'; // 파란색
-        break;
-    }
-
-    nodes.push({
-      id: equipName,
-      type: 'equip',
-      sector: sector,
-      sectorIndex: sectorCounts[sector], // 분야 내 순서 저장
-      alarmMessage: equip.alarm_message || '',
-      color: color,
-    });
-
-    // 국사와 장비 간 링크 생성
+    // 국사와 장비 간 링크 생성 (한 번만)
     links.push({
       source: guksaName,
-      target: equipName,
-      sector: sector,
+      target: equip.id,
+      sector: equip.sector,
     });
-  });
+  }
 
   // 노드가 없으면 메시지 표시 후 종료
   if (nodes.length <= 1) {
@@ -202,7 +226,10 @@ function createNetworkMap(equipData) {
     .style('padding', '8px')
     .style('pointer-events', 'none')
     .style('font-size', '12px')
-    .style('z-index', 10);
+    .style('z-index', 10)
+    .style('max-width', '350px') // 툴팁 최대 너비 설정
+    .style('overflow-y', 'auto') // 내용이 많을 경우 스크롤 추가
+    .style('max-height', '300px'); // 최대 높이 제한
 
   // 범례 생성 (우측 상단에 배치)
   const legend = container
@@ -231,13 +258,13 @@ function createNetworkMap(equipData) {
 
   // 범례 항목
   const sectors = [
-    { name: '국사', color: '#0056b3' },
-    { name: 'MW', color: '#ff8c00' },
-    { name: '선로', color: '#8c564b' },
-    { name: '전송', color: '#9467bd' },
-    { name: 'IP', color: '#2ca02c' },
-    { name: '무선', color: '#1f77b4' },
-    { name: '교환', color: '#d62728' },
+    { name: '국사', color: '#0056b3', borderColor: '#003366' },
+    { name: 'MW', color: '#ffaa00', borderColor: '#e67700' },
+    { name: '선로', color: '#ff8833', borderColor: '#cc5500' },
+    { name: '전송', color: '#ff66cc', borderColor: '#cc0099' },
+    { name: 'IP', color: '#ff3333', borderColor: '#cc0000' },
+    { name: '무선', color: '#ffcc66', borderColor: '#cc9933' },
+    { name: '교환', color: '#cc0000', borderColor: '#990000' },
   ];
 
   sectors.forEach((sector, i) => {
@@ -307,20 +334,22 @@ function createNetworkMap(equipData) {
     .enter()
     .append('line')
     .attr('stroke', (d) => {
-      // 분야에 따른 링크 색상
+      // 분야에 따른 링크 색상 변경 - 노드와 같은 색상으로 변경
       switch (d.sector) {
         case 'MW':
-          return '#ff8c00';
+          return '#ffaa00'; // 주황색 (더 밝게)
         case 'IP':
-          return '#2ca02c';
+          return '#ff3333'; // 선명한 빨간색
         case '교환':
-          return '#d62728';
+          return '#cc0000'; // 교환 색상 변경
         case '전송':
-          return '#9467bd';
+          return '#ff66cc'; // 핑크색
         case '선로':
-          return '#8c564b';
+          return '#ff8833'; // 연한 주황색
+        case '무선':
+          return '#ffcc66'; // 매우 연한 주황색
         default:
-          return '#999';
+          return '#ff5555'; // 기본 빨간색
       }
     })
     .attr('stroke-opacity', 0.6)
@@ -336,15 +365,61 @@ function createNetworkMap(equipData) {
     .attr('class', (d) => `node ${d.type === 'guksa' ? 'node-guksa' : `node-${d.sector}`}`)
     .call(d3.drag().on('start', dragstarted).on('drag', dragged).on('end', dragended));
 
-  // 노드에 원 추가
-  node
-    .append('circle')
-    .attr('r', (d) => (d.type === 'guksa' ? 25 : 15))
-    .attr('fill', (d) => d.color)
-    .attr('stroke', (d) => (d.type === 'guksa' ? '#001f3f' : '#333'))
-    .attr('stroke-width', 2);
+  // 노드에 원 또는 사각형 추가 (국사는 라운드된 사각형, 장비는 원)
+  node.each(function (d) {
+    const selection = d3.select(this);
 
-  // 노드 내부에 텍스트 추가
+    if (d.type === 'guksa') {
+      // 국사 노드는 라운드된 사각형으로
+      selection
+        .append('rect')
+        .attr('width', 60)
+        .attr('height', 40)
+        .attr('x', -30) // 중앙 배치를 위해 width의 절반만큼 왼쪽으로
+        .attr('y', -20) // 중앙 배치를 위해 height의 절반만큼 위로
+        .attr('rx', 5) // 모서리 둥글게 (값 축소)
+        .attr('ry', 5) // 모서리 둥글게 (값 축소)
+        .attr('fill', d.color)
+        .attr('stroke', '#001f3f')
+        .attr('stroke-width', 2.5);
+    } else {
+      // 장비 노드는 원형 유지
+      selection
+        .append('circle')
+        .attr('r', 15)
+        .attr('fill', d.color)
+        .attr('stroke', d.borderColor || '#333')
+        .attr('stroke-width', 2.5);
+    }
+  });
+
+  // 경보 개수 표시 배지 추가 (여러 경보가 있는 장비 노드에만)
+  node
+    .filter((d) => d.type === 'equip' && d.alarmMessages && d.alarmMessages.length > 1)
+    .append('circle')
+    .attr('class', 'alarm-badge')
+    .attr('cx', 12)
+    .attr('cy', -12)
+    .attr('r', 8)
+    .attr('fill', '#dddddd') // 연한 회색 계열로 직접 지정
+    .attr('stroke', 'white')
+    .attr('stroke-width', 1.5);
+
+  // 경보 개수 텍스트 추가
+  node
+    .filter((d) => d.type === 'equip' && d.alarmMessages && d.alarmMessages.length > 1)
+    .append('text')
+    .attr('class', 'alarm-count')
+    .attr('x', 12)
+    .attr('y', -10)
+    .attr('text-anchor', 'middle')
+    .attr('dominant-baseline', 'middle')
+    .attr('fill', 'black') // 검은색으로 변경
+    .attr('font-size', '8px')
+    .attr('font-weight', 'bold')
+    .text((d) => d.alarmMessages.length);
+
+  // 노드 내부에 텍스트 추가 - 위치 조정 (국사 노드는 사각형 중앙에)
   node
     .append('text')
     .text((d) => {
@@ -355,7 +430,8 @@ function createNetworkMap(equipData) {
     .attr('dominant-baseline', 'middle')
     .attr('fill', 'white')
     .attr('font-size', (d) => (d.type === 'guksa' ? '12px' : '10px'))
-    .attr('font-weight', 'bold');
+    .attr('font-weight', 'bold')
+    .attr('dy', (d) => (d.type === 'guksa' ? 0 : 0)); // 국사 노드는 중앙에 텍스트
 
   // 노드 아래에 텍스트 라벨 추가
   node
@@ -369,10 +445,10 @@ function createNetworkMap(equipData) {
     .attr('text-anchor', 'middle')
     .attr('x', 0)
     .attr('y', (d) => (d.type === 'guksa' ? 35 : 25))
-    .attr('font-size', '10px')
+    .attr('font-size', '11px')
     .attr('fill', '#333');
 
-  // 툴팁 이벤트 추가
+  // 마우스 오버 시 강조 효과 업데이트
   node
     .on('mouseover', function (event, d) {
       let tooltipContent = '';
@@ -382,11 +458,24 @@ function createNetworkMap(equipData) {
           nodes.length - 1
         }`;
       } else {
+        // 기본 장비 정보
         tooltipContent = `
-        <strong>장비:</strong> ${d.id}<br>
-        <strong>분야:</strong> ${d.sector}<br>
-        ${d.alarmMessage ? `<strong>경보:</strong> ${d.alarmMessage}` : ''}
-      `;
+          <strong>장비:</strong> ${d.id}<br>
+          <strong>분야:</strong> ${d.sector}<br>
+        `;
+
+        // 경보 메시지 추가
+        if (d.alarmMessages && d.alarmMessages.length > 0) {
+          tooltipContent += `<strong>경보 (${d.alarmMessages.length}개):</strong><br>`;
+          tooltipContent +=
+            '<ul style="margin: 2px 0; padding-left: 15px; list-style-type: disc;">';
+          d.alarmMessages.forEach((msg, index) => {
+            tooltipContent += `<li style="margin-bottom: 3px;">${index + 1}. ${msg}</li>`;
+          });
+          tooltipContent += '</ul>';
+        } else if (d.alarmMessage) {
+          tooltipContent += `<strong>경보:</strong> ${d.alarmMessage}`;
+        }
       }
 
       tooltip
@@ -397,22 +486,70 @@ function createNetworkMap(equipData) {
         .duration(200)
         .style('opacity', 0.9);
 
-      // 마우스 오버 시 강조 효과
+      // 마우스 오버 시 강조 효과 - 국사는 사각형, 장비는 원 처리
+      if (d.type === 'guksa') {
+        d3.select(this)
+          .select('rect')
+          .transition()
+          .duration(200)
+          .attr('width', 66)
+          .attr('height', 45)
+          .attr('x', -33)
+          .attr('y', -22.5);
+      } else {
+        d3.select(this).select('circle').transition().duration(200).attr('r', 18);
+      }
+
+      // 경보 여러개인 경우 배지도 커지게
       d3.select(this)
-        .select('circle')
+        .select('.alarm-badge')
         .transition()
         .duration(200)
-        .attr('r', d.type === 'guksa' ? 28 : 18);
+        .attr('r', 10)
+        .attr('cx', 15)
+        .attr('cy', -15);
+
+      d3.select(this)
+        .select('.alarm-count')
+        .transition()
+        .duration(200)
+        .attr('x', 15)
+        .attr('y', -13)
+        .attr('font-size', '10px');
     })
-    .on('mouseout', function () {
+    .on('mouseout', function (event, d) {
       tooltip.transition().duration(500).style('opacity', 0);
 
-      // 강조 효과 제거
+      // 강조 효과 제거 - 국사는 사각형, 장비는 원 처리
+      if (d.type === 'guksa') {
+        d3.select(this)
+          .select('rect')
+          .transition()
+          .duration(200)
+          .attr('width', 60)
+          .attr('height', 40)
+          .attr('x', -30)
+          .attr('y', -20);
+      } else {
+        d3.select(this).select('circle').transition().duration(200).attr('r', 15);
+      }
+
+      // 경보 배지 원래 크기로
       d3.select(this)
-        .select('circle')
+        .select('.alarm-badge')
         .transition()
         .duration(200)
-        .attr('r', (d) => (d.type === 'guksa' ? 25 : 15));
+        .attr('r', 8)
+        .attr('cx', 12)
+        .attr('cy', -12);
+
+      d3.select(this)
+        .select('.alarm-count')
+        .transition()
+        .duration(200)
+        .attr('x', 12)
+        .attr('y', -10)
+        .attr('font-size', '8px');
     });
 
   // 시뮬레이션 틱마다 위치 업데이트

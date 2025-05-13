@@ -10,7 +10,7 @@
   const AppState = {
     requestTime: null,
     responseCount: 0,
-    guksa_id: URLSearchParams(window.location.search).get('guksa_id'),
+    guksa_id: new URLSearchParams(window.location.search).get('guksa_id'),
     isDragging: false,
     isSidebarVisible: true,
 
@@ -249,10 +249,21 @@
         const summaryTable = this.SummarySectionHTML();
         const detailsSection = this.DetailsSectionHTML();
 
+        // processing_time 가져오기
+        const processingTime = jsonData.processing_time || 0;
+
         return `
-          ${opinionSection}
-          ${summaryTable}
-          ${detailsSection}
+          <div class="result-section">
+            <p class="section-title">✅ <b>종합 의견</b></p>${opinionSection}          
+            <p class="section-title">✅ <b>장애점 추론 요약</b></p>${summaryTable}          
+            <p class="section-title">✅ <b>장애점 추론 세부내역</b></p>${detailsSection}
+            
+            <div style="margin-top: 5px; font-size: 0.9em; color: #666;">
+              ※ Vector DB Query 시간: ${
+                typeof processingTime === 'number' ? processingTime.toFixed(2) : processingTime
+              }초
+            </div>
+          </div>
         `;
       } catch (e) {
         console.error('장애점 추론 응답 생성 오류:', e);
@@ -437,22 +448,55 @@
 
       // 전역 AppState에서 guksa_id 가져오기
       const guksa_id = AppState.guksa_id;
+      console.log('경보 조회 요청, guksa_id:', guksa_id);
 
       // URL에 guksa_id 쿼리 파라미터 추가
       const url = guksa_id
         ? `/api/latest_alarms?guksa_id=${encodeURIComponent(guksa_id)}`
         : '/api/latest_alarms';
 
+      console.log('API 호출 URL:', url);
+
       return Utils.fetchAPI(url)
         .then((data) => {
           console.log('경보 데이터 수신:', data);
+
+          // 데이터가 있을 경우 prompt-input에 설정하고 사용자에게 알림
           if (data.alarms) {
             DOMUtils.getElement('prompt-input').value = '경보수집 내역입니다.\n\n' + data.alarms;
+
+            // 데이터 수신 알림 메시지 추가
+            DOMRenderer.addBotMessage(
+              `
+              <div class="notification">
+                <p>✅ 경보 데이터가 성공적으로 수신되었습니다.</p>
+                <p>총 ${data.alarms.split('\n').length}건의 경보를 확인했습니다.</p>
+                <p>아래 프롬프트의 경보 내역을 확인하고 필요한 경우 장애 증상을 추가하여 분석을 요청하세요.</p>
+              </div>
+            `,
+              'bot-msg msg-info'
+            );
+          } else {
+            // 데이터가 없는 경우 알림
+            DOMRenderer.addBotMessage(
+              `
+              <div class="notification">
+                <p>ℹ️ 해당 국사에 대한 경보 데이터가 없습니다.</p>
+                <p>다른 국사를 선택하거나 시스템 관리자에게 문의하세요.</p>
+              </div>
+            `,
+              'bot-msg msg-info'
+            );
           }
+
           return data;
         })
         .catch((err) => {
           console.error('❌ 경보 데이터 로딩 실패:', err);
+
+          // 오류 메시지 출력
+          DOMRenderer.addErrorMessage(`경보 데이터 로딩 실패: ${err.message}`);
+
           throw err;
         })
         .finally(() => {
@@ -668,7 +712,32 @@
 
     // 대화 내용 초기화
     clearConversation() {
-      StorageService.clearConversation();
+      if (confirm('모든 대화 내용을 초기화하시겠습니까?')) {
+        DOMUtils.getElement('response-box').innerHTML = '';
+        DOMUtils.getElement('summary-list').innerHTML = '';
+        DOMUtils.getElement('prompt-input').value = '';
+        AppState.responseCount = 0;
+
+        // 서버에 대화 초기화 요청 - API 응답 확인 없이 실행
+        try {
+          Utils.fetchAPI('/api/clear_conversation', 'POST', { clear: true })
+            .then(() => console.log('대화 초기화 성공'))
+            .catch((err) => console.log('대화 초기화 API 오류 (무시됨):', err));
+        } catch (e) {
+          console.log('대화 초기화 요청 오류 (무시됨):', e);
+        }
+
+        // 타임스탬프 초기화
+        const timestamp = DOMUtils.getElement('timestamp');
+        if (timestamp) {
+          timestamp.textContent = '';
+        }
+
+        // 로컬 스토리지 초기화
+        localStorage.removeItem('nw-rag-conversation');
+        localStorage.removeItem('nw-rag-summary');
+        localStorage.removeItem('nw-rag-count');
+      }
     },
 
     // 사이드바 토글 - 펼치기/접기
@@ -725,10 +794,14 @@
         DOMUtils.getElement('prompt-input').value = '';
         AppState.responseCount = 0;
 
-        // 서버에 대화 초기화 요청
-        Utils.fetchAPI('/api/clear_conversation', 'POST', { clear: true }).catch((err) =>
-          console.error('대화 초기화 오류:', err)
-        );
+        // 서버에 대화 초기화 요청 - API 응답 확인 없이 실행
+        try {
+          Utils.fetchAPI('/api/clear_conversation', 'POST', { clear: true })
+            .then(() => console.log('대화 초기화 성공'))
+            .catch((err) => console.log('대화 초기화 API 오류 (무시됨):', err));
+        } catch (e) {
+          console.log('대화 초기화 요청 오류 (무시됨):', e);
+        }
 
         // 타임스탬프 초기화
         const timestamp = DOMUtils.getElement('timestamp');
@@ -936,12 +1009,40 @@
         options.body = JSON.stringify(data);
       }
 
-      return fetch(url, options).then((res) => {
-        if (!res.ok) {
-          throw new Error(`서버 오류: ${res.status}`);
-        }
-        return res.json();
-      });
+      console.log(`API 요청: ${method} ${url}`, data ? `데이터: ${JSON.stringify(data)}` : '');
+
+      return fetch(url, options)
+        .then((res) => {
+          console.log(`API 응답 상태: ${res.status} ${res.statusText}`);
+
+          // 응답이 ok가 아닌 경우 (HTTP 에러 코드)
+          if (!res.ok) {
+            return res
+              .json()
+              .then((errorData) => {
+                // 서버에서 에러 메시지를 보낸 경우 활용
+                const errorMsg = errorData.error || `서버 오류: ${res.status} ${res.statusText}`;
+                console.error(`API 오류: ${errorMsg}`);
+                throw new Error(errorMsg);
+              })
+              .catch((jsonErr) => {
+                // JSON 파싱 오류인 경우 원래 오류 메시지 사용
+                console.error(`API 응답 파싱 오류: ${jsonErr}`);
+                throw new Error(`서버 오류: ${res.status} ${res.statusText}`);
+              });
+          }
+
+          return res.json();
+        })
+        .then((data) => {
+          console.log(`API 응답 데이터:`, data);
+          return data;
+        })
+        .catch((err) => {
+          // fetch 자체의 네트워크 오류 (CORS, 네트워크 끊김 등)
+          console.error(`API 호출 중 오류 발생: ${err.message}`);
+          throw err;
+        });
     },
 
     // 날짜/시간 포맷팅

@@ -685,9 +685,18 @@ function updateAlarmTableContent(data) {
       }
     }
 
+    // 국사 이름 결정 로직
+    let guksaName = '-';
+
+    // 우선 guksa_name 필드 확인 (API가 이 필드를 직접 제공하는 경우)
+    if (item.guksa_name) {
+      guksaName = item.guksa_name;
+    }
+    // alert('guksaName : ' + JSON.stringify(item));
+
     // 테이블 셀 생성 및 추가
     const cells = [
-      { value: item.guksa_id || '-', className: 'col-guksa' },
+      { value: guksaName, className: 'col-guksa', title: item.guksa_id }, // 국사명 표시, 툴팁에 ID 표시
       { value: item.sector || '-', className: 'col-sector' },
       { value: item.valid_yn === 'Y' ? '유효' : '무효', className: 'col-valid' },
       { value: formatDateTime(item.occur_datetime), className: 'col-occur-time' },
@@ -701,6 +710,12 @@ function updateAlarmTableContent(data) {
       const td = document.createElement('td');
       td.className = cell.className;
       td.textContent = cell.value;
+
+      // 툴팁 추가 (제목 속성이 있는 경우)
+      if (cell.title) {
+        td.title = cell.title;
+      }
+
       row.appendChild(td);
     });
 

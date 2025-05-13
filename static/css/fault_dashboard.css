@@ -4,12 +4,14 @@ html {
   height: 100%;
   font-family: Arial, sans-serif;
   overflow-x: hidden !important;
+  overflow-y: hidden !important; /* 수직 스크롤 제거 */
 }
 
 .container {
   display: flex;
   height: 100vh;
   overflow-x: hidden !important;
+  overflow-y: hidden !important; /* 수직 스크롤 제거 */
   max-width: 100vw;
 }
 
@@ -18,6 +20,7 @@ html {
   display: flex;
   flex-direction: column;
   overflow-x: hidden !important;
+  overflow-y: hidden !important; /* 수직 스크롤 제거 */
   max-width: 100%;
 }
 
@@ -35,24 +38,26 @@ html {
 /* 테이블과 페이지네이션 영역 분리 */
 .table-container {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden !important;
-  margin-bottom: 1px;
+  overflow-y: hidden !important; /* 수직 스크롤 완전 제거 */
+  overflow-x: auto !important;
+  margin-bottom: 0;
+  width: 100%;
   max-width: 100%;
+  padding-bottom: 0;
 }
 
 .bottom-div {
-  height: 42% !important; /* 하단 테이블 40% */
-  min-height: 300px; /* 최소 높이 설정 */
-  max-height: calc(100vh - 370px); /* 최대 높이 제한 */
+  height: 48% !important;
+  min-height: 290px;
+  max-height: calc(100vh - 340px);
   max-width: 100%;
   position: relative;
   display: flex;
   flex-direction: column;
   background-color: white;
-  padding: 5px;
-  overflow-y: auto; /* 세로 스크롤만 허용 */
-  overflow-x: hidden !important; /* 가로 스크롤 금지 */
+  padding: 3px 3px 0 3px;
+  overflow-y: auto !important; /* 테이블 영역만 수직 스크롤 허용 */
+  overflow-x: hidden !important;
 }
 
 /* 대시보드 레이아웃 */
@@ -313,18 +318,11 @@ html {
 
 .alarm-table {
   width: 100%;
+  min-width: 900px; /* 최소 너비 설정 */
+  table-layout: fixed !important;
   border-collapse: collapse;
-  table-layout: fixed !important; /* 강제 적용 */
   cursor: pointer; /* 테이블 위에서 커서 손모양으로 변경 */
-}
-
-/* colgroup 스타일 명시적 적용 */
-.alarm-table colgroup {
-  display: table-column-group;
-}
-
-.alarm-table col {
-  display: table-column;
+  margin-bottom: 1px !important; /* 5px에서 1px로 줄임 */
 }
 
 /* 테이블 구조 관련 스타일 정리 */
@@ -339,24 +337,116 @@ html {
 
 .alarm-table tbody {
   display: table-row-group !important;
-  overflow-y: auto;
-  overflow-x: hidden !important;
-  max-height: calc(100vh - 350px);
+  overflow-y: hidden !important; /* 수직 스크롤 제거 */
+  overflow-x: visible;
   width: 100%;
 }
 
 .alarm-table tr {
   display: table-row !important;
   width: 100%;
+  height: 20px !important; /* 높이 23px에서 20px로 줄임 */
+  line-height: 20px !important; /* 라인 높이도 일치시킴 */
+  max-height: 20px !important; /* 최대 높이도 줄임 */
+}
+
+.alarm-table thead tr {
+  display: table-row !important;
+  width: 100%;
+}
+
+.alarm-table tbody tr {
+  display: table-row !important;
+  width: 100%;
 }
 
 .alarm-table th,
 .alarm-table td {
+  padding: 0 3px !important; /* 패딩 추가 */
   display: table-cell !important;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.alarm-table th {
+  padding: 0 3px 0 5px !important; /* 좌우 패딩 추가 */
+  height: 22px !important; /* 셀 높이 25px에서 22px로 줄임 */
+  line-height: 1.3 !important; /* 줄 간격 최소화 */
+  font-size: 13px; /* 폰트 크기도 더 축소 (14px->13px) */
+  font-weight: bold;
+  border-bottom: 1px solid #ddd;
+  cursor: pointer;
+  text-align: left;
+  background-color: #e0e0e0; /* 헤더 셀 배경색 */
+  position: relative;
+  padding-right: 15px; /* 아이콘 공간 확보 */
+}
+
+/* 셀 내용 제어 */
+.alarm-table td {
+  height: 20px !important; /* 높이 23px에서 20px로 줄임 */
+  line-height: 1.2 !important; /* 라인 높이 조정 */
+  font-size: 13px; /* 폰트 사이즈 추가 축소 (14px -> 13px) */
+  max-height: 20px !important; /* 최대 높이도 줄임 */
+  box-sizing: border-box !important;
+}
+
+/* 고정 컬럼 너비 설정 - !important 추가 */
+.alarm-table th:nth-child(1),
+.col-guksa {
+  width: 16.8% !important; /* 12%에서 1.4배 증가 */
+  min-width: 180px !important; /* min-width 증가 */
+  max-width: 180px !important; /* max-width 추가 */
+} /* 국사 */
+
+.alarm-table th:nth-child(2),
+.col-sector {
+  width: 2.5% !important; /* 5%에서 1/2로 감소 */
+  min-width: 40px !important; /* min-width 설정 */
+  max-width: 40px !important; /* max-width 추가 */
+} /* 분야 */
+
+.alarm-table th:nth-child(3),
+.col-valid {
+  width: 2.5% !important; /* 5%에서 1/2로 감소 */
+  min-width: 40px !important; /* min-width 설정 */
+  max-width: 40px !important; /* max-width 추가 */
+} /* 유효/무효 */
+
+.alarm-table th:nth-child(4),
+.col-occur-time {
+  width: 15% !important;
+  min-width: 140px !important;
+  max-width: 140px !important; /* max-width 추가 */
+} /* 발생시간 */
+
+.alarm-table th:nth-child(5),
+.col-equip-id {
+  width: 15% !important;
+  min-width: 140px !important; /* min-width 감소 */
+  max-width: 140px !important; /* max-width 추가 */
+} /* 장비ID */
+
+.alarm-table th:nth-child(6),
+.col-equip-type {
+  width: 13% !important;
+  min-width: 100px !important; /* min-width 감소 */
+  max-width: 100px !important; /* max-width 추가 */
+} /* 장비유형 */
+
+.alarm-table th:nth-child(7),
+.col-equip-name {
+  width: 18% !important;
+  min-width: 150px !important; /* min-width 감소 */
+  max-width: 150px !important; /* max-width 추가 */
+} /* 장비명 */
+
+.alarm-table th:nth-child(8),
+.col-alarm-message {
+  width: 18% !important;
+  min-width: 150px !important; /* min-width 감소 */
+} /* 경보내용 */
 
 /* 리사이저 스타일 강화 */
 .col-resizer {
@@ -399,8 +489,9 @@ html {
 }
 
 .filter-label {
-  font-weight: bold;
+  /* font-weight: bold; */
   margin-right: 8px;
+  font-size: 13px;
   white-space: nowrap;
 }
 
@@ -488,23 +579,27 @@ html {
   z-index: 10; /* 다른 요소보다 위에 표시 */
   background-color: #e0e0e0; /* 헤더 배경색 */
   width: 100%;
-  display: table;
+  display: table-header-group !important;
+  table-layout: fixed;
+}
+
+.alarm-table thead tr {
+  display: table-row;
+  width: 100%;
 }
 
 .alarm-table tbody {
   display: block;
-  overflow-y: auto;
+  overflow-y: visible !important; /* 수직 스크롤 제거 */
   overflow-x: hidden !important;
-  max-height: calc(100vh - 350px); /* 적절한 높이 계산 */
+  max-height: none !important; /* 최대 높이 제한 제거 */
   width: 100%;
   max-width: 100%;
 }
 /* 테이블 행 스타일 조정 */
 .alarm-table tbody tr {
-  display: table;
+  display: table-row;
   width: 100%;
-  table-layout: fixed;
-  max-width: 100%;
 }
 
 .alarm-table {
@@ -516,9 +611,9 @@ html {
   padding-left: 0px;
   /* padding-right: 10px; */
 
-  height: 25px; /* 셀 높이 고정 */
+  height: 22px !important; /* 셀 높이 25px에서 22px로 줄임 */
   line-height: 1; /* 줄 간격 최소화 */
-  font-size: 14px; /* 폰트 크기도 조금 줄이면 더 안정 */
+  font-size: 13px; /* 폰트 크기도 더 축소 (14px->13px) */
 
   font-weight: bold;
   border-bottom: 1px solid #ddd;
@@ -536,9 +631,9 @@ html {
 }
 
 .alarm-table tr {
-  height: 23px !important; /* !important로 강제 적용 */
-  line-height: 23px !important;
-  max-height: 23px !important;
+  height: 20px !important; /* 높이 23px에서 20px로 줄임 */
+  line-height: 20px !important; /* 라인 높이도 일치시킴 */
+  max-height: 20px !important; /* 최대 높이도 줄임 */
 
   display: table;
   width: 100%;
@@ -548,134 +643,111 @@ html {
 /* 셀 내용 제어 */
 .alarm-table td {
   padding: 0 !important; /* 패딩 제거 */
-  height: 23px !important; /* 높이 강제 지정 */
+  height: 20px !important; /* 높이 23px에서 20px로 줄임 */
   line-height: 1 !important; /* 라인 높이 최소화 */
-  font-size: 14px; /* 폰트 사이즈 축소 */
-  max-height: 23px !important;
+  font-size: 13px; /* 폰트 사이즈 추가 축소 (14px -> 13px) */
+  max-height: 20px !important; /* 최대 높이도 줄임 */
   box-sizing: border-box !important;
   overflow: hidden !important;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* 고정 컬럼 너비 설정 */
-.alarm-table th:nth-child(1),
-.col-guksa {
-  width: 5%;
-  min-width: 25px;
-} /* 국사 */
-
-.alarm-table th:nth-child(2),
-.col-sector {
-  width: 5%;
-  min-width: 15px;
-} /* 분야 */
-
-.alarm-table th:nth-child(3),
-.col-valid {
-  width: 7%;
-  min-width: 20px;
-} /* 유효/무효 */
-
-.alarm-table th:nth-child(4),
-.col-occur-time {
-  width: 13%;
-  min-width: 50px;
-} /* 발생시간 */
-
-.alarm-table th:nth-child(5),
-.col-equip-id {
-  width: 10%;
-  min-width: 80px;
-} /* 장비ID */
-
-.alarm-table th:nth-child(6),
-.col-equip-type {
-  width: 10%;
-  min-width: 30px;
-} /* 장비유형 */
-
-.alarm-table th:nth-child(7),
-.col-equip-name {
-  width: 15%;
-  min-width: 70px;
-} /* 장비명 */
-
-.alarm-table th:nth-child(8),
-.col-alarm-message {
-  width: 45%;
-  min-width: 120px;
-} /* 경보내용 */
-
-/* 페이지네이션 스타일 */
+/* 페이지네이션 스타일 전면 개선 - 여백 최소화 및 수평 스크롤 방지 */
 #pagination {
-  height: 35px; /* 고정 높이 */
-  min-height: 35px; /* 최소 높이 */
-  margin-top: 5px;
-  padding: 5px 0;
+  height: 25px !important;
+  min-height: 25px !important;
+  margin: 3px 0 !important; /* 좌우 마진 제거 */
+  padding: 0 !important;
   text-align: center;
+  font-size: 11px !important;
+  line-height: 24px !important;
   border-top: 1px solid #eee;
   background-color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  bottom: 0;
+  clear: both;
+  width: 100% !important; /* 다시 100%로 변경 */
+  z-index: 5;
+  overflow-x: hidden !important; /* 수평 스크롤 방지 */
+  white-space: nowrap !important; /* 줄바꿈 방지 */
+  flex-wrap: nowrap !important; /* flex 요소 줄바꿈 방지 */
 }
 
+/* 페이지네이션 버튼 래퍼 추가 */
+#pagination .pagination-inner {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* 페이지 버튼 크기 최소화 */
 #pagination button {
-  margin: 0 2px;
-  padding: 4px 8px;
-  background-color: #f4f4f4;
+  margin: 0 3px !important;
+  padding: 1px 2px !important; /* 패딩 축소 */
+  background: none;
   color: #333;
-  border: 1px solid #ddd;
-  border-radius: 3px;
+  border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  font-size: 11px !important; /* 폰트 크기 축소 */
+  display: inline-block;
+  font-weight: normal;
+  text-decoration: none;
+  line-height: 1;
+  background-color: transparent !important;
+  min-width: 0 !important; /* 최소 너비 제거 */
+  white-space: nowrap !important;
 }
 
 #pagination button.active {
-  background-color: #007bff !important; /* 파란색 배경 */
-  color: white !important; /* 흰색 글자 */
-  border-color: #0056b3 !important;
   font-weight: bold;
+  text-decoration: underline;
+  color: #007bff;
 }
 
-/* 페이지 버튼 호버 효과 */
 #pagination button:hover:not(.active):not(:disabled) {
-  background-color: #e9ecef;
-  border-color: #adb5bd;
+  text-decoration: underline;
+  color: #0056b3;
 }
 
-/* 비활성화된 버튼 스타일 */
 #pagination button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 #pagination button.ellipsis {
-  background: none;
-  border: none;
   cursor: default;
+  margin: 0 2px;
 }
 
 #pagination button.nav-btn {
-  padding: 4px 12px;
-  font-weight: bold;
+  margin: 0 8px;
 }
 
-/* 페이징 - 항상 10개 버튼이 표시되도록 수정 */
-#pagination button:not(.nav-btn):not(.ellipsis) {
-  min-width: 32px;
-  margin: 0 2px;
-  padding: 4px 0;
-  background-color: #f4f4f4;
-  border: 1px solid #d6d6d6;
-  border-radius: 3px;
-  cursor: pointer;
-  display: inline-block;
+/* 테이블 컨테이너 여백 최소화 및 스크롤 제어 */
+.table-container {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: auto !important; /* 테이블 컨테이너만 스크롤 허용 */
+  overflow-y: auto !important; /* 필요한 경우에만 수직 스크롤 허용 */
+  width: 100% !important;
+}
+
+/* 테이블 높이 확보 및 마진 최소화 */
+.alarm-table {
+  margin-bottom: 1px !important; /* 5px에서 1px로 줄임 */
 }
 
 /* D3.js 네트워크 맵 컨테이너 스타일 */
 /* 네트워크 맵 컨테이너 스타일 */
 .middle-map-container {
   position: relative;
-  height: 400px;
+  height: 350px; /* 400px에서 350px로 줄임 */
   border: 1px solid #ddd !important;
   border-radius: 0px;
   margin-top: 2px !important;
@@ -742,10 +814,94 @@ html {
   font-size: 12px;
   z-index: 10;
   line-height: 1.5;
-  max-width: 300px;
+  max-width: 450px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   opacity: 0;
   transition: opacity 0.2s;
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+.map-tooltip ul {
+  margin: 3px 0;
+  padding-left: 20px;
+}
+
+.map-tooltip li {
+  margin-bottom: 5px;
+}
+
+/* 경보 메시지 배지 스타일 */
+.alarm-badge {
+  filter: none;
+  stroke-width: 1.5px;
+  fill: #dddddd !important; /* 연한 회색으로 변경 */
+}
+
+.alarm-count {
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+/* 장비 노드 호버 효과 향상 */
+.node circle {
+  transition: r 0.3s ease, stroke-width 0.3s ease;
+}
+
+.node:hover circle {
+  filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.3));
+}
+
+/* 다중 경보 장비 노드 표시 강화 */
+.node-with-alarms circle {
+  stroke-dasharray: 3 2;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0% {
+    stroke-opacity: 0.6;
+  }
+  50% {
+    stroke-opacity: 1;
+  }
+  100% {
+    stroke-opacity: 0.6;
+  }
+}
+
+/* 장비-맵 툴팁 스타일 */
+.equip-map-tooltip {
+  position: absolute;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px 12px;
+  pointer-events: none;
+  font-size: 12px;
+  z-index: 100;
+  min-width: 180px;
+  max-width: 350px;
+  max-height: 300px;
+  overflow-y: auto;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.equip-map-tooltip ul {
+  margin: 3px 0;
+  padding-left: 15px;
+  list-style-type: disc;
+}
+
+.equip-map-tooltip li {
+  margin-bottom: 3px;
+}
+
+/* 경보 개수 표시 강화 */
+.alarm-badge {
+  filter: drop-shadow(0 0 3px rgba(255, 0, 0, 0.7));
 }
 
 /* 범례 스타일 */
@@ -799,27 +955,40 @@ html {
 
 /* 분야별 노드 색상 */
 .node-MW circle {
-  fill: #ff8c00;
+  fill: #ffaa00; /* 주황색 (더 밝게) */
+  stroke: #e67700;
 }
 
 .node-IP circle {
-  fill: #2ca02c;
+  fill: #ff3333; /* 선명한 빨간색 */
+  stroke: #cc0000;
 }
 
 .node-교환 circle {
-  fill: #d62728;
+  fill: #cc0000; /* 더 밝은 빨간색으로 변경 */
+  stroke: #990000;
 }
 
 .node-전송 circle {
-  fill: #9467bd;
+  fill: #ff66cc; /* 핑크색 */
+  stroke: #cc0099;
 }
 
 .node-선로 circle {
-  fill: #8c564b;
+  fill: #ff8833; /* 연한 주황색 */
+  stroke: #cc5500;
 }
 
 .node-무선 circle {
-  fill: #1f77b4;
+  fill: #ffcc66; /* 매우 연한 주황색 */
+  stroke: #cc9933;
+}
+
+/* 국사 노드 스타일 */
+.node-guksa rect {
+  fill: #0056b3;
+  stroke: #003366;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
 /* 반응형 스타일 조정 */
@@ -966,7 +1135,7 @@ div.dashboard-box,
   margin: 0 3px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   transition: all 0.2s ease;
 }
 
@@ -979,6 +1148,31 @@ div.dashboard-box,
   background-color: #e1edff;
   border-color: #82b1ff;
   color: #0056b3;
+  font-weight: bold;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* 뷰 버튼 스타일 */
+.fault-view-btn {
+  background-color: #fff8f8;
+  border: 1px solid #ffdddd;
+  padding: 3px 8px;
+  margin: 0 3px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px; /* 글자 크기 12px에서 13px로 증가 */
+  transition: all 0.2s ease;
+}
+
+.fault-view-btn:hover {
+  background-color: #ffe9e9;
+  border-color: #ffaaa8;
+}
+
+.fault-view-btn.active {
+  background-color: #ffe1e1;
+  border-color: #ff8282;
+  color: #b30000;
   font-weight: bold;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -1011,4 +1205,83 @@ div.dashboard-box,
 /* 유효 경보 행에 호버 효과 추가 - 약간 더 진한 오렌지색 */
 .alarm-table tbody tr.valid-alarm:hover {
   background-color: #ffe0b2; /* 호버시 약간 더 진한 오렌지색 */
+}
+
+/* 범례 항목별 색상 및 테두리 스타일 */
+.legend circle {
+  stroke-width: 1.5px;
+}
+
+/* 노드 분야별 색상 스타일 - 교환 색상 변경 */
+.node-MW circle {
+  fill: #ffaa00; /* 주황색 (더 밝게) */
+  stroke: #e67700;
+}
+
+.node-IP circle {
+  fill: #ff3333; /* 선명한 빨간색 */
+  stroke: #cc0000;
+}
+
+.node-교환 circle {
+  fill: #cc0000; /* 더 밝은 빨간색으로 변경 */
+  stroke: #990000;
+}
+
+.node-전송 circle {
+  fill: #ff66cc; /* 핑크색 */
+  stroke: #cc0099;
+}
+
+.node-선로 circle {
+  fill: #ff8833; /* 연한 주황색 */
+  stroke: #cc5500;
+}
+
+.node-무선 circle {
+  fill: #ffcc66; /* 매우 연한 주황색 */
+  stroke: #cc9933;
+}
+
+/* 국사 노드 스타일 */
+.node-guksa rect {
+  fill: #0056b3;
+  stroke: #003366;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+/* 노드 호버 효과 강화 */
+.node:hover circle {
+  filter: drop-shadow(0 0 6px rgba(255, 100, 50, 0.6));
+  stroke-width: 3px;
+}
+
+/* 국사 노드 호버 효과 */
+.node-guksa:hover rect {
+  filter: drop-shadow(0 0 6px rgba(0, 86, 179, 0.6));
+  stroke-width: 3px;
+}
+
+/* 경보 뱃지 스타일 - 회색 계열로 변경 */
+.alarm-badge {
+  filter: none;
+  stroke-width: 1.5px;
+  fill: #dddddd !important; /* 연한 회색으로 변경 */
+}
+
+/* 범례 강화 스타일 */
+.legend {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+/* 테이블 레이아웃 고정 강화 */
+.alarm-table {
+  table-layout: fixed !important;
+}
+
+/* 셀 내용이 넘칠 경우 처리 */
+.alarm-table td {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }

@@ -1,301 +1,301 @@
-{% extends 'layout/base.html' %}
-{% block content %}
+{% extends 'layout/base.html' %} {% block content %}
 
-<link href="/static/css/main.css" rel="stylesheet" type="text/css">
-<link href="/static/css/toast_icon.css" rel="stylesheet" type="text/css">
-<script type="text/javascript" src="/static/js/jquery/jquery-3.2.1.min.js" crossorigin="anonymous"></script>
+<link href="/static/css/main.css" rel="stylesheet" type="text/css" />
+<link href="/static/css/toast_icon.css" rel="stylesheet" type="text/css" />
+<script
+  type="text/javascript"
+  src="/static/js/jquery/jquery-3.2.1.min.js"
+  crossorigin="anonymous"
+></script>
 
 <style>
-
-    
-    .justify_center{
-        display: flex;
-        justify-content: center;
-    }
-
-    body {
-      background-color: white;
-    }
-
-    .selected{
-        border-radius: 0.325rem;
-        font-weight: 800;
-        background-color: #333839;
-    }
-
-    .title{
-        color: black;
-        font-size: 26px;
-        margin-left: 23px;
-        margin-top: 15px;
-
-    }
-
-    .select_type{
-    }
-
-    #btn_right_margin{
-        margin-right: 23px;
-    }
-
-.responsive-table {
-  li {
-    border-radius: 3px;
-    padding: 25px 30px;
+  .justify_center {
     display: flex;
-    justify-content: space-between;
-    border: 2px solid #00000045;
-    padding: 9px 17px;
-    margin-bottom: 8px;
-    overflow: auto;
+    justify-content: center;
   }
-  .table-header {
+
+  body {
+    background-color: white;
+  }
+
+  .selected {
+    border-radius: 0.325rem;
+    font-weight: 800;
     background-color: #333839;
-    font-size: 16px;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: #ffffff;
-    text-align: center;
   }
-  .table-row {
-    background-color: #ffffff;
-    box-shadow: 0px 0px 9px 0px rgba(0,0,0,0.1);
+
+  .title {
     color: black;
-    text-align: center;
-    align-items: center;
-    font-size: 13px;
+    font-size: 26px;
+    margin-left: 23px;
+    margin-top: 15px;
   }
-  .col-110 {
-    flex-basis: 1%;
+
+  .select_type {
   }
-  .col-1 {
-    flex-basis: 10%;
+
+  #btn_right_margin {
+    margin-right: 23px;
   }
-  .col-2 {
-    flex-basis: 40%;
-  }
-  .col-3 {
-    flex-basis: 25%;
-  }
-  .col-4 {
-    flex-basis: 25%;
-  }
-  
-  @media all and (max-width: 767px) {
-    .table-header {
-      display: none;
-    }
-    .table-row{
-      
-    }
+
+  .responsive-table {
     li {
-      display: block;
-    }
-    .col {
-      
-      flex-basis: 100%;
-      
-    }
-    .col {
+      border-radius: 3px;
+      padding: 25px 30px;
       display: flex;
-      padding: 10px 0;
-      &:before {
-        color: #6C7A89;
-        padding-right: 10px;
-        content: attr(data-label);
-        flex-basis: 50%;
-        text-align: right;
+      justify-content: space-between;
+      border: 2px solid #00000045;
+      padding: 9px 17px;
+      margin-bottom: 8px;
+      overflow: auto;
+    }
+    .table-header {
+      background-color: #333839;
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: #ffffff;
+      text-align: center;
+    }
+    .table-row {
+      background-color: #ffffff;
+      box-shadow: 0px 0px 9px 0px rgba(0, 0, 0, 0.1);
+      color: black;
+      text-align: center;
+      align-items: center;
+      font-size: 13px;
+    }
+    .col-110 {
+      flex-basis: 1%;
+    }
+    .col-1 {
+      flex-basis: 10%;
+    }
+    .col-2 {
+      flex-basis: 40%;
+    }
+    .col-3 {
+      flex-basis: 25%;
+    }
+    .col-4 {
+      flex-basis: 25%;
+    }
+
+    @media all and (max-width: 767px) {
+      .table-header {
+        display: none;
+      }
+      .table-row {
+      }
+      li {
+        display: block;
+      }
+      .col {
+        flex-basis: 100%;
+      }
+      .col {
+        display: flex;
+        padding: 10px 0;
+        &:before {
+          color: #6c7a89;
+          padding-right: 10px;
+          content: attr(data-label);
+          flex-basis: 50%;
+          text-align: right;
+        }
       }
     }
-
-
-
-    
   }
-
-
-}
-
-  </style>
+</style>
 
 <div class="container-fluid p-0">
-    <div class="row">
-        <div class="title">
-        ■ 경보 현황 🚨
-        </div>
-    </div>
-    <div class="row">
-        <div class="container">
-            <div>
-                <div class="" style="display: flex; justify-content: flex-end;">
-                    <div class="select_type">
-                        <div class="dropend" id="btn_right_margin">
-                            <button id="selectSector" class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                              분야 선택
-                            </button>
-                            <ul class="dropdown-menu">
-                              <li><a class="dropdown-item" href="#" onclick="selectSector('전체')">전체</a></li>
-                              <li><a class="dropdown-item" href="#" onclick="selectSector('IP')">IP</a></li>
-                              <li><a class="dropdown-item" href="#" onclick="selectSector('교환')">교환</a></li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div style="display: flex;">
-                        <span class="text-muted" style="font-size: 24px;">개통 예정일 :&nbsp;</span>
-                        <div class="d-flex align-items-center gap-1 me-4" style="display: flex;">
-                            <input type="date" id="startDate" name="startDate" class="form-control" value="{{ query_startDate }}">
-                            &nbsp;~&nbsp;
-                            <input type="date" id="endDate" name="endDate" class="form-control" value="{{ query_endDate }}">
-                        </div>
-                    </div>
-                    <div  id="btn_right_margin">
-                        <button type="button" class="btn btn-primary" onclick="search()">검색</button>
-                    </div>
-                </div>
+  <div class="row">
+    <div class="title">■ 경보 현황 🚨</div>
+  </div>
+  <div class="row">
+    <div class="container">
+      <div>
+        <div class="" style="display: flex; justify-content: flex-end">
+          <div class="select_type">
+            <div class="dropend" id="btn_right_margin">
+              <button
+                id="selectSector"
+                class="btn btn-primary dropdown-toggle"
+                type="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                분야 선택
+              </button>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" onclick="selectSector('전체')">전체</a></li>
+                <li><a class="dropdown-item" href="#" onclick="selectSector('IP')">IP</a></li>
+                <li><a class="dropdown-item" href="#" onclick="selectSector('교환')">교환</a></li>
+              </ul>
             </div>
-            <ul class="responsive-table" style="margin-top: 20px;">
-              <li class="table-header">
-                <div class="col"></div>
-                <div class="col">경고등급</div>
-                <div class="col">국사</div>
-                <div class="col">구간</div>
-                <div class="col">발생일시</div>
-                <div class="col">Syslog</div>
-                <div class="col">Fault Reason</div>
-                <div class="col">상태</div>
-              </li>
-              {% for alarm in alarms %}
-              <li class="table-row">
-                <div class="col">
-                    {% if alarm.alarm_grade in ['CRITICAL', 'W', 'MAJOR', 'CR'] %}
-                    <label bel for="t-error" class="toast-icon icon-error"></label>
-                    {% else %}
-                    <label for="t-warning"  class="toast-icon icon-warning"></label>
-
-                    {% endif %}
-                </div>
-                <div class="col">{{ alarm.alarm_grade }}</div>
-                <div class="col">{{ alarm.guksa_id }}</div>
-                <div class="col">{{ alarm.sector }}</div>
-                <div class="col">{{ alarm.occur_datetime }}</div>
-                <div class="col">{{ alarm.alarm_syslog_Code }}</div>
-                <div class="col">{{ alarm.fault_reason }}</div>
-                <div class="col">{{ "유효" if alarm.valid_yn == "Y" else "무효" }}</div>
-              </li>
-              {% endfor %}
-            </ul>
           </div>
-    </div>
-
-    <nav aria-label="Another pagination example" class="justify_center">
-    <ul class="pagination pagination-lg flex-wrap" style="--bs-pagination-padding-x: 0.7rem; --bs-pagination-padding-y: 0.25rem;">
-        {% if current_page > 1 %}
-        <li class="page-item">
-            <a class="page-link" href="?page={{ current_page - 1 }}">Previous</a>
+          <div style="display: flex">
+            <span class="text-muted" style="font-size: 24px">개통 예정일 :&nbsp;</span>
+            <div class="d-flex align-items-center gap-1 me-4" style="display: flex">
+              <input
+                type="date"
+                id="startDate"
+                name="startDate"
+                class="form-control"
+                value="{{ query_startDate }}"
+              />
+              &nbsp;~&nbsp;
+              <input
+                type="date"
+                id="endDate"
+                name="endDate"
+                class="form-control"
+                value="{{ query_endDate }}"
+              />
+            </div>
+          </div>
+          <div id="btn_right_margin">
+            <button type="button" class="btn btn-primary" onclick="search()">검색</button>
+          </div>
+        </div>
+      </div>
+      <ul class="responsive-table" style="margin-top: 20px">
+        <li class="table-header">
+          <div class="col"></div>
+          <div class="col">경고등급</div>
+          <div class="col">국사</div>
+          <div class="col">구간</div>
+          <div class="col">발생일시</div>
+          <div class="col">Syslog</div>
+          <div class="col">Fault Reason</div>
+          <div class="col">상태</div>
         </li>
-        {% else %}
-        <li class="page-item disabled">
-            <a class="page-link">Previous</a>
-        </li>
-        {% endif %}
-
-        {% for item in page_range %}
-            {% if item == '...' %}
-            <li class="page-item ellipsis">
-                <a class="page-link">...</a>
-            </li>
-            {% elif item == current_page %}
-            <li class="page-item active" aria-current="page">
-                <a class="page-link">{{ item }}</a>
-            </li>
+        {% for alarm in alarms %}
+        <li class="table-row">
+          <div class="col">
+            {% if alarm.alarm_grade in ['CRITICAL', 'W', 'MAJOR', 'CR'] %}
+            <label bel for="t-error" class="toast-icon icon-error"></label>
             {% else %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ item }}">{{ item }}</a>
-            </li>
+            <label for="t-warning" class="toast-icon icon-warning"></label>
+
             {% endif %}
+          </div>
+          <div class="col">{{ alarm.alarm_grade }}</div>
+          <div class="col">{{ alarm.guksa_id }}</div>
+          <div class="col">{{ alarm.sector }}</div>
+          <div class="col">{{ alarm.occur_datetime }}</div>
+          <div class="col">{{ alarm.alarm_syslog_Code }}</div>
+          <div class="col">{{ alarm.fault_reason }}</div>
+          <div class="col">{{ "유효" if alarm.valid_yn == "Y" else "무효" }}</div>
+        </li>
         {% endfor %}
+      </ul>
+    </div>
+  </div>
 
-        {% if current_page < total_pages %}
-        <li class="page-item">
-            <a class="page-link" href="?page={{ current_page + 1 }}">Next</a>
-        </li>
-        {% else %}
-        <li class="page-item disabled">
-            <a class="page-link">Next</a>
-        </li>
-        {% endif %}
+  <nav aria-label="Another pagination example" class="justify_center">
+    <ul
+      class="pagination pagination-lg flex-wrap"
+      style="--bs-pagination-padding-x: 0.7rem; --bs-pagination-padding-y: 0.25rem"
+    >
+      {% if current_page > 1 %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ current_page - 1 }}">Previous</a>
+      </li>
+      {% else %}
+      <li class="page-item disabled">
+        <a class="page-link">Previous</a>
+      </li>
+      {% endif %} {% for item in page_range %} {% if item == '...' %}
+      <li class="page-item ellipsis">
+        <a class="page-link">...</a>
+      </li>
+      {% elif item == current_page %}
+      <li class="page-item active" aria-current="page">
+        <a class="page-link">{{ item }}</a>
+      </li>
+      {% else %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ item }}">{{ item }}</a>
+      </li>
+      {% endif %} {% endfor %} {% if current_page < total_pages %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ current_page + 1 }}">Next</a>
+      </li>
+      {% else %}
+      <li class="page-item disabled">
+        <a class="page-link">Next</a>
+      </li>
+      {% endif %}
     </ul>
-</nav>
-
-
+  </nav>
 </div>
 
-
 <script>
-    function selectSector(sector){
-        // $modal.find('.modal-title2').text(chatInfo.title);
-        document.getElementById('selectSector').textContent = sector
+  function selectSector(sector) {
+    // $modal.find('.modal-title2').text(chatInfo.title);
+    document.getElementById('selectSector').textContent = sector;
+  }
+
+  function search() {
+    // 선택한 분야, 시작 날짜, 종료 날짜 가져오기
+    var selectSector = document.getElementById('selectSector').textContent.trim(); // 공백 제거
+    var startDate = document.getElementById('startDate').value; // 시작 날짜
+    var endDate = document.getElementById('endDate').value; // 종료 날짜
+    const urlParams = new URLSearchParams(window.location.search);
+    const page = urlParams.get('page') || null; // 현재 페이지 번호 가져오기
+
+    // '분야 선택' 기본 텍스트일 경우 null로 설정
+    if (selectSector === '분야 선택') {
+      selectSector = null;
     }
 
-    function search() {
-      // 선택한 분야, 시작 날짜, 종료 날짜 가져오기
-      var selectSector = document.getElementById('selectSector').textContent.trim(); // 공백 제거
-      var startDate = document.getElementById('startDate').value; // 시작 날짜
-      var endDate = document.getElementById('endDate').value; // 종료 날짜
-      const urlParams = new URLSearchParams(window.location.search);
-      const page = urlParams.get('page') || null; // 현재 페이지 번호 가져오기
+    // URL 생성
+    let url = `/alarm?`;
 
-      // '분야 선택' 기본 텍스트일 경우 null로 설정
-      if (selectSector === '분야 선택') {
-          selectSector = null;
-      }
-
-      // URL 생성
-      let url = `/alarm?`;
-
-      // 선택된 분야가 유효할 경우 URL에 추가
-      if (selectSector) {
-          url += `selectSector=${encodeURIComponent(selectSector)}&`; // URL 인코딩
-      }
-
-      // 시작 날짜가 유효할 경우 URL에 추가
-      if (startDate) {
-          url += `startDate=${encodeURIComponent(startDate)}&`; // URL 인코딩
-      }
-
-      // 종료 날짜가 유효할 경우 URL에 추가
-      if (endDate) {
-          url += `endDate=${encodeURIComponent(endDate)}&`; // URL 인코딩
-      }
-
-      // 현재 페이지가 유효할 경우 URL에 추가
-      if (page) {
-          url += `page=${encodeURIComponent(page)}`; // URL 인코딩
-      }
-
-      // URL 이동
-      window.location.href = url; // URL로 이동
-
-        // $.ajax({
-        //     method: "GET",
-        //     url: "/alarm",
-        //     headers: {
-        //         'X-CSRFTOKEN': '{{ csrf_token }}'
-        //     },
-        //     data: {
-        //         page: page,               // page 파라미터
-        //         startDate: startDate,     // 시작 날짜
-        //         endDate: endDate,         // 종료 날짜
-        //         selectSector: selectSector // 선택한 섹터
-        //     },
-        //     success: function(res) {
-        //         // 서버에서 반환된 데이터를 기반으로 DOM 업데이트
-        //         $('#alarm-container').html(res);  // 새로운 HTML로 대체
-        //     },
-        //     error: function(request, status, error) {
-        //         console.log("Error!");
-        //     }
-        // });
+    // 선택된 분야가 유효할 경우 URL에 추가
+    if (selectSector) {
+      url += `selectSector=${encodeURIComponent(selectSector)}&`; // URL 인코딩
     }
+
+    // 시작 날짜가 유효할 경우 URL에 추가
+    if (startDate) {
+      url += `startDate=${encodeURIComponent(startDate)}&`; // URL 인코딩
+    }
+
+    // 종료 날짜가 유효할 경우 URL에 추가
+    if (endDate) {
+      url += `endDate=${encodeURIComponent(endDate)}&`; // URL 인코딩
+    }
+
+    // 현재 페이지가 유효할 경우 URL에 추가
+    if (page) {
+      url += `page=${encodeURIComponent(page)}`; // URL 인코딩
+    }
+
+    // URL 이동
+    window.location.href = url; // URL로 이동
+
+    // $.ajax({
+    //     method: "GET",
+    //     url: "/alarm",
+    //     headers: {
+    //         'X-CSRFTOKEN': '{{ csrf_token }}'
+    //     },
+    //     data: {
+    //         page: page,               // page 파라미터
+    //         startDate: startDate,     // 시작 날짜
+    //         endDate: endDate,         // 종료 날짜
+    //         selectSector: selectSector // 선택한 섹터
+    //     },
+    //     success: function(res) {
+    //         // 서버에서 반환된 데이터를 기반으로 DOM 업데이트
+    //         $('#alarm-container').html(res);  // 새로운 HTML로 대체
+    //     },
+    //     error: function(request, status, error) {
+    //         console.log("Error!");
+    //     }
+    // });
+  }
 </script>
 {% endblock %}

@@ -269,15 +269,15 @@ async def predict_fault_patterns(query, top_results, external_factors):
     # 5. 추론 로직 적용
 
     # 5.1 선로(광케이블) 장애 추론
-    if cable_damage_count > 0 or "한전 광케이블" in cleaned_query or "광케이블 장애" in cleaned_query:
+    if cable_damage_count > 0 or "광케이블 피해" in cleaned_query or "광케이블 장애" in cleaned_query:
         if sum(field_equipment_counts.values()) >= 3:  # 3개 이상 분야에서 장비 언급
             return {
-                "장애점": "한전 광케이블 장애",
+                "장애점": "광케이블 장애",
                 "장애분야": "선로",
                 "신뢰도": 85.5,  # 소수점으로 변경
                 "근거": [
                     f"미복구된 선로 장애가 {cable_damage_count}건 발견됨" if cable_damage_count > 0 else "다수의 분야별 장비에서 경보 발생",
-                    "광케이블 관련 키워드 발견" if "광케이블" in cleaned_query else "여러 분야 장비 동시 장애는 선로 문제의 특징"
+                    "광케이블 관련 키워드 발견" if "광케이블 장애" in cleaned_query else "여러 분야 장비 동시 장애는 선로 문제의 특징"
                 ],
                 "패턴_근거": "상위 장비에 연결된 하위 장비들의 경보가 다수 발생"
             }

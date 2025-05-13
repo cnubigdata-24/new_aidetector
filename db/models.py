@@ -10,70 +10,58 @@ class TblGuksa(db.Model):
     guksa_e = db.Column(db.String(100), nullable=False)
     guksa = db.Column(db.String(100), nullable=False)
     guksa_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    is_mokuk = db.Column(db.Integer, nullable=False, default=0)
+    is_mokuk = db.Column(db.Integer)
 
 
 class TblAlarmAllLast(db.Model):
     __tablename__ = 'tbl_alarm_all_last'
 
-    guksa_id = db.Column(db.String(20), nullable=False,
-                         default='', primary_key=True)
-    sector = db.Column(db.String(30), nullable=False,
-                       default='', primary_key=True)
-    guksa_name = db.Column(db.String(20), nullable=False, default='')
-
-    occur_datetime = db.Column(
-        db.String(20), nullable=False, default='', primary_key=True)
-    alarm_grade = db.Column(db.String(10), nullable=False, default='')
-    alarm_syslog_code = db.Column(db.String(50), nullable=False, default='')
-    equip_type = db.Column(db.String(30), nullable=False, default='')
-    equip_kind = db.Column(db.String(30), nullable=False, default='')
-    equip_id = db.Column(db.String(30), nullable=False,
-                         default='', primary_key=True)
-    equip_name = db.Column(db.String(100), nullable=False, default='')
-    fault_reason = db.Column(db.String(100), nullable=False, default='')
-    valid_yn = db.Column(db.String(1), nullable=False, default='')
-    alarm_message = db.Column(db.Text, nullable=False, default='')
-    insert_datetime = db.Column(db.String(20), nullable=False, default='')
-
-    # 복합 기본 키 설정
-    __table_args__ = (
-        db.PrimaryKeyConstraint('guksa_id', 'sector',
-                                'alarm_syslog_code', 'equip_id'),
-    )
+    guksa_id = db.Column(db.String(20), nullable=False, primary_key=True)
+    sector = db.Column(db.String(30), nullable=False, primary_key=True)
+    occur_datetime = db.Column(db.String(20), nullable=False)
+    recover_datetime = db.Column(db.String(20), nullable=False)
+    alarm_grade = db.Column(db.String(10), nullable=False)
+    alarm_syslog_code = db.Column(
+        db.String(50), nullable=False, primary_key=True)
+    equip_type = db.Column(db.String(30), nullable=False)
+    equip_kind = db.Column(db.String(300), nullable=False)
+    equip_id = db.Column(db.String(30), nullable=False, primary_key=True)
+    equip_name = db.Column(db.String(100), nullable=False)
+    fault_reason = db.Column(db.String(100), nullable=False)
+    valid_yn = db.Column(db.String(1), nullable=False)
+    alarm_message = db.Column(db.Text, nullable=False)
+    insert_datetime = db.Column(db.String(20), nullable=False)
+    guksa_name = db.Column(db.String(20), nullable=False)
 
 
 class TblDrCableAlarmInfo(db.Model):
     __tablename__ = 'tbl_dr_cable_alarm_info'
 
-    guksa_id = db.Column(db.String(3), nullable=False, default='')
-    selection = db.Column(db.String(1), nullable=False, default='')
-    situation_propaganda = db.Column(db.String(10), nullable=False, default='')
-    work_yn = db.Column(db.String(10), nullable=False, default='')
-    merge_yn = db.Column(db.String(10), nullable=False, default='')
-    tt_no = db.Column(db.String(30), nullable=False, default='')
-    bonbu_name = db.Column(db.String(30), nullable=False, default='')
-    center_name = db.Column(db.String(30), nullable=False, default='')
-    buseo_name = db.Column(db.String(30), nullable=False, default='')
-    op_team_name_1 = db.Column(db.String(30), nullable=False, default='')
-    op_team_name_2 = db.Column(db.String(30), nullable=False, default='')
-    guksa_name = db.Column(db.String(30), nullable=False, default='')
-    tt_occur_datetime = db.Column(db.String(20), nullable=False, default='')
-    alarm_occur_datetime = db.Column(db.String(20), nullable=False, default='')
-    alarm_recover_datetime = db.Column(
-        db.String(20), nullable=False, default='')
-    continue_time = db.Column(db.String(20), nullable=False, default='')
-    effected_facility = db.Column(db.String(300), nullable=False, default='')
-    customer_count = db.Column(db.String(10), nullable=False, default='')
-    voc_count = db.Column(db.String(10), nullable=False, default='')
-    cable_name_core = db.Column(db.String(300), nullable=False, default='')
-    fault_sector = db.Column(db.String(300), nullable=False, default='')
-    sector_analysis = db.Column(db.String(300), nullable=False, default='')
-    status = db.Column(db.String(20), nullable=False, default='')
-    fault_grade = db.Column(db.String(10), nullable=False, default='')
-    insert_datetime = db.Column(db.String(20), nullable=False, default='')
-
-    __table_args__ = (db.PrimaryKeyConstraint('tt_no'),)
+    guksa_id = db.Column(db.String(10), nullable=False)
+    selection = db.Column(db.String(10), nullable=False)
+    situation_propaganda = db.Column(db.String(10), nullable=False)
+    work_yn = db.Column(db.String(10), nullable=False)
+    merge_yn = db.Column(db.String(10), nullable=False)
+    tt_no = db.Column(db.String(30), nullable=False, primary_key=True)
+    bonbu_name = db.Column(db.String(30), nullable=False)
+    center_name = db.Column(db.String(30), nullable=False)
+    buseo_name = db.Column(db.String(30), nullable=False)
+    op_team_name_1 = db.Column(db.String(30), nullable=False)
+    op_team_name_2 = db.Column(db.String(30), nullable=False)
+    guksa_name = db.Column(db.String(30), nullable=False)
+    tt_occur_datetime = db.Column(db.String(20), nullable=False)
+    alarm_occur_datetime = db.Column(db.String(20), nullable=False)
+    alarm_recover_datetime = db.Column(db.String(20), nullable=False)
+    continue_time = db.Column(db.String(20), nullable=False)
+    effected_facility = db.Column(db.String(300), nullable=False)
+    customer_count = db.Column(db.String(10), nullable=False)
+    voc_count = db.Column(db.String(10), nullable=False)
+    cable_name_core = db.Column(db.String(300), nullable=False)
+    fault_sector = db.Column(db.String(300), nullable=False)
+    sector_analysis = db.Column(db.String(300), nullable=False)
+    status = db.Column(db.String(20), nullable=False)
+    fault_grade = db.Column(db.String(10), nullable=False)
+    insert_datetime = db.Column(db.String(20), nullable=False)
 
     def get_guksa_object(self):
         try:
@@ -115,161 +103,236 @@ class TblDrCableAlarmInfo(db.Model):
 class TblAlarmAll(db.Model):
     __tablename__ = 'tbl_alarm_all'
 
-    guksa_id = db.Column(db.String(20), primary_key=True,
-                         nullable=False, default='')
-    sector = db.Column(db.String(30), primary_key=True,
-                       nullable=False, default='')
-    occur_datetime = db.Column(
-        db.String(20), primary_key=True, nullable=False, default='')
-    alarm_grade = db.Column(db.String(10), nullable=False, default='')
+    guksa_id = db.Column(db.String(20), primary_key=True, nullable=False)
+    sector = db.Column(db.String(30), primary_key=True, nullable=False)
+    occur_datetime = db.Column(db.String(20), primary_key=True, nullable=False)
+    recover_datetime = db.Column(db.String(20), nullable=False)
+    alarm_grade = db.Column(db.String(10), nullable=False)
     alarm_syslog_code = db.Column(
-        db.String(50), primary_key=True, nullable=False, default='')
-    equip_type = db.Column(db.String(30), nullable=False, default='')
-    equip_kind = db.Column(db.String(30), nullable=False, default='')
-    equip_id = db.Column(db.String(30), primary_key=True,
-                         nullable=False, default='')
-    equip_name = db.Column(db.String(100), nullable=False, default='')
-    fault_reason = db.Column(db.String(100), nullable=False, default='')
-    valid_yn = db.Column(db.String(1), nullable=False, default='')
-    alarm_message = db.Column(db.Text, nullable=False, default='')
-    insert_datetime = db.Column(db.String(20), nullable=False, default='')
+        db.String(50), primary_key=True, nullable=False)
+    equip_type = db.Column(db.String(30), nullable=False)
+    equip_kind = db.Column(db.String(300), nullable=False)
+    equip_id = db.Column(db.String(30), primary_key=True, nullable=False)
+    equip_name = db.Column(db.String(100), nullable=False)
+    fault_reason = db.Column(db.String(100), nullable=False)
+    valid_yn = db.Column(db.String(1), nullable=False)
+    alarm_message = db.Column(db.Text, nullable=False)
+    insert_datetime = db.Column(db.String(20), nullable=False)
+    guksa_name = db.Column(db.String(20), nullable=False)
 
 
 class TblEquipment(db.Model):
     __tablename__ = 'tbl_equipment'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    guksa = db.Column(db.String(20), default='')
-    island_name = db.Column(db.String(30), default='')
-    guksa_name = db.Column(db.String(20), default='')
-    sector = db.Column(db.String(10), nullable=False, default='')
-    equipment_type = db.Column(
-        db.String(50), primary_key=True, nullable=False, default='')
-    equipment_model = db.Column(db.String(30), nullable=False, default='')
-    equipment_name = db.Column(db.String(30), nullable=False, default='')
+    sector = db.Column(db.String(10), nullable=False)
+    guksa_id = db.Column(db.Integer)
+    equip_type = db.Column(db.String(50), nullable=False)
+    equip_model = db.Column(db.String(30), nullable=False)
+    equip_name = db.Column(db.String(100), nullable=False)
+    equip_id = db.Column(db.String(100), nullable=False)
 
 
 class TblSubLink(db.Model):
     __tablename__ = 'tbl_sub_link'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    equip_id = db.Column(db.Integer)
-    equip_type = db.Column(db.String(50))
-    equip_name = db.Column(db.String(100))
-    equip_field = db.Column(db.String(50))
-    guksa_name = db.Column(db.String(50))
-    up_down = db.Column(db.String(10))
-    link_equip_id = db.Column(db.Integer)
-    link_equip_type = db.Column(db.String(50))
-    link_equip_name = db.Column(db.String(100))
-    link_equip_field = db.Column(db.String(50))
-    link_guksa_name = db.Column(db.String(50))
-    cable_num = db.Column(db.String(100))
+    equip_id = db.Column(db.String(100), nullable=False)
+    equip_type = db.Column(db.String(50), nullable=False)
+    equip_name = db.Column(db.String(100), nullable=False)
+    equip_field = db.Column(db.String(50), nullable=False)
+    guksa_name = db.Column(db.String(50), nullable=False)
+    up_down = db.Column(db.String(10), nullable=False)
+    link_equip_id = db.Column(db.String(100), nullable=False)
+    link_equip_type = db.Column(db.String(50), nullable=False)
+    link_equip_name = db.Column(db.String(100), nullable=False)
+    link_equip_field = db.Column(db.String(50), nullable=False)
+    link_guksa_name = db.Column(db.String(50), nullable=False)
+    cable_num = db.Column(db.String(100), nullable=False)
 
 
 class TblLink(db.Model):
     __tablename__ = 'tbl_link'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    link_name = db.Column(db.String(100), default='')
-    local_guksa_name = db.Column(db.String(30),  default='')
-    remote_guksa_name = db.Column(db.String(30), default='')
-    local_equip_id = db.Column(db.String(300), default='')
-    remote_equip_id = db.Column(db.String(100), nullable=False, default='')
-    updown_type = db.Column(db.String(100), nullable=False, default='')
-    link_type = db.Column(db.String(100), nullable=False, default='')
+    link_name = db.Column(db.String(100))
+    local_guksa_name = db.Column(db.String(30))
+    remote_guksa_name = db.Column(db.String(30))
+    local_equip_id = db.Column(db.String(300))
+    remote_equip_id = db.Column(db.String(100), nullable=False)
+    updown_type = db.Column(db.String(100), nullable=False)
+    link_type = db.Column(db.String(100), nullable=False)
 
 
 class TblSnmpInfo(db.Model):
-    __tablename__ = 'tbl_snmp_info'  # 테이블 이름 설정
+    __tablename__ = 'tbl_snmp_info'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     guksa_id = db.Column(db.Integer, db.ForeignKey(
-        'tbl_guksa.guksa_id'), nullable=False)  # 외래 키
+        'tbl_guksa.guksa_id'), nullable=False)
     equip_id = db.Column(db.Integer, db.ForeignKey(
-        'tbl_equipment.id'), nullable=False)  # 외래 키
-    equip_name = db.Column(db.String(100), default='')
-    equip_type = db.Column(db.String(100), default='')
-    snmp_ip = db.Column(db.String(50), default='')
-    community = db.Column(db.String(50), default='')
-    port = db.Column(db.Integer, default=None)  # NULL 허용
-    oid1 = db.Column(db.String(50), default='')
-    oid2 = db.Column(db.String(50), default='')
-    oid3 = db.Column(db.String(50), default='')
-    result_code = db.Column(db.String(10), default='')
-    result_msg = db.Column(db.String(500), default='')
-    power = db.Column(db.String(10), default='')
-    fading = db.Column(db.String(10), default='')
-    get_datetime = db.Column(db.String(50), default='')
+        'tbl_equipment.id'), nullable=False)
+    equip_name = db.Column(db.String(100))
+    equip_type = db.Column(db.String(100))
+    snmp_ip = db.Column(db.String(50))
+    community = db.Column(db.String(50))
+    port = db.Column(db.Integer)
+    oid1 = db.Column(db.String(50))
+    oid2 = db.Column(db.String(50))
+    oid3 = db.Column(db.String(50))
+    result_code = db.Column(db.String(10))
+    result_msg = db.Column(db.String(500))
+    power = db.Column(db.String(10))
+    fading = db.Column(db.String(10))
+    get_datetime = db.Column(db.String(50))
 
     # 관계 설정
     guksa = db.relationship('TblGuksa', backref='snmp_info', lazy=True)
     equipment = db.relationship('TblEquipment', backref='snmp_info', lazy=True)
 
 
-class TBL_EFFECTED_LINE_INFO(db.Model):
-    __tablename__ = 'TBL_EFFECTED_LINE_INFO'
+class TblEffectedLineInfo(db.Model):
+    __tablename__ = 'tbl_effected_line_info'
 
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     mgm_guksa_name = db.Column(
-        # COLLATE 'utf8_bin'
-        db.String(30), nullable=False, default='', index=True)
-    guksa_gubun = db.Column(db.String(20), nullable=False,
-                            default='', index=True)  # COLLATE 'utf8_bin'
-    guksa_name = db.Column(db.String(30), nullable=False,
-                           default='', primary_key=True)  # COLLATE 'utf8_bin'
-    facility_count = db.Column(db.Integer, nullable=False, default=0)
-    customer_count = db.Column(db.Integer, nullable=False, default=0)
-    service_count = db.Column(db.Integer, nullable=False, default=0)
-    facility_count_sum = db.Column(db.Integer, nullable=False, default=0)
-    ip_access_customer_network_count = db.Column(
-        db.Integer, nullable=False, default=0)
-    ip_access_count = db.Column(db.Integer, nullable=False, default=0)
+        db.String(30), nullable=False, primary_key=True, index=True)
+    guksa_gubun = db.Column(db.String(20), nullable=False, index=True)
+    guksa_name = db.Column(db.String(30), nullable=False, primary_key=True)
+    facility_count = db.Column(db.Integer, nullable=False)
+    customer_count = db.Column(db.Integer, nullable=False)
+    service_count = db.Column(db.Integer, nullable=False)
+    facility_count_sum = db.Column(db.Integer, nullable=False)
+    ip_access_customer_network_count = db.Column(db.Integer, nullable=False)
+    ip_access_count = db.Column(db.Integer, nullable=False)
     ip_access_metro_customer_network_count = db.Column(
-        db.Integer, nullable=False, default=0)
-    ip_core_kornet_count = db.Column(db.Integer, nullable=False, default=0)
-    ip_core_metro_ethernet_count = db.Column(
-        db.Integer, nullable=False, default=0)
-    ip_core_premium_count = db.Column(db.Integer, nullable=False, default=0)
-    ip_core_vpn_count = db.Column(db.Integer, nullable=False, default=0)
-    transmit_customer_count = db.Column(db.Integer, nullable=False, default=0)
-    transmit_local_count = db.Column(db.Integer, nullable=False, default=0)
-    transmit_outside_count = db.Column(db.Integer, nullable=False, default=0)
-    exchange_network_count = db.Column(db.Integer, nullable=False, default=0)
-    exchange_network_bcn_count = db.Column(
-        db.Integer, nullable=False, default=0)
-    wireless_network_count = db.Column(db.Integer, nullable=False, default=0)
-    etc_count = db.Column(db.Integer, nullable=False, default=0)
-    customer_count_sum = db.Column(db.Integer, nullable=False, default=0)
-    customer_type_private_count = db.Column(
-        db.Integer, nullable=False, default=0)
-    customer_type_provider_count = db.Column(
-        db.Integer, nullable=False, default=0)
-    customer_type_group_count = db.Column(
-        db.Integer, nullable=False, default=0)
-    customer_type_gov_office_count = db.Column(
-        db.Integer, nullable=False, default=0)
-    customer_type_kt_count = db.Column(db.Integer, nullable=False, default=0)
-    customer_type_etc_count = db.Column(db.Integer, nullable=False, default=0)
-    mgm_type_am_count = db.Column(db.Integer, nullable=False, default=0)
-    mgm_type_core_count = db.Column(db.Integer, nullable=False, default=0)
-    mgm_type_small_provider_count = db.Column(
-        db.Integer, nullable=False, default=0)
-    service_count_sum = db.Column(db.Integer, nullable=False, default=0)
-    line_small_sum = db.Column(db.Integer, nullable=False, default=0)
-    line_leased_line_count = db.Column(db.Integer, nullable=False, default=0)
-    line_internet_count = db.Column(db.Integer, nullable=False, default=0)
-    line_general_phone_count = db.Column(db.Integer, nullable=False, default=0)
-    service_small_sum = db.Column(db.Integer, nullable=False, default=0)
-    service_kornet_count = db.Column(db.Integer, nullable=False, default=0)
-    service_vpn_count = db.Column(db.Integer, nullable=False, default=0)
-    service_video_secure_count = db.Column(
-        db.Integer, nullable=False, default=0)
-    service_gov_info_comm_network_count = db.Column(
-        db.Integer, nullable=False, default=0)
-    service_tv_count = db.Column(db.Integer, nullable=False, default=0)
-    service_internet_phone_count = db.Column(
-        db.Integer, nullable=False, default=0)
+        db.Integer, nullable=False)
+    ip_core_kornet_count = db.Column(db.Integer, nullable=False)
+    ip_core_metro_ethernet_count = db.Column(db.Integer, nullable=False)
+    ip_core_premium_count = db.Column(db.Integer, nullable=False)
+    ip_core_vpn_count = db.Column(db.Integer, nullable=False)
+    transmit_customer_count = db.Column(db.Integer, nullable=False)
+    transmit_local_count = db.Column(db.Integer, nullable=False)
+    transmit_outside_count = db.Column(db.Integer, nullable=False)
+    exchange_network_count = db.Column(db.Integer, nullable=False)
+    exchange_network_bcn_count = db.Column(db.Integer, nullable=False)
+    wireless_network_count = db.Column(db.Integer, nullable=False)
+    etc_count = db.Column(db.Integer, nullable=False)
+    customer_count_sum = db.Column(db.Integer, nullable=False)
+    customer_type_private_count = db.Column(db.Integer, nullable=False)
+    customer_type_provider_count = db.Column(db.Integer, nullable=False)
+    customer_type_group_count = db.Column(db.Integer, nullable=False)
+    customer_type_gov_office_count = db.Column(db.Integer, nullable=False)
+    customer_type_kt_count = db.Column(db.Integer, nullable=False)
+    customer_type_etc_count = db.Column(db.Integer, nullable=False)
+    mgm_type_am_count = db.Column(db.Integer, nullable=False)
+    mgm_type_core_count = db.Column(db.Integer, nullable=False)
+    mgm_type_small_provider_count = db.Column(db.Integer, nullable=False)
+    service_count_sum = db.Column(db.Integer, nullable=False)
+    line_small_sum = db.Column(db.Integer, nullable=False)
+    line_internet_count = db.Column(db.Integer, nullable=False)
+    line_leased_line_count = db.Column(db.Integer, nullable=False)
+    line_general_phone_count = db.Column(db.Integer, nullable=False)
+    service_small_sum = db.Column(db.Integer, nullable=False)
+    service_kornet_count = db.Column(db.Integer, nullable=False)
+    service_vpn_count = db.Column(db.Integer, nullable=False)
+    service_video_secure_count = db.Column(db.Integer, nullable=False)
+    service_gov_info_comm_network_count = db.Column(db.Integer, nullable=False)
+    service_tv_count = db.Column(db.Integer, nullable=False)
+    service_internet_phone_count = db.Column(db.Integer, nullable=False)
     insert_datetime = db.Column(
-        # COLLATE 'utf8_bin'
-        db.String(20), nullable=False, default='', index=True)
+        db.String(20), nullable=False, primary_key=True, index=True)
+
+
+class TblEffectedLineInfoLast(db.Model):
+    __tablename__ = 'tbl_effected_line_info_last'
+
+    mgm_guksa_name = db.Column(
+        db.String(30), nullable=False, primary_key=True, index=True)
+    guksa_gubun = db.Column(db.String(20), nullable=False, index=True)
+    guksa_name = db.Column(db.String(30), nullable=False, primary_key=True)
+    facility_count = db.Column(db.Integer, nullable=False)
+    customer_count = db.Column(db.Integer, nullable=False)
+    service_count = db.Column(db.Integer, nullable=False)
+    facility_count_sum = db.Column(db.Integer, nullable=False)
+    ip_access_customer_network_count = db.Column(db.Integer, nullable=False)
+    ip_access_count = db.Column(db.Integer, nullable=False)
+    ip_access_metro_customer_network_count = db.Column(
+        db.Integer, nullable=False)
+    ip_core_kornet_count = db.Column(db.Integer, nullable=False)
+    ip_core_metro_ethernet_count = db.Column(db.Integer, nullable=False)
+    ip_core_premium_count = db.Column(db.Integer, nullable=False)
+    ip_core_vpn_count = db.Column(db.Integer, nullable=False)
+    transmit_customer_count = db.Column(db.Integer, nullable=False)
+    transmit_local_count = db.Column(db.Integer, nullable=False)
+    transmit_outside_count = db.Column(db.Integer, nullable=False)
+    exchange_network_count = db.Column(db.Integer, nullable=False)
+    exchange_network_bcn_count = db.Column(db.Integer, nullable=False)
+    wireless_network_count = db.Column(db.Integer, nullable=False)
+    etc_count = db.Column(db.Integer, nullable=False)
+    customer_count_sum = db.Column(db.Integer, nullable=False)
+    customer_type_private_count = db.Column(db.Integer, nullable=False)
+    customer_type_provider_count = db.Column(db.Integer, nullable=False)
+    customer_type_group_count = db.Column(db.Integer, nullable=False)
+    customer_type_gov_office_count = db.Column(db.Integer, nullable=False)
+    customer_type_kt_count = db.Column(db.Integer, nullable=False)
+    customer_type_etc_count = db.Column(db.Integer, nullable=False)
+    mgm_type_am_count = db.Column(db.Integer, nullable=False)
+    mgm_type_core_count = db.Column(db.Integer, nullable=False)
+    mgm_type_small_provider_count = db.Column(db.Integer, nullable=False)
+    service_count_sum = db.Column(db.Integer, nullable=False)
+    line_small_sum = db.Column(db.Integer, nullable=False)
+    line_leased_line_count = db.Column(db.Integer, nullable=False)
+    line_internet_count = db.Column(db.Integer, nullable=False)
+    line_general_phone_count = db.Column(db.Integer, nullable=False)
+    service_small_sum = db.Column(db.Integer, nullable=False)
+    service_kornet_count = db.Column(db.Integer, nullable=False)
+    service_vpn_count = db.Column(db.Integer, nullable=False)
+    service_video_secure_count = db.Column(db.Integer, nullable=False)
+    service_gov_info_comm_network_count = db.Column(db.Integer, nullable=False)
+    service_tv_count = db.Column(db.Integer, nullable=False)
+    service_internet_phone_count = db.Column(db.Integer, nullable=False)
+    insert_datetime = db.Column(db.String(20), nullable=False, index=True)
+
+
+class TblAlarmBasisInfo(db.Model):
+    __tablename__ = 'tbl_alarm_basis_info'
+
+    sector = db.Column(db.String(20), primary_key=True, nullable=False)
+    equip_type = db.Column(db.String(30), primary_key=True, nullable=False)
+    alarm_item = db.Column(db.String(50), primary_key=True, nullable=False)
+    alarm_type = db.Column(db.String(10), nullable=False)
+    network_gubun = db.Column(db.String(20), nullable=False)
+    alarm_extract_method = db.Column(db.String(50), nullable=False)
+    insert_datetime = db.Column(db.String(20), nullable=False)
+
+
+class TblMossLast(db.Model):
+    __tablename__ = 'tbl_moss_last'
+
+    merge_yn = db.Column(db.String(10), nullable=False)
+    seq = db.Column(db.Integer, primary_key=True, nullable=False)
+    gubun = db.Column(db.String(10), nullable=False)
+    status = db.Column(db.String(30), nullable=False)
+    occur_datetime = db.Column(db.String(20), nullable=False)
+    sector = db.Column(db.Text, nullable=False)
+    area = db.Column(db.String(300), nullable=False)
+    title = db.Column(db.String(300), nullable=False)
+    new_comment_count = db.Column(db.Integer, nullable=False)
+    going_out_count = db.Column(db.Integer, nullable=False)
+    going_out_person = db.Column(db.String(100), nullable=False)
+    arrive_count = db.Column(db.Integer, nullable=False)
+    drafter = db.Column(db.String(30), nullable=False)
+    tt_no = db.Column(db.String(20), nullable=False)
+    tt_seq_no = db.Column(db.String(20), nullable=False)
+    inet_tie = db.Column(db.String(30), nullable=False)
+    fault_occur_datetime = db.Column(db.String(20), nullable=False)
+    equip_position_info = db.Column(db.String(300), nullable=False)
+    equip_address = db.Column(db.String(300), nullable=False)
+    start_ip = db.Column(db.String(20), nullable=False)
+    original_message_subnet_mask = db.Column(db.Text, nullable=False)
+    mac_id = db.Column(db.String(50), nullable=False)
+    business_place_name = db.Column(db.String(300), nullable=False)
+    fault_equip_name = db.Column(db.String(300), nullable=False)
+    situation_propaganda_gubun = db.Column(db.String(30), nullable=False)
+    situation_propaganda_reason = db.Column(db.String(300), nullable=False)
+    insert_datetime = db.Column(db.String(20), nullable=False)
