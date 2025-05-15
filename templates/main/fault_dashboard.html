@@ -6,6 +6,7 @@
     <script src="https://d3js.org/d3.v7.min.js"></script>
 
     <script src="/static/js/fault_d3_map.js" defer></script>
+    <script src="/static/js/fault_dashboard_util.js" defer></script>
     <script src="/static/js/fault_dashboard.js" defer></script>
     <script src="/static/js/fault_dashboard_equip.js" defer></script>
     <script src="/static/js/table-resizer.js" defer></script>
@@ -60,12 +61,12 @@
         <div>
           <label>경보발생 장비 선택</label>
           <div class="radio-group" id="searchNWType">
-            <label><input type="radio" name="networkType" value="IP" checked /> IP</label>
-            <label><input type="radio" name="networkType" value="선로" /> 선로</label>
-            <label><input type="radio" name="networkType" value="무선" /> 무선</label>
-            <label><input type="radio" name="networkType" value="교환" /> 교환</label>
-            <label><input type="radio" name="networkType" value="전송" /> 전송</label>
-            <label><input type="radio" name="networkType" value="MW" /> MW</label>
+            <label><input type="radio" name="sector" value="IP" checked /> IP</label>
+            <label><input type="radio" name="sector" value="선로" /> 선로</label>
+            <label><input type="radio" name="sector" value="무선" /> 무선</label>
+            <label><input type="radio" name="sector" value="교환" /> 교환</label>
+            <label><input type="radio" name="sector" value="전송" /> 전송</label>
+            <label><input type="radio" name="sector" value="MW" /> MW</label>
           </div>
         </div>
 
@@ -100,17 +101,18 @@
         <div class="top-dashboard">
           <!-- 전체 현황 요약 라인 추가 -->
           <div class="dashboard-summary">
-            <span class="summary-title">실시간 경보현황 총괄:</span>
-            <span id="total-equipment-count">경보 장비 수(0대),</span>
-            <span id="total-alarm-count">전체 경보 수(0건),</span>
-            <span id="total-valid-count" class="highlight-valid">유효 경보 수(0개)</span>
+            <span class="summary-title">실시간 경보현황: </span>
+            <span id="total-equip-count">경보 장비(0대)</span>
+            <span id="total-alarm-count">전체 경보(0개)</span>
+            <span id="total-valid-count">유효 경보(0개)</span>
+            <span id="recent-update-time" class="recent-update-time">최근 장애</span>
 
             <!-- 우상단에 장비/국사 기준 메뉴 추가 -->
             <div class="view-toggle-buttons">
-              <button id="equipment-view-btn" class="view-btn active">1. 장비 기준 경보현황</button>
-              <button id="guksa-view-btn" class="view-btn">2. 국사 기준 경보현황</button>
+              <button id="equip-view-btn" class="view-btn active">장비 기준 경보</button>
+              <button id="guksa-view-btn" class="view-btn">국사 기준 경보</button>
 
-              <button id="fault-point-btn" class="fault-view-btn">장비 기준 장애점 판단</button>
+              <button id="fault-point-btn" class="fault-view-btn">장비 기준 장애점 찾기</button>
             </div>
           </div>
 

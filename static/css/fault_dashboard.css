@@ -28,7 +28,7 @@ html {
   padding: 5px 5px;
   background-color: #f5f5f5;
   height: auto;
-  min-height: 140px; /* 높이 줄임 */
+  min-height: 150px; /* 높이 줄임 */
   overflow: visible;
   border-bottom: 0px solid #ddd;
 }
@@ -180,8 +180,6 @@ html {
   background-color: #f5f5f5;
   border: 1px solid #ddd;
 
-  border-radius: 3px;
-  border-left: 4px solid #0056b3;
   font-size: 14px;
   text-align: left;
   display: flex;
@@ -195,7 +193,7 @@ html {
 
 /* 제목 스타일 변경 */
 .summary-title {
-  color: #0056b3; /* 파란색으로 변경 */
+  color: #000000; /* 파란색으로 변경 */
   font-weight: bold;
 }
 
@@ -210,7 +208,7 @@ html {
   background: #eeeeee;
   padding: 15px;
   box-sizing: border-box;
-  border-right: 1px solid #ccc;
+  /* border-right: 1px solid #ccc; */
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -653,7 +651,7 @@ html {
   white-space: nowrap;
 }
 
-/* 페이지네이션 스타일 전면 개선 - 여백 최소화 및 수평 스크롤 방지 */
+/* 페이지네이션 - 여백 최소화 및 수평 스크롤 방지 */
 #pagination {
   height: 25px !important;
   min-height: 25px !important;
@@ -702,31 +700,6 @@ html {
   background-color: transparent !important;
   min-width: 0 !important; /* 최소 너비 제거 */
   white-space: nowrap !important;
-}
-
-#pagination button.active {
-  font-weight: bold;
-  text-decoration: underline;
-  color: #007bff;
-}
-
-#pagination button:hover:not(.active):not(:disabled) {
-  text-decoration: underline;
-  color: #0056b3;
-}
-
-#pagination button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-#pagination button.ellipsis {
-  cursor: default;
-  margin: 0 2px;
-}
-
-#pagination button.nav-btn {
-  margin: 0 8px;
 }
 
 /* 테이블 컨테이너 여백 최소화 및 스크롤 제어 */
@@ -1135,46 +1108,50 @@ div.dashboard-box,
   margin: 0 3px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 13px;
+
+  color: #888888;
+
+  font-size: 15px;
+  font-weight: bold;
+
   transition: all 0.2s ease;
 }
 
 .view-btn:hover {
   background-color: #e9f2ff;
-  border-color: #aac8ff;
+  border-color: #0078d7;
 }
 
 .view-btn.active {
-  background-color: #e1edff;
+  background-color: #0078d7;
   border-color: #82b1ff;
-  color: #0056b3;
+  color: #ffffff;
   font-weight: bold;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  /* box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); */
 }
 
 /* 뷰 버튼 스타일 */
 .fault-view-btn {
-  background-color: #fff8f8;
+  background-color: #fd504d;
   border: 1px solid #ffdddd;
   padding: 3px 8px;
   margin: 0 3px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 13px; /* 글자 크기 12px에서 13px로 증가 */
+
+  font-size: 15px;
+  color: #ffffff;
+  font-weight: bold;
+
   transition: all 0.2s ease;
 }
 
 .fault-view-btn:hover {
-  background-color: #ffe9e9;
-  border-color: #ffaaa8;
-}
+  background-color: #a82d2b;
 
-.fault-view-btn.active {
-  background-color: #ffe1e1;
-  border-color: #ff8282;
-  color: #b30000;
+  font-size: 15px;
+  color: #ffffff;
   font-weight: bold;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .dashboard-summary span {

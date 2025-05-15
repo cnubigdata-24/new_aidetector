@@ -163,7 +163,7 @@ function createNetworkMap(equipData) {
     .attr('text-anchor', 'middle')
     .style('font-size', '16px')
     .style('font-weight', 'bold')
-    .text(` 국사[${guksaName}] 경보발생 장비(${nodes.length - 1} 대)`);
+    .text(`${guksaName} 경보발생 장비(${nodes.length - 1} 대)`);
 
   // 국사 노드 좌측에 배치
   const centerY = height / 2;
@@ -401,7 +401,7 @@ function createNetworkMap(equipData) {
     .attr('cx', 12)
     .attr('cy', -12)
     .attr('r', 8)
-    .attr('fill', '#dddddd') // 연한 회색 계열로 직접 지정
+    .attr('fill', '#f7f7f7') // 연한 회색 계열로 직접 지정
     .attr('stroke', 'white')
     .attr('stroke-width', 1.5);
 
@@ -411,11 +411,11 @@ function createNetworkMap(equipData) {
     .append('text')
     .attr('class', 'alarm-count')
     .attr('x', 12)
-    .attr('y', -10)
+    .attr('y', -11)
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'middle')
     .attr('fill', 'black') // 검은색으로 변경
-    .attr('font-size', '8px')
+    .attr('font-size', '12px')
     .attr('font-weight', 'bold')
     .text((d) => d.alarmMessages.length);
 
@@ -429,7 +429,7 @@ function createNetworkMap(equipData) {
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'middle')
     .attr('fill', 'white')
-    .attr('font-size', (d) => (d.type === 'guksa' ? '12px' : '10px'))
+    .attr('font-size', (d) => (d.type === 'guksa' ? '13px' : '12px'))
     .attr('font-weight', 'bold')
     .attr('dy', (d) => (d.type === 'guksa' ? 0 : 0)); // 국사 노드는 중앙에 텍스트
 
@@ -444,7 +444,7 @@ function createNetworkMap(equipData) {
     })
     .attr('text-anchor', 'middle')
     .attr('x', 0)
-    .attr('y', (d) => (d.type === 'guksa' ? 35 : 25))
+    .attr('y', (d) => (d.type === 'guksa' ? 40 : 25))
     .attr('font-size', '11px')
     .attr('fill', '#333');
 

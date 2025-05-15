@@ -9,6 +9,8 @@ from db.models import db, TblAlarmAllLast, TblSubLink, TblGuksa
 from .scripts.fault_prediction_core_4 import run_query
 from .scripts.llm_loader_2 import initialize_llm, get_llm_pipeline
 
+from sqlalchemy import desc, case, or_, func, asc
+
 import subprocess
 import json
 import time
@@ -819,80 +821,149 @@ def get_equiplist():
 
 @api_bp.route('/alarm_dashboard', methods=['POST'])
 def alarm_dashboard():
-    # POST 방식으로 받은 JSON 데이터 파싱
-    data = request.get_json()
-
-    guksa_id = data.get('guksa_id')
-    sectors = data.get('sectors', [])  # 배열로 받음
-    equip_name = data.get('equip_name')
-    time_filter = data.get('timeFilter')
-
-    print("요청 파라미터:", data)  # 디버깅용
-
-    # 기본 쿼리 생성
-    query = TblAlarmAllLast.query
-
-    # 필터 적용
-    if guksa_id:
-        query = query.filter(TblAlarmAllLast.guksa_id == str(guksa_id))
-    if sectors and len(sectors) > 0:
-        # 전체(all)가 아닌 경우에만 필터링
-        if 'all' not in sectors:
-            query = query.filter(TblAlarmAllLast.sector.in_(sectors))
-    if equip_name:
-        query = query.filter(TblAlarmAllLast.equip_name == equip_name)
-
-    # 시간 필터 적용 (옵션)
-    if time_filter:
-        from datetime import datetime, timedelta
-        minutes = int(time_filter)
-        time_threshold = datetime.now() - timedelta(minutes=minutes)
-
     try:
+        # POST 방식으로 받은 JSON 데이터 파싱
+        data = request.get_json()
+
+        guksa_id = data.get('guksa_id')
+        sectors = data.get('sectors', [])  # 배열로 받음
+        equip_name = data.get('equip_name')
+        time_filter = data.get('timeFilter')
+
+        print("alarm_dashboard 요청 파라미터:", data)  # 디버깅용
+
+        # 기본 쿼리 객체 생성
+        query = TblAlarmAllLast.query
+
+        # 필터 조건 적용
+        if guksa_id:
+            query = query.filter(TblAlarmAllLast.guksa_id == str(guksa_id))
+        if sectors and len(sectors) > 0:
+            # 전체(all)가 아닌 경우에만 필터링
+            if 'all' not in sectors:
+                query = query.filter(TblAlarmAllLast.sector.in_(sectors))
+        if equip_name:
+            query = query.filter(TblAlarmAllLast.equip_name == equip_name)
+
+        # 시간 필터 적용 (옵션) -------------------------------- 테스트용으로 일단 주석 처리, 나중에 해제
+#         if time_filter:
+#             from datetime import datetime, timedelta
+#             minutes = int(time_filter)
+#             time_threshold = datetime.now() - timedelta(minutes=minutes)
+#             time_threshold_str = time_threshold.strftime("%Y-%m-%d %H:%M:%S")
+#             query = query.filter(
+#                 TblAlarmAllLast.occur_datetime >= time_threshold_str)
+
+        # 정렬 기준: recover_datetime이 NULL이거나 빈 문자열인 항목 우선, 그 후 최근 발생 순
+        from sqlalchemy import desc, func
+        query = query.order_by(
+            func.coalesce(TblAlarmAllLast.recover_datetime,
+                          '').asc(),  # NULL 또는 빈 문자열 우선
+            desc(TblAlarmAllLast.occur_datetime)  # 최근 발생순
+        )
+
         print("실행 쿼리:", str(query))  # SQL 쿼리 확인용
 
-        # 데이터가 없는 경우를 위한 처리 (중요)
+        # 데이터 조회 실행
         alarms = query.all()
+        print(f"조회된 결과 개수: {len(alarms) if alarms else 0}")
 
+        # 최근 경보 발생 시간 찾기
+        recent_update_time = None
+        if alarms and len(alarms) > 0:
+            # 첫 번째 항목의 발생 시간 사용
+            recent_update_time = str(
+                alarms[0].occur_datetime) if alarms[0].occur_datetime else None
+
+        # 데이터가 없는 경우
         if not alarms or len(alarms) == 0:
-            # 빈 데이터 세트 반환 - 빈 배열을 반환하도록 수정
-            return jsonify([])
+            print("조회된 결과가 없습니다.")
+            return jsonify({
+                'alarms': [],
+                'recent_update_time': None
+            })
 
-        print(f"조회된 결과 개수: {len(alarms)}")  # 결과 개수 확인용
+        # 결과를 딕셔너리 목록으로 변환
+        result = []
+        for a in alarms:
+            # NULL 값 방어적 처리
+            recover_datetime_str = str(
+                a.recover_datetime) if a.recover_datetime else None
 
-        # 결과 필드명도 모델 필드명과 일치하게 설정
-        result = [{
-            'guksa_id': a.guksa_id,
-            'guksa_name': a.guksa_name,
-            'sector': a.sector,
-            'equip_id': a.equip_id,  # 항상 equip_id 필드가 포함되도록 명시적 지정
-            'equip_type': a.equip_type,
-            'equip_name': a.equip_name,
-            'alarm_message': a.alarm_message,
-            'alarm_grade': a.alarm_grade,
-            'occur_datetime': str(a.occur_datetime) if a.occur_datetime else None,
-            'fault_reason': a.fault_reason,
-            'valid_yn': a.valid_yn,
-            'insert_datetime': str(a.insert_datetime) if a.insert_datetime else None
-        } for a in alarms]
+            # 각 필드를 안전하게 처리하여 딕셔너리로 변환
+            alarm_data = {
+                'guksa_id': a.guksa_id or '',
+                'guksa_name': a.guksa_name or '',
+                'sector': a.sector or '',
+                'equip_id': a.equip_id or '',
+                'equip_type': a.equip_type or '',
+                'equip_name': a.equip_name or '',
+                'alarm_message': a.alarm_message or '',
+                'alarm_grade': a.alarm_grade or '',
+                'occur_datetime': str(a.occur_datetime) if a.occur_datetime else None,
+                'fault_reason': a.fault_reason or '',
+                'valid_yn': a.valid_yn or '',
+                'insert_datetime': str(a.insert_datetime) if a.insert_datetime else None,
+                'recover_datetime': recover_datetime_str
+            }
+            result.append(alarm_data)
 
-        # 디버깅 출력을 위해 첫 번째 결과만 출력
-        if result:
-            print("첫 번째 결과:", result[0])
-            # equip_id 필드 값 확인
-            print(f"첫 번째 결과의 equip_id: {result[0].get('equip_id', '없음')}")
+        # 응답 데이터 구성
+        response_data = {
+            'alarms': result,
+            'recent_update_time': recent_update_time
+        }
+
+        return jsonify(response_data)
+
+    except Exception as e:
+        print("경보 대시보드 데이터 조회 중 오류 발생:", str(e))
+        import traceback
+        traceback.print_exc()
+
+        # 에러 발생 시 빈 응답 반환
+        return jsonify({
+            'alarms': [],
+            'recent_update_time': None,
+            'error': str(e)
+        })
+
+
+@api_bp.route('/check_data', methods=['GET'])
+def check_data():
+    try:
+        # 테이블의 전체 레코드 수 확인
+        count_query = db.session.query(
+            func.count(TblAlarmAllLast.guksa_id)).scalar()
+
+        # 최근 데이터 10개 가져오기
+        recent_data = TblAlarmAllLast.query.order_by(
+            desc(TblAlarmAllLast.occur_datetime)
+        ).limit(10).all()
+
+        # 결과를 JSON으로 반환
+        result = {
+            'total_count': count_query,
+            'sample_data': [
+                {
+                    'guksa_id': item.guksa_id,
+                    'sector': item.sector,
+                    'equip_name': item.equip_name,
+                    'occur_datetime': str(item.occur_datetime),
+                    'recover_datetime': str(item.recover_datetime) if item.recover_datetime else None,
+                    'valid_yn': item.valid_yn
+                }
+                for item in recent_data
+            ]
+        }
 
         return jsonify(result)
     except Exception as e:
-        print("오류 발생:", str(e))  # 오류 메시지 출력
-        import traceback
-        traceback.print_exc()  # 상세 에러 출력 추가
-
-        # 에러 발생 시 빈 배열 반환하도록 변경
-        return jsonify([])
-
+        return jsonify({'error': str(e)})
 
 # 메인 라우트 함수
+
+
 @api_bp.route('/alarm_dashboard_equip', methods=['POST'])
 def alarm_dashboard_equip():
     # POST 방식으로 받은 JSON 데이터 파싱
