@@ -125,12 +125,13 @@ class TblEquipment(db.Model):
     __tablename__ = 'tbl_equipment'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    sector = db.Column(db.String(10), nullable=False)
-    guksa_id = db.Column(db.Integer)
-    equip_type = db.Column(db.String(50), nullable=False)
-    equip_model = db.Column(db.String(30), nullable=False)
-    equip_name = db.Column(db.String(100), nullable=False)
-    equip_id = db.Column(db.String(100), nullable=False)
+    guksa_id = db.Column(db.Integer, default='')
+    sector = db.Column(db.String(10), nullable=False, default='')
+    equip_type = db.Column(db.String(50), primary_key=True,
+                           nullable=False, default='')
+    equip_model = db.Column(db.String(30), nullable=False, default='')
+    equip_name = db.Column(db.String(100), nullable=False, default='')
+    equip_id = db.Column(db.String(100), nullable=False, default='')
 
 
 class TblSubLink(db.Model):
@@ -144,11 +145,14 @@ class TblSubLink(db.Model):
     guksa_name = db.Column(db.String(50), nullable=False)
     up_down = db.Column(db.String(10), nullable=False)
     link_equip_id = db.Column(db.String(100), nullable=False)
+
     link_equip_type = db.Column(db.String(50), nullable=False)
     link_equip_name = db.Column(db.String(100), nullable=False)
     link_equip_field = db.Column(db.String(50), nullable=False)
     link_guksa_name = db.Column(db.String(50), nullable=False)
-    cable_num = db.Column(db.String(100), nullable=False)
+    link_name = db.Column(db.String(200), nullable=False)
+    cable_aroot = db.Column(db.String(700), nullable=False)
+    cable_broot = db.Column(db.String(700), nullable=False)
 
 
 class TblLink(db.Model):
@@ -170,8 +174,10 @@ class TblSnmpInfo(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     guksa_id = db.Column(db.Integer, db.ForeignKey(
         'tbl_guksa.guksa_id'), nullable=False)
+
     equip_id = db.Column(db.Integer, db.ForeignKey(
         'tbl_equipment.id'), nullable=False)
+
     equip_name = db.Column(db.String(100))
     equip_type = db.Column(db.String(100))
     snmp_ip = db.Column(db.String(50))
@@ -186,8 +192,8 @@ class TblSnmpInfo(db.Model):
     fading = db.Column(db.String(10))
     get_datetime = db.Column(db.String(50))
 
-    # 관계 설정
     guksa = db.relationship('TblGuksa', backref='snmp_info', lazy=True)
+
     equipment = db.relationship('TblEquipment', backref='snmp_info', lazy=True)
 
 

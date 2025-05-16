@@ -202,15 +202,15 @@ def get_topology(guksa_name):
     equipments = TblEquipment.query.filter_by(
         guksa_id=guksa_obj.guksa_id).all()
     center_equips = [
-        f"{eq.equip_field}-{eq.equipment_name} ({eq.equip_model})" for eq in equipments
+        f"{eq.equip_type}-{eq.equip_name} ({eq.equip_model})" for eq in equipments
     ]
 
     # 해당 국사의 대표 분야 정보 확인 (가장 많은 장비가 속한 분야)
     sector_counts = {}
     for eq in equipments:
-        if eq.equip_field:
-            sector_counts[eq.equip_field] = sector_counts.get(
-                eq.equip_field, 0) + 1
+        if eq.equip_type:
+            sector_counts[eq.equip_type] = sector_counts.get(
+                eq.equip_type, 0) + 1
 
     # 가장 장비가 많은 분야 찾기, 없으면 기본값
     center_sector = max(sector_counts.items(), key=lambda x: x[1])[
@@ -244,16 +244,16 @@ def get_topology(guksa_name):
                 guksa_id=remote_guksa.guksa_id
             ).all()
             remote_equipments = [
-                f"{eq.equip_field}-{eq.equipment_name} ({eq.equip_model})"
+                f"{eq.equip_type}-{eq.equi_name} ({eq.equip_model})"
                 for eq in remote_equips
             ]
 
             # 원격 국사의 대표 분야 정보 확인
             remote_sector_counts = {}
             for eq in remote_equips:
-                if eq.equip_field:
-                    remote_sector_counts[eq.equip_field] = remote_sector_counts.get(
-                        eq.equip_field, 0) + 1
+                if eq.equip_type:
+                    remote_sector_counts[eq.equip_type] = remote_sector_counts.get(
+                        eq.equip_type, 0) + 1
 
             # 가장 장비가 많은 분야 찾기
             if remote_sector_counts:
@@ -981,8 +981,7 @@ def alarm_dashboard_equip():
         # 국사 정보 조회
         guksa_info, guksa_name = get_guksa_info(guksa_id)
         str_guksa_id = str(guksa_id).strip() if guksa_id else ""
-        str_equip_id = str(equip_id).strip().replace(
-            '-', '') if equip_id else ""
+        str_equip_id = str(equip_id).strip() if equip_id else ""
 
         # 장비 ID로 국사 ID 조회 (없는 경우)
         if str_equip_id and not str_guksa_id:
@@ -999,26 +998,35 @@ def alarm_dashboard_equip():
 
         # 특정 장비 기준으로 연결 정보 조회
         if str_equip_id:
-            equipment_dict, processed_links = find_connected_equipment(
+            equipment_dict, processed_links = find_connected_equip_from_graph(
                 str_equip_id)
         # 국사 기준으로 장비 조회
         elif str_guksa_id and guksa_info:
             try:
-                guksa_equips = db.session.query(TblSubLink.equip_id).filter(
-                    TblSubLink.guksa_name == guksa_name
-                ).distinct().all()
+                # 국사 기준 링크 전체 캐싱
+                link_map = load_links_by_guksa(guksa_name)
 
-                for eq in guksa_equips:
-                    sub_dict, sub_links = find_connected_equipment(eq.equip_id)
+                # 장비 연결 그래프 탐색
+                visited = set()
+                equipment_dict = {}
+                processed_links = set()
+
+                for node_id in link_map.keys():
+                    sub_dict, sub_links = find_connected_equip_from_graph(
+                        node_id, link_map, visited)
                     equipment_dict.update(sub_dict)
                     processed_links.update(sub_links)
+
+                print(
+                    f"[INFO] 탐색 완료 - 장비 {len(equipment_dict)}개, 링크 {len(processed_links)}개")
+
             except Exception as e:
-                print(f"국사 장비 조회 중 오류 발생: {str(e)}")
+                print(f"[ERROR] 국사 기준 장비 탐색 실패: {str(e)}")
 
         # 링크 정보 변환
         links = []
         for link_key in processed_links:
-            source, target = link_key.split('-')
+            source, target = link_key.split(':::')
             links.append({
                 "source": source,
                 "target": target,
@@ -1047,7 +1055,7 @@ def alarm_dashboard_equip():
 
         # 오류 발생 시 샘플 데이터 생성
         _, guksa_name = get_guksa_info(guksa_id)
-        response_data = generate_sample_equipment_data(guksa_id, guksa_name)
+        response_data = use_sample_equip_data(guksa_id, guksa_name)
 
         return jsonify(response_data)
 
@@ -1125,118 +1133,87 @@ def get_guksa_info(guksa_id):
         print(f"국사 정보 조회 중 오류 발생: {str(e)}")
         return None, f"국사 {str_guksa_id}"
 
-# 장비 네트워크 정보 조회 함수
+
+# 1. 국사 기반 링크 전체 메모리 로딩
+def load_links_by_guksa(guksa_name):
+    links = db.session.query(TblSubLink).filter(
+        TblSubLink.guksa_name == guksa_name
+    ).all()
+
+    link_map = {}
+
+    for link in links:
+        id1 = str(link.equip_id).strip()
+        id2 = str(link.link_equip_id).strip()
+
+        # 양방향 그래프 구성
+        link_map.setdefault(id1, []).append(link)
+        link_map.setdefault(id2, []).append(link)
+
+    return link_map
 
 
-def find_connected_equipment(equip_id, visited=None):
+# 2. 인메모리 DFS 기반 장비 연결 탐색
+def find_connected_equip_from_graph(equip_id, link_map, visited=None):
     if visited is None:
         visited = set()
 
-    # 이미 처리한 장비는 건너뜀
+    equip_id = str(equip_id)
     if equip_id in visited:
         return {}, set()
 
     visited.add(equip_id)
-    print(f"장비 ID {equip_id}의 연결 장비 탐색 시작")
 
-    equipment_dict = {}  # 장비 정보
-    processed_links = set()  # 처리된 링크
+    equipment_dict = {}
+    processed_links = set()
+    neighbors = link_map.get(equip_id, [])
 
-    try:
-        # 정수형 장비 ID 변환 시도
-        int_equip_id = None
-        if str(equip_id).isdigit():
-            int_equip_id = int(equip_id)
+    for link in neighbors:
+        id1 = str(link.equip_id)
+        id2 = str(link.link_equip_id)
 
-        # 소스 링크 조회 (equip_id가 source인 경우)
-        source_links_query = db.session.query(TblSubLink)
-        if int_equip_id is not None:
-            source_links_query = source_links_query.filter(
-                (TblSubLink.equip_id == equip_id) |
-                (TblSubLink.equip_id == int_equip_id)
-            )
-        else:
-            source_links_query = source_links_query.filter(
-                TblSubLink.equip_id == equip_id)
+        # 장비 정보 등록 (소스)
+        if id1 not in equipment_dict:
+            equipment_dict[id1] = {
+                "id": link.id,
+                "equip_id": id1,
+                "equip_type": link.equip_type,
+                "equip_name": link.equip_name,
+                "equip_field": link.equip_field,
+                "guksa_name": link.guksa_name,
+                "up_down": link.up_down
+            }
 
-        source_links = source_links_query.all()
-        print(f"equip_id={equip_id}가 source인 링크 수: {len(source_links)}")
+        # 장비 정보 등록 (타겟)
+        if id2 not in equipment_dict:
+            equipment_dict[id2] = {
+                "id": link.id + 10000,
+                "equip_id": id2,
+                "equip_type": link.link_equip_type,
+                "equip_name": link.link_equip_name,
+                "equip_field": link.link_equip_field,
+                "guksa_name": link.link_guksa_name,
+                "up_down": "unknown"
+            }
 
-        # 타겟 링크 조회 (equip_id가 target인 경우)
-        target_links_query = db.session.query(TblSubLink)
-        if int_equip_id is not None:
-            target_links_query = target_links_query.filter(
-                (TblSubLink.link_equip_id == equip_id) |
-                (TblSubLink.link_equip_id == int_equip_id)
-            )
-        else:
-            target_links_query = target_links_query.filter(
-                TblSubLink.link_equip_id == equip_id)
+        # 링크 중복 없이 저장
+        key1 = f"{id1}:::{id2}"
+        key2 = f"{id2}:::{id1}"
+        if key1 not in processed_links and key2 not in processed_links:
+            processed_links.add(key1)
 
-        target_links = target_links_query.all()
-        print(f"equip_id={equip_id}가 target인 링크 수: {len(target_links)}")
-
-        # 소스 링크 처리
-        for link in source_links:
-            process_link(link, equipment_dict, processed_links, visited)
-
-        # 타겟 링크 처리
-        for link in target_links:
-            process_link(link, equipment_dict, processed_links,
-                         visited, is_target=True)
-
-    except Exception as e:
-        print(f"장비 ID {equip_id} 탐색 중 오류 발생: {str(e)}")
-
-    print(f"장비 ID {equip_id}의 연결 장비 탐색 완료, 현재까지 찾은 장비 수: {len(equipment_dict)}")
+            # 다음 노드 DFS 재귀
+            next_id = id2 if equip_id == id1 else id1
+            sub_dict, sub_links = find_connected_equip_from_graph(
+                next_id, link_map, visited)
+            equipment_dict.update(sub_dict)
+            processed_links.update(sub_links)
 
     return equipment_dict, processed_links
 
 
-# 링크 처리 함수
-def process_link(link, equipment_dict, processed_links, visited, is_target=False):
-    # 소스 장비 정보 저장
-    if link.equip_id not in equipment_dict:
-        equipment_dict[link.equip_id] = {
-            "id": link.id,
-            "equip_id": link.equip_id,
-            "equip_type": link.equip_type,
-            "equip_name": link.equip_name,
-            "equip_field": link.equip_field,
-            "guksa_name": link.guksa_name,
-            "up_down": link.up_down
-        }
-
-    # 대상 장비 정보 저장
-    if link.link_equip_id not in equipment_dict:
-        equipment_dict[link.link_equip_id] = {
-            "id": link.id + 10000,  # 고유 ID 부여
-            "equip_id": link.link_equip_id,
-            "equip_type": link.link_equip_type,
-            "equip_name": link.link_equip_name,
-            "equip_field": link.link_equip_field,
-            "guksa_name": link.link_guksa_name,
-            "up_down": "unknown" if not hasattr(link, 'link_up_down') else link.link_up_down
-        }
-
-    # 링크 정보 저장 (중복 방지)
-    link_key = f"{link.equip_id}-{link.link_equip_id}"
-    reverse_link_key = f"{link.link_equip_id}-{link.equip_id}"
-
-    if link_key not in processed_links and reverse_link_key not in processed_links:
-        processed_links.add(link_key)
-
-        # 연결된 장비에 대해 재귀 호출 (is_target이 True면 소스 장비, 아니면 타겟 장비 탐색)
-        next_equip_id = link.equip_id if is_target else link.link_equip_id
-        if next_equip_id not in visited:
-            sub_dict, sub_links = find_connected_equipment(
-                next_equip_id, visited)
-            equipment_dict.update(sub_dict)
-            processed_links.update(sub_links)
-
-
 # 테스트용 샘플 데이터 리턴
-def generate_sample_equipment_data(guksa_id, guksa_name):
+def use_sample_equip_data(guksa_id, guksa_name):
     # 샘플 장비 데이터
     sample_equipment = [
         {"id": 1, "equip_id": 101, "equip_type": "IP20", "equip_name": f"{guksa_name} IP#1",

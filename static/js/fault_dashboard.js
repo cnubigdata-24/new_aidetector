@@ -426,7 +426,7 @@ async function searchAlarms() {
     _selectedSector = getCurrentSectorFromUI();
 
     // 대시보드는 항상 모든 데이터로 업데이트
-    updateDashboardTop();
+    updateDashboardTop(_summaryAlarmData);
 
     // 테이블은 현재 필터로 업데이트 - 지연시켜 실행
     setTimeout(() => {
@@ -438,7 +438,7 @@ async function searchAlarms() {
     _summaryAlarmData = [];
 
     showTableErrorMessage(`❌ 데이터를 가져오는 중 오류가 발생했습니다: ${error.message}`);
-    updateDashboardTop();
+    updateDashboardTop(_summaryAlarmData);
   }
 }
 
@@ -647,7 +647,6 @@ function updateDashboardTop() {
   // 분야별 대시보드 업데이트
   updateDashboardSector(summary);
 }
-
 // 분야별 대시보드 업데이트
 function updateDashboardSector(summary) {
   console.log('분야별 대시보드 업데이트 시작');
@@ -655,39 +654,54 @@ function updateDashboardSector(summary) {
   SECTORS.forEach((sector) => {
     const box = d3.select(`[data-sector="${sector}"]`);
 
-    // 박스가 존재하는지 확인
+    // 박스가 존재하지 않으면 스킵
     if (box.empty()) {
-      console.warn(`분야 [${sector}]에 해당하는 대시보드 요소를 찾을 수 없습니다.`);
+      console.warn(`분야 [${sector}]에 해당하는 대시보드 요소가 없습니다.`);
       return;
     }
 
     const items = summary[sector] || [];
-    console.log(`${sector} 분야 데이터: ${items.length}개`);
 
+    // 유효 경보 수 계산
     const validAlarms = items.filter((d) => d.valid_yn === 'Y').length;
-    const uniqueEquipmentCount = new Set(items.map((d) => d.equip_name)).size;
-    const validPercentage = items.length ? Math.round((validAlarms / items.length) * 100) : 0;
+    const totalAlarms = items.length;
+    const validPercentage = totalAlarms > 0 ? Math.round((validAlarms / totalAlarms) * 100) : 0;
 
-    // 유효 경보가 있는 경우 색상 변경
+    // 고유 장비 수 계산
+    const uniqueEquipmentCount = new Set(items.map((d) => d.equip_name)).size;
+
+    // 대시보드 숫자 출력
+    box.select('.equip-count').text(`${uniqueEquipmentCount}대`);
+    box.select('.alarm-count').text(`${totalAlarms}개`);
+
+    // 유효 경보 텍스트 출력 - 퍼센트 표시 방식 수정
+    // 3자리 숫자일 경우 숫자와 % 사이 공백 제거
+    const percentText = validPercentage === 100 ? '100%' : `${validPercentage}%`;
+    const validText = `${validAlarms}개 (${percentText})`;
+
+    const validCountSpan = box.select('.valid-count');
+    if (!validCountSpan.empty()) {
+      validCountSpan.text(validText);
+    } else {
+      box
+        .select('.dashboard-content')
+        .append('div')
+        .html(`· 유효 경보: <span class="valid-count">${validText}</span>`);
+    }
+
+    // 하이라이트 스타일 적용
     if (validAlarms > 0) {
       box.classed('has-valid-alarms', true);
       box.select('h3').style('color', '#ff8c00');
+      box.select('.valid-count').classed('highlight-valid', true);
     } else {
       box.classed('has-valid-alarms', false);
       box.select('h3').style('color', '#333');
+      box.select('.valid-count').classed('highlight-valid', false);
     }
 
-    // 대시보드 내용 업데이트
-    box.select('.equip-count').text(`${uniqueEquipmentCount}대`);
-    box.select('.alarm-count').text(`${items.length}개`);
-
-    // 유효 경보 하이라이트
-    const validCountSpan = box.select('.valid-count');
-    validCountSpan.text(`${validAlarms}개 (${validPercentage}%)`);
-    validCountSpan.classed('highlight-valid', validAlarms > 0);
-
     console.log(
-      `${sector} 분야 대시보드 업데이트 완료: 장비 ${uniqueEquipmentCount}대, 경보 ${items.length}개, 유효 ${validAlarms}개`
+      `${sector} 분야 대시보드: 장비 ${uniqueEquipmentCount}대, 전체 ${totalAlarms}개, 유효 ${validAlarms}개 (${validPercentage}%)`
     );
   });
 }
