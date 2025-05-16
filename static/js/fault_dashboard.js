@@ -67,34 +67,6 @@ function initDashboard() {
   initDashboardClickEvents();
 }
 
-// 드래그 앤 드롭 기능
-function initDragAndDrop() {
-  const draggables = document.querySelectorAll('.draggable');
-  draggables.forEach((draggable) => {
-    draggable.addEventListener('dragstart', () => {
-      draggable.classList.add('dragging');
-    });
-
-    draggable.addEventListener('dragend', () => {
-      draggable.classList.remove('dragging');
-    });
-  });
-
-  const containers = document.querySelectorAll('.draggable-container, .dashboard-row');
-  containers.forEach((container) => {
-    container.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      const afterElement = getDragAfterElement(container, e.clientX, e.clientY);
-      const draggable = document.querySelector('.dragging');
-      if (afterElement == null) {
-        container.appendChild(draggable);
-      } else {
-        container.insertBefore(draggable, afterElement);
-      }
-    });
-  });
-}
-
 /**
  * 이벤트 핸들러 초기화 함수들
  */
@@ -265,8 +237,8 @@ function setToggleViewButtons() {
 function switchView(viewType) {
   console.log(`${viewType} 기준 버튼 클릭, 현재 뷰:`, _selectedView);
 
+  // 뷰가 변경되면 경보 테이블 업데이트
   if (_selectedView !== viewType) {
-    // 뷰 변경
     _selectedView = viewType;
     console.log(`뷰 변경 완료: _selectedView = ${_selectedView}`);
 
@@ -297,14 +269,9 @@ function switchView(viewType) {
     });
 
     // 대시보드 표시 - 명시적 호출
-    console.log('changeMapText 함수 호출');
     changeMapText(_selectedView);
 
-    // 테이블 명시적으로 업데이트
-    console.log('테이블 필터링 업데이트 호출');
-    updateFilteredAlarmTable();
-
-    console.log(`뷰 전환 완료: ${_selectedView} 기준, 필터: ${_selectedSector || '없음'}`);
+    console.log(`뷰 전환 완료: ${_selectedView} 기준, Sector 분야: ${_selectedSector || '없음'}`);
   } else {
     console.log(`이미 ${_selectedView} 기준으로 설정되어 있습니다.`);
   }
@@ -326,17 +293,14 @@ function changeMapText(viewType) {
 
   // 뷰 타입에 따라 다른 메시지 표시
   const instructionMessage = isEquipView
-    ? '[ 장비 경보 기준 ] 왼쪽 경보 장비나 아래 테이블 클릭 시 연결된 장비들의 경보 표시'
-    : '[ 국사 경보 기준 ] 왼쪽 경보 장비나 아래 테이블 클릭 시 국사에 수용된 장비들의 경보 표시';
+    ? '✔️ [장비 기준] 왼쪽 경보 장비나 아래 경보 내역 클릭 시 → 연결된 모든 장비들의 경보 표시'
+    : '✔️ [국사 기준] 왼쪽 경보 장비나 아래 경보 내역 클릭 시 → 동일 국사에 수용된 장비들의 경보 표시';
 
   console.log(`맵 컨테이너 메시지 설정: "${instructionMessage}"`);
 
   // 안전한 방식으로 innerHTML 업데이트
   try {
-    mapContainer.innerHTML =
-      '<div class="instruction-message" style="color: #666; text-align: center; margin-top: 20px; padding: 15px; font-style: italic;">' +
-      instructionMessage +
-      '</div>';
+    mapContainer.innerHTML = '<div class="instruction-message">' + instructionMessage + '</div>';
 
     console.log('맵 컨테이너 텍스트 업데이트 완료');
   } catch (error) {
@@ -344,12 +308,12 @@ function changeMapText(viewType) {
   }
 }
 
-// Sector 분야별 장비 목록 업데이트
+// Sector 분야별 장비 목록 api 호출/업데이트 (/api/equipment_by_sector)
 async function fetchSideBarEquipListBySector(sector) {
   console.log(`분야별 장비 목록 업데이트 시작: ${sector}`);
 
   try {
-    const guksaSelect = DOM.searchGuksa();
+    const guksaSelect = document.getElementById('searchGuksa');
     const guksaId = guksaSelect ? guksaSelect.value : '';
 
     // API 호출 데이터 준비
@@ -372,7 +336,7 @@ async function fetchSideBarEquipListBySector(sector) {
     console.log('장비 목록 데이터:', data);
 
     // Sidebar 장비 목록 업데이트
-    const equipSelect = DOM.searchEquipName();
+    const equipSelect = document.getElementById('searchEquipName');
     equipSelect.innerHTML = ''; // 기존 옵션 제거
 
     if (data && data.length > 0) {
@@ -397,24 +361,21 @@ async function fetchSideBarEquipListBySector(sector) {
   }
 }
 
-// 경보 데이터 API 호출 (항상 모든 분야 all로 호출)
+// 경보 현황 alarm_dashboard API 호출 (항상 모든 분야 all로 호출)
 async function searchAlarms() {
   try {
     // 로딩 메시지 표시
-    showTableErrorMessage('데이터를 불러오는 중입니다...');
-
-    // 정렬 상태 초기화
-    resetSearchState();
+    showTableErrorMessage('⏱️ 데이터를 불러오는 중입니다...');
 
     // 검색 파라미터 가져오기, 항상 모든 분야 all로 호출
-    const guksa_id = DOM.searchGuksa().value;
+    const guksa_id = document.getElementById('searchGuksa').value;
     const sectors = ['all'];
-    const equip_name = DOM.searchEquipName().value;
-    const timeFilter = DOM.timeFilter().value;
+    const equip_name = document.getElementById('searchEquipName').value;
+    const timeFilter = document.getElementById('timeFilter').value;
 
     // 요청 객체 생성
     const requestData = {
-      guksa_id,
+      guksa_id, // 선택된 국사 ID (값이 있으면 특정 국사, 없으면 전체 국사)
       sectors,
       equip_name,
       timeFilter,
@@ -476,18 +437,18 @@ async function searchAlarms() {
     _totalAlarmDataList = [];
     _summaryAlarmData = [];
 
-    showTableErrorMessage(`데이터를 가져오는 중 오류가 발생했습니다: ${error.message}`);
+    showTableErrorMessage(`❌ 데이터를 가져오는 중 오류가 발생했습니다: ${error.message}`);
     updateDashboardTop();
   }
 }
 
-// 3. UI에서 현재 선택된 분야 가져오기
+// UI에서 현재 선택된 분야 가져오기
 function getCurrentSectorFromUI() {
   const sectorRadio = document.querySelector('input[name="sector"]:checked');
   return sectorRadio ? sectorRadio.value : '';
 }
 
-// 4. 테이블 데이터 업데이트 함수
+// 경보 테이블 업데이트 함수
 function refreshAlarmTable() {
   console.log('> 경보 테이블 업데이트 시작...');
   console.log(`> Sector 분야: "${_selectedSector}"`);
@@ -499,7 +460,7 @@ function refreshAlarmTable() {
   if (!_totalAlarmDataList || _totalAlarmDataList.length === 0) {
     console.warn('원본 데이터가 없습니다.');
     showTableErrorMessage(
-      '경보 데이터가 없습니다. 실시간 경보 수집 버튼을 눌러 데이터를 가져오세요.'
+      '❌ 경보 데이터가 없습니다. 실시간 경보 수집 버튼을 눌러 데이터를 가져오세요.'
     );
     return;
   }
@@ -513,7 +474,7 @@ function refreshAlarmTable() {
   // 필터링 결과 데이터 없을 경우 처리
   if (!filteredData || filteredData.length === 0) {
     console.log(`"${_selectedSector}" 분야의 데이터가 없습니다.`);
-    showTableErrorMessage(`"${_selectedSector}" 분야의 데이터가 없습니다.`);
+    showTableErrorMessage(`❌"${_selectedSector}" 분야의 데이터가 없습니다.`);
     DOM.pagination().empty();
 
     return;
@@ -536,146 +497,13 @@ function refreshAlarmTable() {
   } else {
     console.log('=========현재 페이지에 표시할 데이터가 없습니다.=========');
     console.log('filteredData:', filteredData);
-    showTableErrorMessage(result.message);
+
+    showTableErrorMessage('❌ ' + result.message);
   }
 
   console.log(
     `> 경보 테이블 업데이트 완료: ${filteredData.length}개 항목, 현재 페이지: ${_currentPage}`
   );
-}
-
-// 경보 테이블 필터링
-function updateFilteredAlarmTable() {
-  console.log(`경보 테이블 필터링: ${_selectedSector}`);
-
-  if (!_totalAlarmDataList?.length) {
-    const msg = '경보 데이터가 없습니다. 실시간 경보 수집 버튼을 눌러 데이터를 가져오세요.';
-    console.warn(msg);
-    showTableErrorMessage(msg);
-    return;
-  }
-
-  const selectedSector = _selectedSector.toLowerCase();
-  const filteredData = _totalAlarmDataList.filter(
-    (item) => item.sector?.toLowerCase() === selectedSector
-  );
-
-  if (!filteredData.length) {
-    const msg = `"${_selectedSector}" 분야의 데이터가 없습니다.`;
-    console.log(msg);
-    showTableErrorMessage(msg);
-    return;
-  }
-
-  console.log(`필터링 결과: ${filteredData.length}개 항목`);
-  updateAlarmTable(filteredData);
-  console.log('경보 테이블 업데이트 완료');
-}
-
-// 경보 테이블 업데이트 함수
-function updateAlarmTable(filterData) {
-  console.log(`경보 테이블 업데이트 시작 (데이터 ${filterData.length}개)`);
-
-  if (!Array.isArray(filterData) || filterData.length === 0) {
-    console.error('유효하지 않거나 비어 있는 데이터:', filterData);
-
-    showTableErrorMessage('표시할 데이터가 없습니다.');
-    DOM.pagination().empty();
-
-    return;
-  }
-
-  const totalItems = filterData.length;
-  console.log(`페이지 렌더링 (총 "${totalItems}"개 항목)`);
-
-  renderPagination(totalItems);
-  updateCurrentPageData();
-  console.log('경보 테이블 업데이트 완료');
-}
-
-// 현재 페이지에 맞춰 테이블 표시
-function updateCurrentPageData() {
-  console.log('updateCurrentPageData 함수 실행');
-
-  let displayData = [];
-
-  console.log(`현재 페이지 데이터 표시 준비: 현재 분야=${_selectedSector || '모든 분야'}`);
-
-  // 정렬된 데이터와 일반 데이터 로그 확인
-  if (window.currentSortedData) {
-    console.log(`정렬된 데이터 개수: ${window.currentSortedData.length}`);
-
-    // 정렬된 데이터가 없으면 즉시 종료
-    if (window.currentSortedData.length === 0) {
-      showTableErrorMessage(
-        _selectedSector
-          ? `${_selectedSector} 분야의 표시할 데이터가 없습니다.`
-          : '표시할 데이터가 없습니다.'
-      );
-      return;
-    }
-
-    // 정렬된 데이터에 포함된 분야 확인
-    const sectorCounts = {};
-    window.currentSortedData.forEach((item) => {
-      if (item.sector) {
-        sectorCounts[item.sector] = (sectorCounts[item.sector] || 0) + 1;
-      }
-    });
-    console.log('정렬된 데이터 분야별 개수:', sectorCounts);
-  }
-
-  console.log(`전체 데이터 개수: ${_totalAlarmDataList.length}`);
-
-  // 정렬된 데이터가 있으면 사용
-  if (window.currentSortedData && window.currentSortedData.length > 0) {
-    // 대소문자 구분 없이 비교하기 위해 소문자로 변환하여 필터링
-    displayData = window.currentSortedData.filter(
-      (d) => d && d.sector && d.sector.toLowerCase() === _selectedSector.toLowerCase()
-    );
-
-    // 필터링 후 데이터가 없는 경우 전체 alarmData에서 다시 필터링 시도
-    if (displayData.length === 0) {
-      console.log(
-        `정렬된 데이터에서 ${_selectedSector} 분야 데이터를 찾을 수 없습니다. 전체 데이터에서 재시도...`
-      );
-      displayData = _totalAlarmDataList.filter(
-        (d) => d && d.sector && d.sector.toLowerCase() === _selectedSector.toLowerCase()
-      );
-    }
-  } else {
-    // 없으면 기본 데이터 필터링
-    displayData = _totalAlarmDataList.filter(
-      (d) => d && d.sector && d.sector.toLowerCase() === _selectedSector.toLowerCase()
-    );
-  }
-
-  console.log(
-    `화면에 표시할 데이터: ${displayData.length}개 항목, 현재 분야: ${
-      _selectedSector || '모든 분야'
-    }`
-  );
-
-  // 여기도 데이터 길이 체크
-  if (!displayData || displayData.length === 0) {
-    showTableErrorMessage(
-      _selectedSector
-        ? `${_selectedSector} 분야의 표시할 데이터가 없습니다.`
-        : '표시할 데이터가 없습니다.'
-    );
-    return;
-  }
-
-  // 페이지 데이터 안전하게 가져오기
-  const result = getPageDataSafely(displayData, '페이지 데이터');
-
-  if (result.success) {
-    addRowsToAlarmTable(result.data);
-  } else {
-    showTableErrorMessage(
-      _selectedSector ? `${_selectedSector} 분야의 ${result.message}` : result.message
-    );
-  }
 }
 
 // 테이블에 데이터 표시
@@ -868,9 +696,13 @@ function updateDashboardSector(summary) {
  * 맵 관련 통합 함수들
  */
 
-// 장비 데이터 조회 및 맵 표시 (통합 함수)
+// 장비 조회 api 호출 및 맵 표시 (통합 함수: /api/alarm_dashboard_equip, /api/get_equiplist)
 async function fetchEquipmentData(options = {}) {
-  const { guksaId = '', equipId = '', equipName = DOM.searchEquipName().value || '' } = options;
+  const {
+    guksaId = '',
+    equipId = '',
+    equipName = document.getElementById('searchEquipName').value || '',
+  } = options;
 
   console.log(`장비 데이터 조회: ${_selectedView} 기준, 국사=${guksaId}, 장비ID=${equipId}`);
 
@@ -892,7 +724,7 @@ async function fetchEquipmentData(options = {}) {
       apiEndpoint = '/api/alarm_dashboard_equip';
 
       // 장비 기준 뷰인 경우 추가 파라미터
-      apiParams.sectors = ['all'];
+      apiParams.sectors = ['all']; // 장비 기준은 항상 'all'로 호출
       apiParams.equip_name = equipName;
       apiParams.equip_id = equipId;
     } else {
@@ -1046,7 +878,7 @@ function formatEquipmentData(responseData, guksaId = '', selectedView = 'equip')
   return result;
 }
 
-// 맵 생성 통합 함수
+// 맵 생성 통합 함수 (createEquipmentNetworkMap, createNetworkMap)
 function createEquipmentMap(responseData, selectedView = 'equip') {
   let mapFunction;
 
@@ -1083,29 +915,12 @@ function createEquipmentMap(responseData, selectedView = 'equip') {
   }
 }
 
-// 호환성을 위한 이전 함수 유지 (내부는 통합 함수 호출)
-function fetchEquipmentByGuksaId(guksaId) {
-  return fetchEquipmentData({
-    guksaId,
-    viewType: 'guksa',
-  });
-}
-
-function fetchEquipmentNetworkByGuksaId(guksaId, equipId) {
-  return fetchEquipmentData({
-    guksaId,
-    equipId,
-    equipName: DOM.searchEquipName().value,
-    viewType: 'equip',
-  });
-}
-
 /**
  * 국사 목록 및 기타 이벤트 처리
  */
 
-// 국사 목록 로드 함수
-async function loadGuksaList() {
+// 국사 목록 조회 api 호출 (/api/guksa_list)
+async function fetchGuksaList() {
   try {
     const response = await fetch('/api/guksa_list');
     if (!response.ok) {
@@ -1139,13 +954,9 @@ async function loadGuksaList() {
   }
 }
 
-// Sidebar 장비 선택 변경 이벤트
-function initEquipSelectEvent() {
-  const equipSelect = DOM.searchEquipName();
-  if (!equipSelect) {
-    console.error('장비 선택 요소를 찾을 수 없습니다.');
-    return;
-  }
+// Sidebar 장비 변경 이벤트
+function equipChangeEventHandler() {
+  const equipSelect = document.getElementById('searchEquipName');
 
   console.log('장비 선택 이벤트 리스너 추가');
 
@@ -1158,131 +969,84 @@ function initEquipSelectEvent() {
 
     if (selectedIndex < 0) {
       console.warn('유효한 인덱스가 선택되지 않았습니다.');
+
       return;
     }
 
     const selectedOption = this.options[selectedIndex];
+    const equipId = selectedOption.dataset.equipId;
     const equipName = this.value;
 
-    console.log(`선택된 옵션:`, selectedOption);
-    console.log(`선택된 장비명: ${equipName}`);
-
-    if (!equipName) {
-      console.warn('장비명이 선택되지 않았습니다.');
-      return;
-    }
-
-    // 장비 ID 가져오기 (dataset에서)
-    let equipId = '';
-    if (selectedOption && selectedOption.dataset.equipId) {
-      equipId = selectedOption.dataset.equipId;
-    }
+    let guksaId = document.getElementById('searchGuksa').value || '';
 
     if (!equipId) {
       console.warn('장비 ID가 없습니다. 장비를 다시 선택해주세요.');
       return;
     }
-
-    console.log(`선택된 장비: ${equipName}, ID: ${equipId}`);
-
-    // 장비 기준 버튼 활성화
-    const equipBtn = DOM.equipViewBtn();
-    const guksaBtn = DOM.guksaViewBtn();
-
-    if (equipBtn && guksaBtn) {
-      equipBtn.classList.add('active');
-      guksaBtn.classList.remove('active');
-      console.log('장비 기준 버튼 활성화');
-    } else {
-      console.warn('장비/국사 기준 버튼을 찾을 수 없습니다.');
+    if (!equipName) {
+      console.warn('장비명이 선택되지 않았습니다.');
+      return;
     }
 
-    // 국사 ID (선택적)
-    const stationId = DOM.searchGuksa().value || '';
-    console.log(`국사 ID: ${stationId || '지정되지 않음(장비 ID로 조회)'}`);
+    // ✅ equipId로부터 guksaId 추출
+    if (!guksaId && equipId) {
+      const alarm = _totalAlarmDataList.find((d) => d.equip_id === equipId);
+      if (alarm) {
+        guksaId = alarm.guksa_id || '';
+        console.log(`equipId ${equipId}에 해당하는 국사ID 추출: ${guksaId}`);
+      }
+    }
+
+    console.log(`선택된 옵션:`, selectedOption);
+    console.log(`선택된 장비명: ${equipName}`);
+    console.log(`선택된 장비ID: ${equipId}`);
+    console.log(`선택된 국사ID: ${guksaId}`);
+
+    // 현재 상태 저장
+    window.globalState = {
+      totalAlarmDataList: [..._totalAlarmDataList],
+      selectedSector: _selectedSector,
+      currentPage: _currentPage,
+    };
 
     // API 호출하여 맵 그리기 - 장비 ID가 있으면 국사 ID가 없어도 API에서 처리 가능
-    fetchEquipmentData({
-      guksaId: stationId,
-      equipId: equipId,
-      equipName: equipName,
-      viewType: 'equip',
-    });
+    if (_selectedView === 'equip') {
+      fetchEquipmentData({
+        guksaId: guksaId,
+        equipId: equipId,
+        equipName: equipName,
+        viewType: _selectedView,
+      });
+    } else {
+      fetchEquipmentData({
+        guksaId: guksaId,
+        viewType: _selectedView,
+      });
+    }
   });
 }
 
-/**
- * 메인 초기화 및 DOM 준비 이벤트
- */
-// 좌측 사이드바 Resize
-function initSidebarResize() {
-  const dragHandle = DOM.dragHandle();
-  const leftSidebar = DOM.leftSidebar();
-  const toggleBtn = DOM.sideBarToggleBtn();
+// 1. 국사 드롭다운 변경 이벤트 핸들러 추가
+function guksaChangeEventHandler() {
+  const guksaSelect = DOM.searchGuksa();
 
-  if (!leftSidebar || !toggleBtn) {
-    console.error('사이드바 또는 토글 버튼 요소를 찾을 수 없습니다.');
-    return;
-  }
+  if (guksaSelect) {
+    guksaSelect.addEventListener('change', function () {
+      console.log('국사 선택 변경:', this.value);
 
-  let isResizing = false;
-  let originalWidth = leftSidebar.offsetWidth || 250; // 초기 너비 저장
-  let originalPadding = window.getComputedStyle(leftSidebar).getPropertyValue('padding-left'); // 초기 패딩 저장
+      // 국사 변경 시 경보 데이터 다시 가져오기
+      searchAlarms();
 
-  // 드래그 핸들 이벤트 리스너
-  if (dragHandle) {
-    dragHandle.addEventListener('mousedown', function (e) {
-      isResizing = true;
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', stopResize);
-      e.preventDefault();
-      e.stopPropagation();
-    });
-  } else {
-    console.error('드래그 핸들 요소를 찾을 수 없습니다.');
-  }
-
-  // 좌우 수직바 ◀ 토글박스 클릭 이벤트
-  toggleBtn.addEventListener('click', function () {
-    const isHidden = leftSidebar.style.width === '0px';
-
-    if (isHidden) {
-      leftSidebar.style.width = originalWidth + 'px';
-      leftSidebar.style.paddingLeft = originalPadding;
-      toggleBtn.innerHTML = '◀';
-    } else {
-      if (leftSidebar.offsetWidth > 0) {
-        originalWidth = leftSidebar.offsetWidth;
-        originalPadding = window.getComputedStyle(leftSidebar).getPropertyValue('padding-left');
+      // 분야별 장비 목록도 업데이트 (선택된 국사와 분야에 맞게)
+      if (_selectedSector) {
+        fetchSideBarEquipListBySector(_selectedSector);
       }
-      leftSidebar.style.width = '0px';
-      leftSidebar.style.paddingLeft = '0px';
-      toggleBtn.innerHTML = '▶';
-    }
-  });
+    });
 
-  // 마우스 이동 핸들러
-  function handleMouseMove(e) {
-    if (!isResizing) return;
-
-    const newWidth = e.clientX;
-    if (newWidth >= 0 && newWidth < 900) {
-      leftSidebar.style.width = newWidth + 'px';
-      originalWidth = newWidth;
-    }
+    console.log('국사 선택 이벤트 리스너 추가 완료');
+  } else {
+    console.error('국사 선택 요소를 찾을 수 없습니다.');
   }
-
-  // 리사이징 종료 핸들러
-  function stopResize() {
-    if (isResizing) {
-      isResizing = false;
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', stopResize);
-    }
-  }
-
-  // 마우스가 창을 벗어나면 리사이징 중지
-  document.addEventListener('mouseleave', stopResize);
 }
 
 // 초기화 함수
@@ -1290,13 +1054,15 @@ function initAll() {
   console.log('대시보드 초기화 시작');
 
   initDashboard();
-  initDragAndDrop();
-  //setupTableHeaderSort();
+  // initDragAndDrop();
+  // setupTableHeaderSort();
   setupTableRowClick();
   setToggleViewButtons();
 
   initSectorRadioEvent();
-  initEquipSelectEvent();
+
+  equipChangeEventHandler();
+  guksaChangeEventHandler();
 
   // 맵 초기화 - 현재 뷰에 맞게 표시
   changeMapText(_selectedView);
@@ -1319,7 +1085,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setDashboardLayout();
 
   // 맵 컨테이너 초기화
-  initMapContainer();
+  clearMapContainer();
 
   // 사이드바 초기 상태 설정
   setSidebarState();
@@ -1328,7 +1094,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initSidebarResize();
 
   // 국사 목록 로드
-  loadGuksaList();
+  fetchGuksaList();
 
   // 모든 초기화 함수 호출
   initAll();

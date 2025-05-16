@@ -69,39 +69,24 @@ function showErrorMessage(message) {
   alert(message);
 }
 
-// 맵 로딩 메시지 표시
-function showMapLoadingMessage(message) {
-  const mapContainer = DOM.mapContainer();
-  if (mapContainer) {
-    mapContainer.innerHTML = `<div class="loading-indicator">${message}</div>`;
-  }
-}
-
-// 맵 에러 메시지 표시
-function showMapErrorMessage(message) {
-  const mapContainer = DOM.mapContainer();
-  if (mapContainer) {
-    mapContainer.innerHTML = `<div class="error-message">${message}</div>`;
-  }
-}
-
 // 테이블 에러 메시지 표시
 function showTableErrorMessage(message) {
-  const tbody = DOM.alarmTableBody();
+  const tbody = document.getElementById('alarmTableBody');
   if (!tbody) return;
 
   tbody.innerHTML = '';
   const row = document.createElement('tr');
   const cell = document.createElement('td');
+
   cell.colSpan = 8;
   cell.textContent = message;
   cell.style.textAlign = 'center';
+
   row.appendChild(cell);
   tbody.appendChild(row);
 }
 
 // API 호출 공통 함수
-// API 호출 공통 함수 개선
 async function callApi(endpoint, params = {}) {
   console.log(`API 호출: ${endpoint}`, params);
 
@@ -149,19 +134,6 @@ async function callApi(endpoint, params = {}) {
   }
 }
 
-// 최근 경보 발생 시간 업데이트
-function updateRecentUpdateTime(recentTime) {
-  const recentUpdateTimeEl = DOM.recentUpdateTime();
-
-  if (!recentUpdateTimeEl) return;
-
-  if (recentTime) {
-    recentUpdateTimeEl.textContent = `최근 장애발생시간: ${formatDateTime(recentTime)}`;
-  } else {
-    recentUpdateTimeEl.textContent = `최근 장애발생시간: -`;
-  }
-}
-
 // 페이지네이션 렌더링
 function renderPagination(totalItems) {
   const totalPages = Math.ceil(totalItems / PAGE_SIZE);
@@ -200,27 +172,9 @@ function adjustTableHeight(totalPages) {
 
 // 검색 상태 초기화
 function resetSearchState() {
-  window.currentSortedData = null;
-  _alarmTableSortColumn = null;
-  _alarmTableSortDirection = 1;
   document.querySelectorAll('.alarm-table th').forEach((th) => {
     th.classList.remove('sort-asc', 'sort-desc');
   });
-}
-
-// 경보 테이블 초기화
-function initAlarmTable() {
-  console.log('경보 테이블 초기화');
-
-  try {
-    // 기존 테이블 리사이저 해제
-    if (window.tableResizer) {
-      window.tableResizer.dispose();
-      delete window.tableResizer;
-    }
-  } catch (e) {
-    console.warn('테이블 리사이저 해제 오류:', e);
-  }
 }
 
 // 대시보드 레이아웃 설정
@@ -236,7 +190,7 @@ function setDashboardLayout() {
 }
 
 // 맵 컨테이너 초기화
-function initMapContainer() {
+function clearMapContainer() {
   const mapContainer = document.getElementById('map-container');
   if (mapContainer) {
     mapContainer.style.display = 'block';
@@ -245,7 +199,23 @@ function initMapContainer() {
   }
 }
 
-// 사이드바 초기 상태 설정
+// 맵 로딩 메시지 표시
+function showMapLoadingMessage(message) {
+  const mapContainer = DOM.mapContainer();
+  if (mapContainer) {
+    mapContainer.innerHTML = `<div class="loading-indicator">⏳ ${message}</div>`;
+  }
+}
+
+// 맵 에러 메시지 표시
+function showMapErrorMessage(message) {
+  const mapContainer = DOM.mapContainer();
+  if (mapContainer) {
+    mapContainer.innerHTML = `<div class="error-message">❌ ${message}</div>`;
+  }
+}
+
+// 좌측 사이드바 초기 상태 설정
 function setSidebarState() {
   const leftSidebar = document.querySelector('.left-sidebar');
   const toggleBtn = document.getElementById('toggle-btn');
@@ -258,6 +228,170 @@ function setSidebarState() {
     if (!leftSidebar.style.width) {
       leftSidebar.style.width = '260px';
     }
+  }
+}
+// 좌측 사이드바 Resizing
+function initSidebarResize() {
+  const dragHandle = document.getElementById('drag-handle');
+  const leftSidebar = document.querySelector('.left-sidebar');
+  const toggleBtn = document.getElementById('toggle-btn');
+
+  let isResizing = false;
+  let originalWidth = leftSidebar.offsetWidth || 250; // 초기 너비 저장
+  let originalPadding = window.getComputedStyle(leftSidebar).getPropertyValue('padding-left'); // 초기 패딩 저장
+
+  // 드래그 핸들 이벤트 리스너
+  if (dragHandle) {
+    dragHandle.addEventListener('mousedown', function (e) {
+      isResizing = true;
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', stopResize);
+      e.preventDefault();
+      e.stopPropagation();
+    });
+  } else {
+    console.error('드래그 핸들 요소를 찾을 수 없습니다.');
+  }
+
+  // 좌우 수직바 ◀ 토글박스 클릭 이벤트
+  toggleBtn.addEventListener('click', function () {
+    const isHidden = leftSidebar.style.width === '0px';
+
+    if (isHidden) {
+      leftSidebar.style.width = originalWidth + 'px';
+      leftSidebar.style.paddingLeft = originalPadding;
+      toggleBtn.innerHTML = '◀';
+    } else {
+      if (leftSidebar.offsetWidth > 0) {
+        originalWidth = leftSidebar.offsetWidth;
+        originalPadding = window.getComputedStyle(leftSidebar).getPropertyValue('padding-left');
+      }
+      leftSidebar.style.width = '0px';
+      leftSidebar.style.paddingLeft = '0px';
+      toggleBtn.innerHTML = '▶';
+    }
+  });
+
+  // 마우스 이동 핸들러
+  function handleMouseMove(e) {
+    if (!isResizing) return;
+
+    const newWidth = e.clientX;
+    if (newWidth >= 0 && newWidth < 900) {
+      leftSidebar.style.width = newWidth + 'px';
+      originalWidth = newWidth;
+    }
+  }
+
+  // 리사이징 종료 핸들러
+  function stopResize() {
+    if (isResizing) {
+      isResizing = false;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', stopResize);
+    }
+  }
+
+  // 마우스가 창을 벗어나면 리사이징 중지
+  document.addEventListener('mouseleave', stopResize);
+}
+
+// Sector 분야별 대시보드 드래그 앤 드롭 기능
+function initDragAndDrop() {
+  const draggables = document.querySelectorAll('.draggable');
+  draggables.forEach((draggable) => {
+    draggable.addEventListener('dragstart', () => {
+      draggable.classList.add('dragging');
+    });
+
+    draggable.addEventListener('dragend', () => {
+      draggable.classList.remove('dragging');
+    });
+  });
+
+  const containers = document.querySelectorAll('.draggable-container, .dashboard-row');
+  containers.forEach((container) => {
+    container.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const afterElement = getDragAfterElement(container, e.clientX, e.clientY);
+      const draggable = document.querySelector('.dragging');
+      if (afterElement == null) {
+        container.appendChild(draggable);
+      } else {
+        container.insertBefore(draggable, afterElement);
+      }
+    });
+  });
+}
+// 최근 경보 발생 시간 업데이트
+function updateRecentUpdateTime(recentTime) {
+  const recentUpdateTimeEl = document.getElementById('recent-update-time');
+
+  if (!recentUpdateTimeEl) return;
+
+  if (recentTime) {
+    recentUpdateTimeEl.textContent = `최근 경보: ${formatDateTime(recentTime)}`;
+  } else {
+    recentUpdateTimeEl.textContent = `최근 경보: -`;
+  }
+}
+
+// 경보 테이블 필터링
+function updateFilteredAlarmTable() {
+  console.log(`경보 테이블 필터링: ${_selectedSector}`);
+
+  if (!_totalAlarmDataList?.length) {
+    const msg = '경보 데이터가 없습니다. 실시간 경보 수집 버튼을 눌러 데이터를 가져오세요.';
+    console.warn(msg);
+    showTableErrorMessage(msg);
+
+    return;
+  }
+
+  const selectedSector = _selectedSector.toLowerCase();
+  const filteredData = _totalAlarmDataList.filter(
+    (item) => item.sector?.toLowerCase() === selectedSector
+  );
+
+  if (!filteredData.length) {
+    const msg = `"${_selectedSector}" 분야의 데이터가 없습니다.`;
+    console.log(msg);
+    showTableErrorMessage(msg);
+
+    return;
+  }
+  console.log(`경보 테이블 필터링: (데이터 ${filteredData.length}개)`);
+
+  if (!Array.isArray(filteredData) || filteredData.length === 0) {
+    console.error('유효하지 않거나 비어 있는 데이터:', filterData);
+
+    showTableErrorMessage('표시할 데이터가 없습니다.');
+    DOM.pagination().empty();
+
+    return;
+  }
+
+  const totalItems = filteredData.length;
+  console.log(`페이지 렌더링 (총 "${totalItems}"개 항목)`);
+
+  renderPagination(totalItems);
+  updateCurrentPageData();
+
+  console.log('경보 테이블 업데이트 완료');
+}
+
+// 경보 테이블 초기화
+function initAlarmTable() {
+  console.log('경보 테이블 초기화');
+
+  try {
+    // 기존 테이블 Resizer 해제
+    if (window.tableResizer) {
+      window.tableResizer.dispose();
+      delete window.tableResizer;
+    }
+  } catch (e) {
+    console.warn('테이블 Resizer 해제 오류:', e);
   }
 }
 
@@ -306,4 +440,45 @@ function getPageDataSafely(dataArray, prefix = '') {
   }
 
   return { success: true, data: pageData };
+}
+
+// 현재 페이지에 맞춰 경보 테이블 표시
+function updateCurrentPageData() {
+  console.log('updateCurrentPageData 함수 실행');
+
+  let filterData = [];
+
+  console.log(`현재 페이지 데이터 표시 준비: 현재 분야=${_selectedSector || '모든 분야'}`);
+  console.log(`전체 데이터 개수: ${_totalAlarmDataList.length}`);
+
+  filterData = _totalAlarmDataList.filter(
+    (d) => d && d.sector && d.sector.toLowerCase() === _selectedSector.toLowerCase()
+  );
+
+  console.log(
+    `화면에 표시할 데이터: ${filterData.length}개 항목, 현재 분야: ${
+      _selectedSector || '분야 없음'
+    }`
+  );
+
+  // 여기도 데이터 길이 체크
+  if (!filterData || filterData.length === 0) {
+    showTableErrorMessage(
+      _selectedSector
+        ? `${_selectedSector} 분야의 표시할 데이터가 없습니다.`
+        : '표시할 데이터가 없습니다.'
+    );
+    return;
+  }
+
+  // 페이지 데이터 안전하게 가져오기
+  const result = getPageDataSafely(filterData, '페이지 데이터');
+
+  if (result.success) {
+    addRowsToAlarmTable(result.data);
+  } else {
+    showTableErrorMessage(
+      _selectedSector ? `${_selectedSector} 분야의 ${result.message}` : result.message
+    );
+  }
 }

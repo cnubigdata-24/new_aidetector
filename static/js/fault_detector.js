@@ -470,8 +470,8 @@
               `
               <div class="notification">
                 <p>✅ 경보 데이터가 성공적으로 수신되었습니다.</p>
-                <p>총 ${data.alarms.split('\n').length}건의 경보를 확인했습니다.</p>
-                <p>아래 프롬프트의 경보 내역을 확인하고 필요한 경우 장애 증상을 추가하여 분석을 요청하세요.</p>
+                <p>총 <b>${data.alarms.split('\n').length}건의 경보</b>를 확인했습니다.<br>
+                아래 프롬프트의 경보 내역을 확인하고 장애 증상을 추가 입력해서 분석을 요청하세요.</p>
               </div>
             `,
               'bot-msg msg-info'

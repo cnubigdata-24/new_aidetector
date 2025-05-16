@@ -222,7 +222,7 @@ function addTableSearchFilters(table) {
   // 컬럼 선택 레이블
   const labelColumn = document.createElement('span');
   labelColumn.className = 'filter-label';
-  labelColumn.textContent = '대상 컬럼';
+  labelColumn.textContent = '경보현황 컬럼 선택';
   filterForm.appendChild(labelColumn);
 
   // 컬럼 선택 드롭다운

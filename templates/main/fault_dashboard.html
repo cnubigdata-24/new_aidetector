@@ -28,7 +28,7 @@
       <div class="left-sidebar">
         <div>
           <label>국사</label>
-          <select id="searchGuksa" onchange="updateSectorOptions()">
+          <select id="searchGuksa">
             <option value="">전체 국사</option>
           </select>
         </div>
@@ -58,6 +58,17 @@
             </div>
           </div> -->
         </div>
+
+        <div>
+          <label>경보발생 시간</label>
+          <select id="timeFilter">
+            <option value="30">최근 30분</option>
+            <option value="60" selected>최근 1시간</option>
+            <option value="120">최근 2시간</option>
+            <option value="180">최근 3시간</option>
+            <option value="360">최근 6시간</option>
+          </select>
+        </div>
         <div>
           <label>경보발생 장비 선택</label>
           <div class="radio-group" id="searchNWType">
@@ -69,21 +80,10 @@
             <label><input type="radio" name="sector" value="MW" /> MW</label>
           </div>
         </div>
-
         <div>
           <div>
             <select id="searchEquipName" class="equip-select" size="15" multiple></select>
           </div>
-        </div>
-        <div>
-          <label>경보발생 시간</label>
-          <select id="timeFilter">
-            <option value="30">최근 30분</option>
-            <option value="60" selected>최근 1시간</option>
-            <option value="120">최근 2시간</option>
-            <option value="180">최근 3시간</option>
-            <option value="360">최근 6시간</option>
-          </select>
         </div>
 
         <!-- 검색 버튼을 하단으로 이동 -->
@@ -109,10 +109,10 @@
 
             <!-- 우상단에 장비/국사 기준 메뉴 추가 -->
             <div class="view-toggle-buttons">
-              <button id="equip-view-btn" class="view-btn active">장비 기준 경보</button>
-              <button id="guksa-view-btn" class="view-btn">국사 기준 경보</button>
+              <button id="equip-view-btn" class="view-btn active">연결 장비 경보</button>
+              <button id="guksa-view-btn" class="view-btn">동일 국사 경보</button>
 
-              <button id="fault-point-btn" class="fault-view-btn">장비 기준 장애점 찾기</button>
+              <button id="fault-point-btn" class="fault-view-btn">유사사례 장애점 찾기</button>
             </div>
           </div>
 
