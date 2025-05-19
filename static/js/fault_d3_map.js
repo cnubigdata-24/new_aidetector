@@ -156,14 +156,20 @@ function createNetworkMap(equipData) {
   svg.call(zoom);
 
   // 제목 추가 (중앙 상단에 배치)
-  container
-    .append('text')
-    .attr('x', 130)
-    .attr('y', 30)
-    .attr('text-anchor', 'middle')
-    .style('font-size', '16px')
-    .style('font-weight', 'bold')
-    .text(`${guksaName} 경보발생 장비(${nodes.length - 1} 대)`);
+  //   container
+  //     .append('text')
+  //     .attr('x', 130)
+  //     .attr('y', 30)
+  //     .attr('text-anchor', 'middle')
+  //     .style('font-size', '16px')
+  //     .style('font-weight', 'bold')
+  //     .text(`${guksaName} 경보 장비(${nodes.length - 1} 대)`);
+
+  // 제목을 맵 컨테이너 상단에 고정으로 배치 (SVG 밖에 위치)
+  const titleDiv = document.createElement('div');
+  titleDiv.className = 'map-title';
+  titleDiv.textContent = `${guksaName} 경보 장비(${nodes.length - 1} 대)`;
+  mapContainer.appendChild(titleDiv);
 
   // 국사 노드 좌측에 배치
   const centerY = height / 2;
@@ -231,30 +237,29 @@ function createNetworkMap(equipData) {
     .style('overflow-y', 'auto') // 내용이 많을 경우 스크롤 추가
     .style('max-height', '300px'); // 최대 높이 제한
 
-  // 범례 생성 (우측 상단에 배치)
-  const legend = container
-    .append('g')
-    .attr('class', 'legend')
-    .attr('transform', `translate(${width - 130}, 10)`);
-
-  // 범례 배경
-  legend
-    .append('rect')
-    .attr('width', 120)
-    .attr('height', 160)
-    .attr('fill', 'white')
-    .attr('stroke', '#ddd')
-    .attr('rx', 5)
-    .attr('fill-opacity', 0.8);
+  // 범례 생성 (우측 상단에 배치) - SVG 밖에 고정 배치
+  const legendDiv = document.createElement('div');
+  legendDiv.className = 'map-legend';
+  legendDiv.style.position = 'absolute';
+  legendDiv.style.top = '10px';
+  legendDiv.style.right = '10px';
+  legendDiv.style.background = 'white';
+  legendDiv.style.border = '1px solid #ddd';
+  legendDiv.style.borderRadius = '5px';
+  legendDiv.style.padding = '10px';
+  legendDiv.style.zIndex = '1000';
+  legendDiv.style.width = '80px';
+  legendDiv.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+  legendDiv.style.fontSize = '12px';
 
   // 범례 제목
-  legend
-    .append('text')
-    .attr('x', 10)
-    .attr('y', 20)
-    .text('분야별 색상')
-    .style('font-weight', 'bold')
-    .style('font-size', '12px');
+  const legendTitle = document.createElement('div');
+  legendTitle.textContent = '분야별 색상';
+  legendTitle.style.fontWeight = 'bold';
+  legendTitle.style.marginBottom = '8px';
+  legendTitle.style.paddingBottom = '5px';
+  legendTitle.style.borderBottom = '1px solid #eee';
+  legendDiv.appendChild(legendTitle);
 
   // 범례 항목
   const sectors = [
@@ -267,23 +272,29 @@ function createNetworkMap(equipData) {
     { name: '교환', color: '#cc0000', borderColor: '#990000' },
   ];
 
-  sectors.forEach((sector, i) => {
-    // 색상 원
-    legend
-      .append('circle')
-      .attr('cx', 20)
-      .attr('cy', 40 + i * 16)
-      .attr('r', 6)
-      .attr('fill', sector.color);
+  sectors.forEach((sector) => {
+    const legendItem = document.createElement('div');
+    legendItem.style.display = 'flex';
+    legendItem.style.alignItems = 'center';
+    legendItem.style.marginBottom = '5px';
 
-    // 텍스트
-    legend
-      .append('text')
-      .attr('x', 35)
-      .attr('y', 44 + i * 16)
-      .text(sector.name)
-      .style('font-size', '12px');
+    const colorCircle = document.createElement('div');
+    colorCircle.style.width = '12px';
+    colorCircle.style.height = '12px';
+    colorCircle.style.borderRadius = '50%';
+    colorCircle.style.backgroundColor = sector.color;
+    colorCircle.style.border = `1.5px solid ${sector.borderColor}`;
+    colorCircle.style.marginRight = '8px';
+
+    const sectorName = document.createElement('span');
+    sectorName.textContent = sector.name;
+
+    legendItem.appendChild(colorCircle);
+    legendItem.appendChild(sectorName);
+    legendDiv.appendChild(legendItem);
   });
+
+  mapContainer.appendChild(legendDiv);
 
   // 힘 시뮬레이션 생성 및 조정
   const simulation = d3

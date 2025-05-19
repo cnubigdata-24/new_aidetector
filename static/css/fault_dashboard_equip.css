@@ -29,22 +29,6 @@
   filter: brightness(1.05);
 }
 
-/* 장비 선택 리스트 */
-.equip-select {
-  width: 250px;
-  min-height: 350px;
-  font-size: 13px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 2px;
-  box-sizing: border-box;
-  background-color: #fff;
-  display: block;
-  appearance: auto;
-  -webkit-appearance: auto;
-  -moz-appearance: auto;
-}
-
 /* 링크 스타일 */
 .equip-link {
   stroke-width: 3;
@@ -81,16 +65,16 @@
 /* 맵 제목 스타일 */
 .map-title {
   position: absolute;
-  top: 10px;
-  left: 15px;
-  font-size: 16px;
+  top: 5px;
+  left: 10px;
+  font-size: 14px;
   font-weight: bold;
   color: #333;
   z-index: 20;
-  background-color: rgba(249, 249, 249, 0.8);
+  background-color: rgba(255, 255, 255);
   padding: 5px 10px;
   border-radius: 4px;
-  border: 1px solid #eee;
+  border: 0px solid #eee;
 }
 
 /* 분야별 노드 색상 - 색상 개선 */
