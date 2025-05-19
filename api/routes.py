@@ -998,8 +998,17 @@ def alarm_dashboard_equip():
 
         # 특정 장비 기준으로 연결 정보 조회
         if str_equip_id:
-            equipment_dict, processed_links = find_connected_equip_from_graph(
-                str_equip_id)
+            # 장비 ID에 해당하는 국사 이름으로 링크맵 먼저 로드
+            if guksa_name:
+                link_map = load_links_by_guksa(guksa_name)
+                equipment_dict, processed_links = find_connected_equip_from_graph(
+                    str_equip_id, link_map)
+            else:
+                # 국사 정보가 없는 경우 처리
+                print(f"[ERROR] 장비 ID {str_equip_id}에 대한 국사 정보를 찾을 수 없습니다.")
+                # 기본 빈 값 설정
+                equipment_dict = {}
+                processed_links = set()
         # 국사 기준으로 장비 조회
         elif str_guksa_id and guksa_info:
             try:
@@ -1154,12 +1163,12 @@ def load_links_by_guksa(guksa_name):
 
 
 # 2. 인메모리 DFS 기반 장비 연결 탐색
-def find_connected_equip_from_graph(equip_id, link_map, visited=None):
+def find_connected_equip_from_graph(equip_id, link_map, visited=None, depth=0, max_depth=5):
     if visited is None:
         visited = set()
 
     equip_id = str(equip_id)
-    if equip_id in visited:
+    if equip_id in visited or depth >= max_depth:
         return {}, set()
 
     visited.add(equip_id)
@@ -1561,10 +1570,16 @@ def equipment_by_sector():
         # 결과 변환
         equipment_list = []
         for result in results:
+            # result.equip_name이 None이거나 빈 문자열인 경우 result.equip_id 사용
+            equip_name = result.equip_name if result.equip_name else result.equip_id
+
             equipment_list.append({
                 "equip_id": result.equip_id,
-                "equip_name": result.equip_name
+                "equip_name": equip_name
             })
+
+#             print("equip_id: ",  result.equip_id)
+#             print("equip_name: ", result.equip_name)
 
         print(f"조회된 장비 수: {len(equipment_list)}")
         return jsonify(equipment_list)

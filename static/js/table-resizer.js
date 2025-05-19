@@ -222,7 +222,7 @@ function addTableSearchFilters(table) {
   // 컬럼 선택 레이블
   const labelColumn = document.createElement('span');
   labelColumn.className = 'filter-label';
-  labelColumn.textContent = '경보현황 컬럼 선택';
+  labelColumn.textContent = '대상 컬럼 선택';
   filterForm.appendChild(labelColumn);
 
   // 컬럼 선택 드롭다운
@@ -304,10 +304,11 @@ function applyTableFilter() {
 
   // 필터 값이 없으면 전체 데이터 표시
   if (filterValue === '') {
-    if (typeof searchAlarms === 'function') {
-      searchAlarms(); // 원본 데이터 다시 로드
-      return;
-    }
+    // **여기서 장비 select를 강제로 전체로 초기화**
+    document.getElementById('searchEquipName').value = '';
+
+    searchAlarms(true); // 원본 데이터 다시 로드
+    return;
   }
 
   console.log(`[TableSearch] 필터 적용: 컬럼=${columnIndex}, 값=${filterValue}`);
@@ -316,18 +317,17 @@ function applyTableFilter() {
   const table = document.getElementById('alarmTable');
   if (!table) return;
 
-  // 원본 데이터 참조 - 전역변수 alarmData 직접 사용
+  // 원본 데이터 참조 - 전역변수 _totalAlarmDataList 직접 사용
   let sourceData = [];
 
-  // 전역 변수 alarmData 접근 시도
   try {
-    // 전역으로 선언된 alarmData에 접근 시도
-    sourceData = alarmData || [];
-    if (!sourceData || sourceData.length === 0) {
-      // window 객체 접근 시도
-      sourceData = window.alarmData || [];
+    // 전역 변수에서 데이터 가져오기
+    if (typeof _totalAlarmDataList !== 'undefined' && typeof _selectedSector !== 'undefined') {
+      sourceData = _totalAlarmDataList.filter(
+        (item) => item && item.sector && item.sector.toLowerCase() === _selectedSector.toLowerCase()
+      );
     }
-    console.log('[TableSearch] 원본 데이터 수:', sourceData.length);
+    console.log('[TableSearch] 분야별 데이터 수:', sourceData.length);
   } catch (error) {
     console.error('[TableSearch] 데이터 접근 오류:', error);
   }

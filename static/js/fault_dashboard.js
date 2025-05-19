@@ -160,11 +160,11 @@ function setupTableRowClick() {
     console.log(`선택한 국사 ID: ${guksaId}, 장비 ID: ${equipId}, 현재 뷰: ${_selectedView}`);
 
     // 현재 상태 저장
-    window.globalState = {
-      totalAlarmDataList: [..._totalAlarmDataList],
-      selectedSector: _selectedSector,
-      currentPage: _currentPage,
-    };
+    //     window.globalState = {
+    //       totalAlarmDataList: [..._totalAlarmDataList],
+    //       selectedSector: _selectedSector,
+    //       currentPage: _currentPage,
+    //     };
 
     console.log('전역 상태 저장 완료');
 
@@ -361,8 +361,12 @@ async function fetchSideBarEquipListBySector(sector) {
   }
 }
 
+function refreshPage() {
+  location.reload();
+}
+
 // 경보 현황 alarm_dashboard API 호출 (항상 모든 분야 all로 호출)
-async function searchAlarms() {
+async function searchAlarms(isSectorFilterMode = false) {
   try {
     // 로딩 메시지 표시
     showTableErrorMessage('⏱️ 데이터를 불러오는 중입니다...');
@@ -370,8 +374,12 @@ async function searchAlarms() {
     // 검색 파라미터 가져오기, 항상 모든 분야 all로 호출
     const guksa_id = document.getElementById('searchGuksa').value;
     const sectors = ['all'];
-    const equip_name = document.getElementById('searchEquipName').value;
     const timeFilter = document.getElementById('timeFilter').value;
+
+    let equip_name = '';
+    if (isSectorFilterMode) {
+      equip_name = document.getElementById('searchEquipName').value;
+    }
 
     // 요청 객체 생성
     const requestData = {
@@ -777,30 +785,34 @@ async function fetchEquipmentData(options = {}) {
     // 맵 생성
     createEquipmentMap(formattedData, _selectedView);
 
-    // 원래 상태로 복원
-    if (window.globalState) {
-      console.log('저장된 상태로 복원');
+    // UI 동기화
+    syncUIWithFilterState();
 
-      // 전역 변수 복원
-      _totalAlarmDataList = [...window.globalState.totalAlarmDataList];
-      _selectedSector = window.globalState.selectedSector;
-      _currentPage = window.globalState.currentPage;
+    //     // 원래 상태로 복원
+    //     if (window.globalState) {
+    //       console.log('저장된 상태로 복원');
 
-      // UI 동기화
-      syncUIWithFilterState();
-    }
+    //       // 전역 변수 복원
+    //       _totalAlarmDataList = [...window.globalState.totalAlarmDataList];
+    //       _selectedSector = window.globalState.selectedSector;
+    //       _currentPage = window.globalState.currentPage;
+
+    //       // UI 동기화
+    //       syncUIWithFilterState();
+    //     }
   } catch (error) {
     console.error(`장비 정보 조회 오류:`, error);
     showMapErrorMessage(`장비 정보 조회 오류: ${error.message}`);
 
-    // 오류 발생 시에도 상태 복원
-    if (window.globalState) {
-      _totalAlarmDataList = [...window.globalState.totalAlarmDataList];
-      _selectedSector = window.globalState.selectedSector;
-      _currentPage = window.globalState.currentPage;
+    //     // 오류 발생 시에도 상태 복원
+    //     if (window.globalState) {
+    //       _totalAlarmDataList = [...window.globalState.totalAlarmDataList];
+    //       _selectedSector = window.globalState.selectedSector;
+    //       _currentPage = window.globalState.currentPage;
 
-      syncUIWithFilterState();
-    }
+    //       syncUIWithFilterState();
+    //     }
+    syncUIWithFilterState();
   }
 }
 
@@ -905,7 +917,7 @@ function createEquipmentMap(responseData, selectedView = 'equip') {
   if (typeof mapFunction === 'function') {
     // 맵 함수 존재 확인
     try {
-      mapFunction(responseData);
+      mapFunction(responseData, _totalAlarmDataList);
     } catch (error) {
       console.error('맵 생성 오류:', error);
       showMapErrorMessage(`맵 생성 오류: ${error.message}`);
@@ -1016,12 +1028,12 @@ function equipChangeEventHandler() {
     console.log(`선택된 장비ID: ${equipId}`);
     console.log(`선택된 국사ID: ${guksaId}`);
 
-    // 현재 상태 저장
-    window.globalState = {
-      totalAlarmDataList: [..._totalAlarmDataList],
-      selectedSector: _selectedSector,
-      currentPage: _currentPage,
-    };
+    //     // 현재 상태 저장
+    //     window.globalState = {
+    //       totalAlarmDataList: [..._totalAlarmDataList],
+    //       selectedSector: _selectedSector,
+    //       currentPage: _currentPage,
+    //     };
 
     // API 호출하여 맵 그리기 - 장비 ID가 있으면 국사 ID가 없어도 API에서 처리 가능
     if (_selectedView === 'equip') {

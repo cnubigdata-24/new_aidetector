@@ -1,5 +1,14 @@
+// 장비 ID 매핑용 해시맵 생성
+const equipmentMap = {};
+
 // 장비 네트워크 맵 생성 함수
-function createEquipmentNetworkMap(data) {
+function createEquipmentNetworkMap(data, alarmDataList) {
+  console.log('경보 데이터 확인:', {
+    alarmDataListProvided: !!alarmDataList,
+    alarmCount: alarmDataList ? alarmDataList.length : 0,
+    sampleAlarm: alarmDataList && alarmDataList.length > 0 ? alarmDataList[0] : null,
+  });
+
   // 맵 컨테이너 초기화
   const mapContainer = document.getElementById('map-container');
   mapContainer.innerHTML = '';
@@ -15,6 +24,40 @@ function createEquipmentNetworkMap(data) {
     return;
   }
 
+  // 노드 데이터 준비 - id 필드를 일관되게 설정
+  const nodesData = equipmentList.map((d) => {
+    // ID 필드 우선순위: equip_id가 있으면 사용, 없으면 id 사용
+    const nodeId = d.equip_id || d.id;
+
+    let nodeAlarms = [];
+    if (alarmDataList && Array.isArray(alarmDataList)) {
+      nodeAlarms = alarmDataList.filter((alarm) => alarm && alarm.equip_id === nodeId);
+      // 디버깅: 장비별 경보 수 로깅
+      if (nodeAlarms.length > 0) {
+        console.log(`장비 ${nodeId}(${d.equip_name}): ${nodeAlarms.length}개 경보 발견`);
+      }
+    }
+
+    const node = {
+      id: nodeId,
+      equip_id: nodeId,
+      equip_name: d.equip_name || '장비' + nodeId,
+      equip_type: d.equip_type || '타입 미상',
+      equip_field: d.equip_field || '분야 미상',
+      guksa_name: d.guksa_name || '정보 없음',
+      up_down: d.up_down || 'none',
+      // 추가 속성 (나중에 참조하기 위한 용도)
+      connections: [],
+      level: -1, // 레벨 초기화 (토폴로지 분석에 사용)
+      alarms: nodeAlarms,
+    };
+
+    // 장비 ID 맵에 저장
+    equipmentMap[nodeId] = node;
+
+    return node;
+  });
+
   // 제목을 맵 컨테이너 상단에 고정으로 배치 (SVG 밖에 위치)
   const titleDiv = document.createElement('div');
   titleDiv.className = 'map-title';
@@ -23,7 +66,7 @@ function createEquipmentNetworkMap(data) {
 
   // SVG 설정 - 맵 크기 증가
   const width = mapContainer.clientWidth || 1000;
-  const height = 400; // 높이 약간 증가
+  const height = 500; // 높이 약간 증가
 
   // 줌 기능 추가를 위한 전체 그룹 생성
   const svg = d3
@@ -52,15 +95,25 @@ function createEquipmentNetworkMap(data) {
   const fieldColors = {
     MW: '#ff8c00', // 주황색
     IP: '#2ca02c', // 녹색
-    교환: '#d62728', // 빨간색
+    교환: '#279fd6', // 하늘색
     전송: '#9467bd', // 보라색
     선로: '#8c564b', // 갈색
-    무선: '#1f77b4', // 파란색
-    고도: '#e31a1c', // 빨간색
+    무선: '#51f13c', // 파란색
+    //고도: '#e31a1c', // 빨간색
     //     L3: '#e31a1c', // 빨간색
     //     OLT: '#4caf50', // 녹색
     //     MSPP: '#9467bd', // 보라색
   };
+
+  // 노드 툴팁 숨기기 함수
+  function hideNodeTooltip() {
+    d3.select('.equip-map-tooltip').style('opacity', 0);
+  }
+
+  // 모든 툴팁 숨기기 함수
+  function hideAllTooltips() {
+    d3.selectAll('.map-tooltip, .equip-map-tooltip').style('opacity', 0);
+  }
 
   function getNodeColor(equipField) {
     // 필드값이 있으면 사용, 없으면 장비 타입으로 시도
@@ -77,33 +130,6 @@ function createEquipmentNetworkMap(data) {
 
     return '#999'; // 기본 회색
   }
-
-  // 장비 ID 매핑용 해시맵 생성
-  const equipmentMap = {};
-
-  // 노드 데이터 준비 - id 필드를 일관되게 설정
-  const nodesData = equipmentList.map((d) => {
-    // ID 필드 우선순위: equip_id가 있으면 사용, 없으면 id 사용
-    const nodeId = d.equip_id || d.id;
-
-    const node = {
-      id: nodeId,
-      equip_id: nodeId,
-      equip_name: d.equip_name || '장비' + nodeId,
-      equip_type: d.equip_type || '타입 미상',
-      equip_field: d.equip_field || '분야 미상',
-      guksa_name: d.guksa_name || '정보 없음',
-      up_down: d.up_down || 'none',
-      // 추가 속성 (나중에 참조하기 위한 용도)
-      connections: [],
-      level: -1, // 레벨 초기화 (토폴로지 분석에 사용)
-    };
-
-    // 장비 ID 맵에 저장
-    equipmentMap[nodeId] = node;
-
-    return node;
-  });
 
   // 링크 유효성 검사 및 준비
   const validLinks = links.filter((link) => {
@@ -209,11 +235,11 @@ function createEquipmentNetworkMap(data) {
 
   // 맵 중앙 계산 - 위쪽으로 이동
   const centerX = width / 2;
-  const centerY = height / 2 - 60; // 위쪽으로 이동
+  const centerY = height / 2 - 40; // 위쪽으로 이동
 
   // 노드 간 간격 설정 (가로/세로)
-  const horizontalSpacing = 280; // 간격 설정
-  const verticalSpacing = 80; // 세로 간격
+  const horizontalSpacing = 450; // 간격 설정
+  const verticalSpacing = 100; // 세로 간격
 
   // 노드 위치 설정 - 레벨 기반 배치
   function assignNodePositions() {
@@ -569,9 +595,9 @@ function createEquipmentNetworkMap(data) {
   // 분야(field) 텍스트 - 노드 위에 추가, 분야별 동일 색상
   node
     .append('text')
-    .attr('dx', 90) // 노드 중앙에 맞춤
+    .attr('dx', 150) // 노드 중앙에 맞춤
     .attr('dy', -10) // 노드 위에 위치
-    .attr('text-anchor', 'middle')
+    .attr('text-anchor', 'middle') // 중앙 정렬
     .attr('fill', (d) => getNodeColor(d.equip_field)) // 분야별 색상 적용
     .attr('font-size', '14px')
     .attr('font-weight', 'bold')
@@ -580,7 +606,7 @@ function createEquipmentNetworkMap(data) {
   // 노드 텍스트 (장비 이름)
   node
     .append('text')
-    .attr('dx', 90) // 노드 중앙에 맞춤
+    .attr('dx', 150) // 노드 중앙에 맞춤
     .attr('dy', 23) // 위치 조정
     .attr('text-anchor', 'middle')
     .attr('fill', 'white')
@@ -592,7 +618,7 @@ function createEquipmentNetworkMap(data) {
   // 노드 텍스트 (ID, 타입) 추가 - 글자 크기 키움
   node
     .append('text')
-    .attr('dx', 90) // 노드 중앙에 맞춤
+    .attr('dx', 150) // 노드 중앙에 맞춤
     .attr('dy', 40) // 아래쪽에 위치
     .attr('text-anchor', 'middle')
     .attr('fill', 'white')
@@ -610,40 +636,122 @@ function createEquipmentNetworkMap(data) {
   // 노드에 마우스 이벤트 추가 - 흔들림 효과 제거
   node
     .on('mouseover', function (event, d) {
+      // 이전 타이머 제거 (showNodeTooltip 함수에서 가져온 코드)
+      if (window.tooltipTimer) {
+        clearTimeout(window.tooltipTimer);
+        window.tooltipTimer = null;
+      }
+
+      // 툴팁 표시 (두 코드를 통합)
       tooltip.transition().duration(200).style('opacity', 0.9);
 
-      // 툴팁 내용
+      // 경보 내역 HTML 생성 (별도 함수 호출)
+      const alarmHtml = createAlarmHtml(d.equip_id);
+
+      // 툴팁 내용 (기존의 구체적인 HTML 사용)
       tooltip
         .html(
           `
-        <div style="font-weight:bold; font-size:14px; color:#333; margin-bottom:5px; border-bottom:1px solid #eee; padding-bottom:3px;">${
-          d.equip_name
-        }</div>
-        <div style="margin-top:3px;"><span style="font-weight:bold; color:#555;">유형:</span> ${
-          d.equip_type
-        }</div>
-        <div><span style="font-weight:bold; color:#555;">분야:</span> ${d.equip_field}</div>
-        <div><span style="font-weight:bold; color:#555;">국사:</span> ${
-          d.guksa_name || '미상'
-        }</div>
-        <div><span style="font-weight:bold; color:#555;">ID:</span> ${d.equip_id}</div>
-      `
+      <div style="font-weight:bold; font-size:14px; color:#333; margin-bottom:5px; border-bottom:1px solid #eee; padding-bottom:3px;">${
+        d.equip_name
+      }</div>
+      <div style="margin-top:3px;"><span style="font-weight:bold; color:#555;">유형:</span> ${
+        d.equip_type
+      }</div>
+      <div><span style="font-weight:bold; color:#555;">분야:</span> ${d.equip_field}</div>
+      <div><span style="font-weight:bold; color:#555;">국사:</span> ${d.guksa_name || '미상'}</div>
+      <div><span style="font-weight:bold; color:#555;">ID:</span> ${d.equip_id}</div>${alarmHtml}
+    `
         )
         .style('left', event.pageX + 10 + 'px')
-        .style('top', event.pageY - 28 + 'px');
+        .style('top', event.pageY - 28 + 'px')
+        .style('max-width', '350px') // 최대 너비 지정
+        .style('width', 'auto'); // 내용에 맞게 너비 조정
 
-      // 호버 시 노드 강조 (transform 효과 대신 테두리 강조로 변경)
+      // 자동 숨김 타이머 설정 (showNodeTooltip 함수에서 가져온 코드)
+      window.tooltipTimer = setTimeout(function () {
+        tooltip.style('opacity', 0);
+      }, 10000); //10초
+
+      // 호버 시 노드 강조
       d3.select(this).select('rect').attr('stroke-width', 4).attr('stroke', '#333');
     })
     .on('mouseout', function () {
+      // tooltip 숨기기
       tooltip.transition().duration(500).style('opacity', 0);
 
       // 원래 스타일로 복원
       d3.select(this).select('rect').attr('stroke-width', 2).attr('stroke', '#fff');
+    })
+    .on('mouseleave', function () {
+      // hideNodeTooltip 함수와 동일한 기능
+      tooltip.style('opacity', 0);
+
+      // 원래 스타일로 복원 (mouseout과 동일)
+      d3.select(this).select('rect').attr('stroke-width', 2).attr('stroke', '#fff');
     });
 
+  // SVG 자체에 mouseleave 이벤트 추가 - 맵 영역 벗어날 때 툴팁 숨김
+  svg.on('mouseleave', function () {
+    hideAllTooltips();
+  });
   // 시뮬레이션 기능을 제거하고 직접 위치 업데이트
   updatePositions();
+
+  // 장비의 경보 내역 HTML을 생성하는 함수
+  function createAlarmHtml(equipId, maxAlarms = 5) {
+    // 장비 ID로 경보 내역 찾기 (전역 변수인 _totalAlarmDataList에서 검색)
+    let alarmList = [];
+    let allAlarms = [];
+
+    if (alarmDataList && Array.isArray(alarmDataList)) {
+      // 전달받은 alarmDataList 사용 (최신화된 경보 데이터)
+      allAlarms = alarmDataList.filter((alarm) => alarm && alarm.equip_id === equipId);
+      alarmList = allAlarms.slice(0, maxAlarms);
+    } else if (window._totalAlarmDataList && Array.isArray(window._totalAlarmDataList)) {
+      // 만약 전달받은 alarmDataList가 없으면 window._totalAlarmDataList 사용 (폴백)
+      allAlarms = window._totalAlarmDataList.filter((alarm) => alarm && alarm.equip_id === equipId);
+      alarmList = allAlarms.slice(0, maxAlarms);
+    }
+
+    // 경보 내역 HTML 생성
+    let alarmHtml = '';
+
+    if (alarmList.length > 0) {
+      alarmHtml = `
+      <div style="margin-top:10px; border-top:1px solid #eee; padding-top:5px;">
+        <div style="font-weight:bold; color:#d9534f; margin-bottom:5px;">최근 경보 내역:</div>
+    `;
+
+      alarmList.forEach((alarm) => {
+        const validClass = alarm.valid_yn === 'Y' ? 'color:#d9534f;font-weight:bold;' : '';
+        alarmHtml += `
+        <div style="margin-bottom:3px;${validClass}">
+          <span style="font-size:12px;">${
+            formatDateTimeForToolTip(alarm.occur_datetime) || '-'
+          }</span>: 
+          ${alarm.alarm_message || '메시지 없음'}
+        </div>
+      `;
+      });
+
+      if (allAlarms.length > maxAlarms) {
+        alarmHtml += `<div style="font-size:12px;font-style:italic;text-align:right;margin-top:3px;">+ ${
+          allAlarms.length - maxAlarms
+        }개 더 있음...</div>`;
+      }
+
+      alarmHtml += `</div>`;
+    } else {
+      alarmHtml = `
+      <div style="margin-top:10px; border-top:1px solid #eee; padding-top:5px;">
+        <div style="color:#777; font-style:italic;">경보 내역이 없습니다.</div>
+      </div>
+    `;
+    }
+
+    return alarmHtml;
+  }
 
   // 드래그 시작 함수
   function dragstarted(event, d) {

@@ -64,6 +64,24 @@ function formatDateTime(datetimeStr) {
   return datetimeStr.replace('T', ' ').substring(0, 19);
 }
 
+// 시간 포맷팅 함수 (맵의 툴팀에 경보발생시간 추가)
+function formatDateTimeForToolTip(dateTimeStr) {
+  if (!dateTimeStr) return '-';
+
+  try {
+    const date = new Date(dateTimeStr);
+    return date.toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  } catch (e) {
+    return dateTimeStr; // 변환 실패 시 원본 문자열 반환
+  }
+}
 // 일반 에러 메시지 표시
 function showErrorMessage(message) {
   alert(message);

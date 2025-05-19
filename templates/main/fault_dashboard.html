@@ -27,43 +27,53 @@
     <div class="container">
       <div class="left-sidebar">
         <div>
-          <label>국사</label>
-          <select id="searchGuksa">
-            <option value="">전체 국사</option>
-          </select>
+          <div style="display: flex; justify-content: space-between; align-items: center">
+            <span class="default-title">대상 국사 </span>
+
+            <span style="cursor: pointer; font-size: 10pt" onclick="refreshPage()">Refresh ⟳</span>
+          </div>
+          <div>
+            <select id="searchGuksa">
+              <option value="">전체 국사</option>
+            </select>
+          </div>
         </div>
 
         <div>
-          <label>경보발생 시간</label>
+          <label class="default-title">경보발생 시간</label>
           <select id="timeFilter">
-            <option value="30">최근 30분</option>
-            <option value="60" selected>최근 1시간</option>
+            <option value="10">최근 5분</option>
+            <option value="10">최근 10분</option>
+            <option value="15">최근 15분</option>
+            <option value="20">최근 20분</option>
+
+            <option value="30" selected>최근 30분</option>
+            <option value="60">최근 1시간</option>
             <option value="120">최근 2시간</option>
             <option value="180">최근 3시간</option>
             <option value="360">최근 6시간</option>
           </select>
         </div>
+
         <div>
-          <label>경보발생 장비 선택</label>
+          <label class="default-title">경보발생 장비 선택</label>
           <div class="radio-group" id="searchNWType">
-            <label><input type="radio" name="sector" value="IP" checked /> IP</label>
+            <label><input type="radio" name="sector" value="MW" /> MW</label>
             <label><input type="radio" name="sector" value="선로" /> 선로</label>
+            <label><input type="radio" name="sector" value="전송" /> 전송</label>
+            <label><input type="radio" name="sector" value="IP" checked /> IP</label>
+
             <label><input type="radio" name="sector" value="무선" /> 무선</label>
             <label><input type="radio" name="sector" value="교환" /> 교환</label>
-            <label><input type="radio" name="sector" value="전송" /> 전송</label>
-            <label><input type="radio" name="sector" value="MW" /> MW</label>
           </div>
         </div>
         <div>
           <div>
-            <select id="searchEquipName" class="equip-select" size="15" multiple></select>
+            <select id="searchEquipName" class="equip-select" size="15"></select>
           </div>
         </div>
 
-        <!-- 검색 버튼을 하단으로 이동 -->
-        <div class="search-button-container">
-          <button onclick="searchAlarms()" style="width: 100%">실시간 경보 수집</button>
-        </div>
+        <button id="fault-point-btn" class="fault-view-btn">장애점 찾기</button>
       </div>
 
       <div class="drag-handle" id="drag-handle">
@@ -83,10 +93,10 @@
 
             <!-- 우상단에 장비/국사 기준 메뉴 추가 -->
             <div class="view-toggle-buttons">
-              <button id="equip-view-btn" class="view-btn active">연결 장비 경보</button>
-              <button id="guksa-view-btn" class="view-btn">동일 국사 경보</button>
+              <span class="summary-title">경보 맵 기준 선택</span>
 
-              <button id="fault-point-btn" class="fault-view-btn">장애점 찾기</button>
+              <button id="equip-view-btn" class="view-btn active">장비 연결 기준</button>
+              <button id="guksa-view-btn" class="view-btn">동일 국사 기준</button>
             </div>
           </div>
 
