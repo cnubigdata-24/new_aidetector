@@ -267,7 +267,7 @@ function addTableSearchFilters(table) {
   // 필터 적용 버튼
   const filterButton = document.createElement('button');
   filterButton.className = 'filter-button';
-  filterButton.textContent = ' 필터 적용 ';
+  filterButton.textContent = 'Filter';
   filterButton.addEventListener('click', applyTableFilter);
   filterForm.appendChild(filterButton);
 
@@ -276,7 +276,7 @@ function addTableSearchFilters(table) {
   // 필터 초기화 버튼
   const resetButton = document.createElement('button');
   resetButton.className = 'filter-reset';
-  resetButton.textContent = '초기화';
+  resetButton.textContent = 'Reset Filter';
   resetButton.addEventListener('click', resetTableFilter);
   filterContainer.appendChild(resetButton);
 

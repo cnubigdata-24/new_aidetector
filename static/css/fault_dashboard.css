@@ -28,7 +28,7 @@ html {
 
 /* 상단 대시보드 영역 */
 .top-dashboard {
-  padding: 2px 2px;
+  padding: 0px 0px;
   background-color: #f5f5f5;
 
   height: auto;
@@ -96,7 +96,7 @@ html {
 /* 대시보드 박스 스타일 */
 .dashboard-box {
   flex: 0 0 auto !important;
-  margin: 0 1px !important;
+  margin: 0 0px !important;
   padding: 5px !important;
 
   width: 165px !important;
@@ -243,7 +243,7 @@ html {
   padding: 5px 5px;
   margin-bottom: 0px !important;
   background-color: #f5f5f5;
-  border: 1px solid #ddd;
+  border: 0px solid #ddd;
   font-size: 14px;
   text-align: left;
   display: flex;
@@ -866,14 +866,29 @@ select {
   margin-bottom: 5px;
 }
 
-/* 경보 메시지 배지 스타일 */
-.alarm-badge {
-  filter: none;
-  stroke-width: 1.5px;
-  fill: #f3f3f3 !important;
+/* 경보 메시지 배지 스타일 => 스토로크가 d3에서 분야별로 설정되서 스타일이 안 먹히네 */
+.alarm-badge-equip {
+  /* filter: drop-shadow(0 0 3px rgba(255, 0, 0, 0.7)); */
+  /* filter: none !important; */
+  /* stroke-width: 5px; */
+  stroke: rgb(148, 3, 3);
+  fill: #ec0a0ab4 !important;
 }
 
-.alarm-count {
+.alarm-count-equip {
+  transition: all 0.2s ease;
+  pointer-events: none;
+  text-shadow: none !important;
+  fill: rgb(255, 255, 255);
+}
+
+.alarm-badge-guksa {
+  filter: none;
+  stroke-width: 1.5px;
+  fill: #dddddd !important; /* 연한 회색으로 변경 */
+}
+
+.alarm-count-guksa {
   transition: all 0.2s ease;
   pointer-events: none;
 }
@@ -933,11 +948,6 @@ select {
 
 .equip-map-tooltip li {
   margin-bottom: 3px;
-}
-
-/* 경보 개수 표시 */
-.alarm-badge {
-  filter: drop-shadow(0 0 3px rgba(255, 0, 0, 0.7));
 }
 
 /* 범례 스타일 */

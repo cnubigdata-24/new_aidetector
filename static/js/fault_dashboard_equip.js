@@ -43,8 +43,9 @@ const LINK_COLOR = '#FF0000'; // 링크 기본 색상
 const LINK_HOVER_COLOR = '#FF3333'; // 링크 호버 색상
 const LINK_MULTI_BASE_COLOR = 200; // 다중 링크 기본 색상 R값
 const LINK_MULTI_VARIATION = 25; // 링크마다 색상 변화 값
+const FIRST_CENTRAL_NODE_BORDER_COLOR = '#000000';
 
-// 스타일 정의 - CSS를 JavaScript로 통합
+// 스타일 정의 - CSS를 JavaScript로 통합 (css를 별도로 분리할까 고민 중)
 const STYLES = `
   /* 노드 스타일 */
   .equip-node {
@@ -92,6 +93,8 @@ const STYLES = `
     font-weight: bold;
     font-size: 15px;
     fill: #333;
+    cursor: pointer; 
+    pointer-events: auto; /* 마우스 이벤트 활성화 */    
   }
 
   /* 맵 제목 스타일 */
@@ -174,16 +177,16 @@ const STYLES = `
   }
 
   .fit-map-btn {
-    margin: 2px;
-    padding: 5px 10px;
+    margin: 0px;
+    padding: 0px 0px;
     cursor: pointer;
     border-radius: 4px;
-    border: 1px solid #ccc;
-    background: #f5f5f5;
+    border: 0px solid #ccc;
+    background:rgb(255, 255, 255);
   }
 
   .fit-map-btn:hover {
-    background: #e9e9e9;
+    background:rgb(252, 252, 252);
   }
 
   .no-data-message {
@@ -206,8 +209,8 @@ function addStyleSheet() {
   document.head.appendChild(styleEl);
 }
 
-// 장비 네트워크 맵 생성 함수
-function createEquipmentNetworkMap(data, alarmDataList) {
+// 장비 토폴로지 맵 생성 함수
+function createEquipTopologyMap(data, alarmDataList) {
   // 스타일 시트 추가
   addStyleSheet();
 
@@ -221,7 +224,7 @@ function createEquipmentNetworkMap(data, alarmDataList) {
   const mapContainer = document.getElementById('map-container');
   mapContainer.innerHTML = '';
 
-  console.log('장비맵 데이터:', data); // 디버깅용 로그 추가
+  console.log('장비맵 데이터:', data); // 디버깅
 
   // 장비 목록과 링크 정보 추출
   const equipmentList = data.equipment_list || [];
@@ -269,7 +272,7 @@ function createEquipmentNetworkMap(data, alarmDataList) {
   // 제목을 맵 컨테이너 상단에 고정으로 배치 (SVG 밖에 위치)
   const titleDiv = document.createElement('div');
   titleDiv.className = 'map-title';
-  titleDiv.textContent = `장비 연결 현황 (${equipmentList.length} 대)`;
+  titleDiv.textContent = `NW 토폴로지 (${equipmentList.length} 대)`;
   mapContainer.appendChild(titleDiv);
 
   // SVG 설정 - 맵 크기 증가
@@ -705,7 +708,7 @@ function createEquipmentNetworkMap(data, alarmDataList) {
     .attr('stroke-linecap', 'round')
     .attr('stroke-dasharray', (d) =>
       d.sourceField === 'MW' && d.targetField === 'MW' ? '6,4' : null
-    ); // MW-MW만 점선
+    ); // MW-MW 링크만 점선으로...
 
   // 링크 텍스트 배경 (사각형) 부분을 아래처럼 수정
   link
@@ -722,7 +725,8 @@ function createEquipmentNetworkMap(data, alarmDataList) {
     if (d.cable_num && d.cable_num.trim() !== '') {
       const cableText = d.cable_num.length > 20 ? d.cable_num.slice(0, 20) + '...' : d.cable_num;
 
-      d3.select(this)
+      const linkText = d3
+        .select(this)
         .append('text')
         .attr('class', 'link-label')
         .attr('dy', 0)
@@ -731,6 +735,18 @@ function createEquipmentNetworkMap(data, alarmDataList) {
         .attr('font-weight', 'bold')
         .attr('fill', '#333')
         .text(cableText)
+
+        // 링크 텍스트에도 동일한 툴팁 이벤트 적용
+        .style('cursor', 'pointer') // 커서 스타일 명시적 설정
+        .style('pointer-events', 'auto') // 이벤트 받도록 설정
+
+        .on('mouseover', function (event) {
+          showTooltip(event, d, true);
+        })
+
+        .on('mouseout', function () {
+          hideTooltip();
+        })
         .call(
           d3.drag().on('start', linkDragStarted).on('drag', linkDragged).on('end', linkDragEnded)
         );
@@ -827,6 +843,13 @@ function createEquipmentNetworkMap(data, alarmDataList) {
     .attr('stroke', '#fff') // 테두리 색상
     .attr('stroke-width', NODE_STROKE_WIDTH); // 테두리 두께
 
+  // 최초 선정된 노드는 외곽선 항상 추가
+  node
+    .filter((d) => d.id === centralNodeId)
+    .select('rect')
+    .attr('stroke', FIRST_CENTRAL_NODE_BORDER_COLOR)
+    .attr('stroke-width', 4); // 강조 두께
+
   // 분야(field 또는 sector) 텍스트 - 노드 위에 추가, 분야별 동일 색상
   node
     .append('text')
@@ -880,24 +903,24 @@ function createEquipmentNetworkMap(data, alarmDataList) {
   node
     .filter((d) => d.alarms && d.alarms.length > 0) // alarms 배열이 있고 길이가 0보다 큰 노드만
     .append('circle')
-    .attr('class', 'alarm-badge')
+    .attr('class', 'alarm-badge-equip')
     .attr('cx', NODE_WIDTH - 7) // 노드 우측에 배치
     .attr('cy', -3) // 노드 위에 배치
     .attr('r', 14) // 배지 크기
-    .attr('fill', '#ff3333') // 빨간색 배경
-    .attr('stroke', 'white')
-    .attr('stroke-width', 1.2);
+    .attr('fill', 'ec0a0ab4'); // 빨간색 배경
+  //.attr('stroke', 'white')
+  //.attr('stroke-width', 1.2);
 
-  // 노드에 경보 개수 텍스트
+  // 노드에 경보 개수 텍스트 - (노드 우상단)
   node
     .filter((d) => d.alarms && d.alarms.length > 0)
     .append('text')
-    .attr('class', 'alarm-count')
+    .attr('class', 'alarm-count-equip')
     .attr('x', NODE_WIDTH - 7) // 원과 같은 x 위치
     .attr('y', -2) // 약간 조정하여 원 중앙에 위치
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'middle')
-    .attr('fill', 'black') // 흰색 텍스트
+    .attr('fill', 'red')
     .attr('font-size', '14px')
     .attr('font-weight', 'bold')
     .text((d) => d.alarms.length);
@@ -906,24 +929,49 @@ function createEquipmentNetworkMap(data, alarmDataList) {
   node
     .on('mouseover', function (event, d) {
       showTooltip(event, d, false);
-      d3.select(this)
-        .select('rect')
-        .attr('stroke-width', NODE_HOVER_STROKE_WIDTH)
-        .attr('stroke', '#333');
+
+      if (d.id !== centralNodeId) {
+        // 첫 번째 노드가 아니면
+        d3.select(this)
+          .select('rect')
+          .attr('stroke-width', NODE_HOVER_STROKE_WIDTH)
+          .attr('stroke', '#333');
+      }
     })
     .on('mouseout', function () {
       hideTooltip();
-      d3.select(this).select('rect').attr('stroke-width', NODE_STROKE_WIDTH).attr('stroke', '#fff');
+
+      if (d.id !== centralNodeId) {
+        // 마우스 아웃 시 stroke를 완전히 없애야 함
+        d3.select(this).select('rect').attr('stroke', 'none').attr('stroke-width', 0);
+      } else {
+        // 중앙 노드는 유지
+        d3.select(this)
+          .select('rect')
+          .attr('stroke', FIRST_CENTRAL_NODE_BORDER_COLOR)
+          .attr('stroke-width', 4);
+      }
     })
     .on('mouseleave', function () {
       hideTooltip();
-      d3.select(this).select('rect').attr('stroke-width', NODE_STROKE_WIDTH).attr('stroke', '#fff');
+
+      if (d.id !== centralNodeId) {
+        // 마우스 아웃 시 stroke를 완전히 없애야 함
+        d3.select(this).select('rect').attr('stroke', 'none').attr('stroke-width', 0);
+      } else {
+        // 중앙 노드는 유지
+        d3.select(this)
+          .select('rect')
+          .attr('stroke', FIRST_CENTRAL_NODE_BORDER_COLOR)
+          .attr('stroke-width', 4);
+      }
     });
 
   // 링크 그룹에 마우스 이벤트 추가 (MW-MW 색깔)
   link
     .on('mouseover', function (event, d) {
       showTooltip(event, d, true);
+
       if (d.sourceField === 'MW' && d.targetField === 'MW') {
         d3.select(this).select('path').attr('stroke-width', LINK_HOVER_STROKE_WIDTH);
       } else {
@@ -936,6 +984,7 @@ function createEquipmentNetworkMap(data, alarmDataList) {
     })
     .on('mouseout', function (event, d) {
       hideTooltip();
+
       if (d.sourceField === 'MW' && d.targetField === 'MW') {
         d3.select(this).select('path').attr('stroke-width', LINK_STROKE_WIDTH);
       } else {
@@ -953,22 +1002,22 @@ function createEquipmentNetworkMap(data, alarmDataList) {
     hideTooltip();
   });
 
-  // 시뮬레이션 기능을 제거하고 직접 위치 업데이트
+  // 위치 업데이트
   updatePositions();
 
-  // 장비의 경보 내역 HTML을 생성하는 함수
+  // 장비의 경보 내역 HTML 생성
   function createAlarmHtml(equipId, maxAlarms = MAX_TOOLTIP_ALARMS) {
     // 장비 ID로 경보 내역 찾기 (전역 변수인 _totalAlarmDataList에서 검색)
     let alarmList = [];
     let allAlarms = [];
 
     if (alarmDataList && Array.isArray(alarmDataList)) {
-      // 전달받은 alarmDataList 사용 (최신화된 경보 데이터)
+      // 전달받은 alarmDataList 사용 (최신 경보 데이터)
       allAlarms = alarmDataList.filter((alarm) => alarm && alarm.equip_id === equipId);
       alarmList = allAlarms.slice(0, maxAlarms);
-    } else if (window._totalAlarmDataList && Array.isArray(window._totalAlarmDataList)) {
-      // 만약 전달받은 alarmDataList가 없으면 window._totalAlarmDataList 사용 (폴백)
-      allAlarms = window._totalAlarmDataList.filter((alarm) => alarm && alarm.equip_id === equipId);
+    } else if (_totalAlarmDataList && Array.isArray(_totalAlarmDataList)) {
+      // 만약 alarmDataList가 없으면 _totalAlarmDataList 사용 (폴백)
+      allAlarms = _totalAlarmDataList.filter((alarm) => alarm && alarm.equip_id === equipId);
       alarmList = allAlarms.slice(0, maxAlarms);
     }
 
@@ -1019,11 +1068,12 @@ function createEquipmentNetworkMap(data, alarmDataList) {
     // 드래그 중인 클래스 추가
     d3.select(this).classed('dragging', true);
 
-    // 다른 노드들 약간 투명하게
+    // 다른 노드들 투명도 설정
     node
       .filter((n) => n.id !== d.id)
       .select('rect')
-      .style('opacity', 0.7);
+      // .style('opacity', 0.7);
+      .style('opacity', 1); // 드래그할 때 투명하지 않도록 설정
 
     // 연결된 링크는 강조, 나머지 링크는 흐리게
     link.each(function (l) {
@@ -1244,10 +1294,10 @@ function createEquipmentNetworkMap(data, alarmDataList) {
     controlPanel
       .append('button')
       .attr('class', 'fit-map-btn')
-      .style('margin', '2px')
-      .style('padding', '5px 10px')
+      .style('margin', '0px')
+      .style('padding', '0px 0px')
       .style('cursor', 'pointer')
-      .text('맵 맞추기')
+      .text('중앙애 배치')
       .on('click', () => fitAllNodes());
   }
 

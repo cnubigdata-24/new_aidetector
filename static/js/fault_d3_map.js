@@ -55,8 +55,8 @@ const FORCE = {
   ALPHA: 0.3,
 };
 
-// 네트워크 맵 생성 함수
-function createNetworkMap(equipData) {
+// 토폴로지 맵 생성 함수
+function createGuksaTopologyMap(equipData) {
   // 맵 컨테이너 초기화
   const mapContainer = document.getElementById('map-container');
   mapContainer.innerHTML = '';
@@ -72,10 +72,10 @@ function createNetworkMap(equipData) {
   const links = [];
 
   // 분야별 노드와 링크 생성
-  const uniqueEquipMap = createEquipmentNodes(equipData.equip_list);
+  const uniqueEquipMap = createEquipNodes(equipData.equip_list);
 
   // 유니크한 장비 노드 추가 및 링크 생성
-  addEquipmentNodesToMap(uniqueEquipMap, nodes, links, guksaName);
+  addEquipNodesToMap(uniqueEquipMap, nodes, links, guksaName);
 
   // 노드가 없으면 메시지 표시 후 종료
   if (nodes.length <= 1) {
@@ -112,7 +112,7 @@ function createNetworkMap(equipData) {
 }
 
 // 장비 노드 생성 함수
-function createEquipmentNodes(equipList) {
+function createEquipNodes(equipList) {
   const uniqueEquipMap = new Map();
 
   // 분야별 카운터
@@ -177,7 +177,7 @@ function createEquipmentNodes(equipList) {
 }
 
 // 노드와 링크에 장비 추가
-function addEquipmentNodesToMap(uniqueEquipMap, nodes, links, guksaName) {
+function addEquipNodesToMap(uniqueEquipMap, nodes, links, guksaName) {
   for (const equip of uniqueEquipMap.values()) {
     nodes.push(equip);
 
@@ -458,7 +458,7 @@ function createNodes(container, nodes, simulation, tooltip) {
   node
     .filter((d) => d.type === 'equip' && d.alarmMessages && d.alarmMessages.length > 1)
     .append('circle')
-    .attr('class', 'alarm-badge')
+    .attr('class', 'alarm-badge-guksa')
     .attr('cx', 12)
     .attr('cy', -12)
     .attr('r', LAYOUT.BADGE_RADIUS)
@@ -470,7 +470,7 @@ function createNodes(container, nodes, simulation, tooltip) {
   node
     .filter((d) => d.type === 'equip' && d.alarmMessages && d.alarmMessages.length > 1)
     .append('text')
-    .attr('class', 'alarm-count')
+    .attr('class', 'alarm-count-guksa')
     .attr('x', 12)
     .attr('y', -11)
     .attr('text-anchor', 'middle')
@@ -575,7 +575,7 @@ function handleMouseOver(element, event, d, tooltip) {
 
   // 경보 배지 크기 조정
   d3.select(element)
-    .select('.alarm-badge')
+    .select('.alarm-badge-guksa')
     .transition()
     .duration(200)
     .attr('r', LAYOUT.BADGE_RADIUS_HOVER)
@@ -583,7 +583,7 @@ function handleMouseOver(element, event, d, tooltip) {
     .attr('cy', -15);
 
   d3.select(element)
-    .select('.alarm-count')
+    .select('.alarm-count-guksa')
     .transition()
     .duration(200)
     .attr('x', 15)
@@ -609,7 +609,7 @@ function handleMouseOut(element, tooltip) {
 
   // 경보 배지 원래 크기로
   d3.select(element)
-    .select('.alarm-badge')
+    .select('.alarm-badge-guksa')
     .transition()
     .duration(200)
     .attr('r', LAYOUT.BADGE_RADIUS)
@@ -617,7 +617,7 @@ function handleMouseOut(element, tooltip) {
     .attr('cy', -12);
 
   d3.select(element)
-    .select('.alarm-count')
+    .select('.alarm-count-guksa')
     .transition()
     .duration(200)
     .attr('x', 12)

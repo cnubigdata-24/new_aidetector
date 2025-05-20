@@ -783,7 +783,7 @@ async function fetchEquipmentData(options = {}) {
     }
 
     // 맵 생성
-    createEquipmentMap(formattedData, _selectedView);
+    createMapTotal(formattedData, _selectedView);
 
     // UI 동기화
     syncUIWithFilterState();
@@ -905,13 +905,13 @@ function formatEquipmentData(responseData, guksaId = '', selectedView = 'equip')
 }
 
 // 맵 생성 통합 함수 (createEquipmentNetworkMap, createNetworkMap)
-function createEquipmentMap(responseData, selectedView = 'equip') {
+function createMapTotal(responseData, selectedView = 'equip') {
   let mapFunction;
 
   if (selectedView === 'equip') {
-    mapFunction = window.createEquipmentNetworkMap;
+    mapFunction = window.createEquipTopologyMap;
   } else {
-    mapFunction = window.window.createNetworkMap;
+    mapFunction = window.window.createGuksaTopologyMap;
   }
 
   if (typeof mapFunction === 'function') {
@@ -928,10 +928,10 @@ function createEquipmentMap(responseData, selectedView = 'equip') {
     let errorMsg;
 
     if (selectedView === 'equip') {
-      functionName = 'createEquipmentNetworkMap';
+      functionName = 'createEquipTopologyMap';
       errorMsg = '장비 네트워크 맵을 표시할 수 없습니다. 관련 스크립트를 확인하세요.';
     } else {
-      functionName = 'createNetworkMap';
+      functionName = 'createGuksaTopologyMap';
       errorMsg = '국사 장비 맵을 표시할 수 없습니다. 관련 스크립트를 확인하세요.';
     }
 
