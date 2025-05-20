@@ -5,6 +5,7 @@ const NODE_HEIGHT = 50;
 const NODE_CORNER_RADIUS = 10;
 const NODE_STROKE_WIDTH = 2;
 const NODE_HOVER_STROKE_WIDTH = 4;
+const MAX_NODE_NAME_LENGTH = 20;
 
 // 링크 관련 상수
 const LINK_STROKE_WIDTH = 3;
@@ -298,11 +299,6 @@ function createEquipmentNetworkMap(data, alarmDataList) {
   // SVG에 줌 기능 적용
   svg.call(zoom);
 
-  // 노드 툴팁 숨기기 함수
-  function hideNodeTooltip() {
-    d3.select('.equip-map-tooltip').style('opacity', 0);
-  }
-
   // 모든 툴팁 숨기기 함수
   function hideAllTooltips() {
     d3.selectAll('.map-tooltip, .equip-map-tooltip').style('opacity', 0);
@@ -355,7 +351,7 @@ function createEquipmentNetworkMap(data, alarmDataList) {
     };
   });
 
-  // 연결 정보 구축 (각 노드마다 연결된 노드 목록)
+  // 노드간 링크 정보 구축 (각 노드마다 연결된 노드 목록)
   linksData.forEach((link) => {
     const source = equipmentMap[link.source];
     const target = equipmentMap[link.target];
@@ -369,7 +365,7 @@ function createEquipmentNetworkMap(data, alarmDataList) {
     }
   });
 
-  // 네트워크 토폴로지 분석 및 계층 구조 파악
+  // NW 토폴로지 분석 및 계층 구조 파악
   function analyzeNetworkTopology() {
     // 연결 정도(degree)가 가장 높은 노드를 루트/중앙 노드로 간주
     let centralNodeId = null;
@@ -424,7 +420,7 @@ function createEquipmentNetworkMap(data, alarmDataList) {
     return { centralNodeId: null, levels: {} };
   }
 
-  // 네트워크 토폴로지 분석
+  // NW 토폴로지 분석
   const { centralNodeId, levels } = analyzeNetworkTopology();
 
   // 맵 중앙 계산 - 위쪽으로 이동
@@ -579,7 +575,7 @@ function createEquipmentNetworkMap(data, alarmDataList) {
   // 노드 위치 할당
   assignNodePositions();
 
-  // 특정 링크 쌍 사이의 복수 링크를 파악하여 인덱싱
+  // 특정 링크 쌍 사이의 멀티 링크를 파악하여 인덱싱
   const linkPairs = {};
   linksData.forEach((link) => {
     // 소스/타겟 ID를 항상 일관된 순서로 사용 (작은 ID가 먼저 오도록)
@@ -595,7 +591,7 @@ function createEquipmentNetworkMap(data, alarmDataList) {
     linkPairs[pairKey].push(link);
   });
 
-  // 두 노드 사이의 복수 링크 처리를 위한 함수 개선
+  // 두 노드 사이의 멀티 링크 처리를 위한 함수 개선
   function getLinkOffset(d) {
     if (!d.source || !d.target) return 0;
 
@@ -721,9 +717,11 @@ function createEquipmentNetworkMap(data, alarmDataList) {
     .attr('height', 0)
     .attr('opacity', 0); // 완전히 투명
 
-  // 링크 텍스트 (케이블 번호) - cable_num이 있을 때만 생성
+  // 링크 텍스트 (케이블 번호) - 20자까지만 표시
   link.each(function (d) {
     if (d.cable_num && d.cable_num.trim() !== '') {
+      const cableText = d.cable_num.length > 20 ? d.cable_num.slice(0, 20) + '...' : d.cable_num;
+
       d3.select(this)
         .append('text')
         .attr('class', 'link-label')
@@ -732,39 +730,81 @@ function createEquipmentNetworkMap(data, alarmDataList) {
         .attr('font-size', '15px')
         .attr('font-weight', 'bold')
         .attr('fill', '#333')
-        .text(d.cable_num)
+        .text(cableText)
         .call(
           d3.drag().on('start', linkDragStarted).on('drag', linkDragged).on('end', linkDragEnded)
         );
     }
   });
 
-  // 링크 그룹에 마우스 이벤트 추가 (MW-MW 색깔)
-  link
-    .on('mouseover', function (event, d) {
-      if (d.sourceField === 'MW' && d.targetField === 'MW') {
-        d3.select(this).select('path').attr('stroke-width', LINK_HOVER_STROKE_WIDTH);
-      } else {
-        d3.select(this)
-          .select('path')
-          .attr('stroke-width', LINK_HOVER_STROKE_WIDTH)
-          .attr('stroke', LINK_HOVER_COLOR);
-      }
-      d3.select(this).select('rect').attr('stroke', '#999').attr('stroke-width', 1);
-    })
-    .on('mouseout', function (event, d) {
-      if (d.sourceField === 'MW' && d.targetField === 'MW') {
-        d3.select(this).select('path').attr('stroke-width', LINK_STROKE_WIDTH);
-      } else {
-        d3.select(this)
-          .select('path')
-          .attr('stroke-width', LINK_STROKE_WIDTH)
-          .attr('stroke', LINK_COLOR);
-      }
-      d3.select(this).select('rect').attr('stroke', '#ddd').attr('stroke-width', 0.5);
-    });
+  // 툴팁 요소 생성 (노드/링크 공용)
+  const tooltip = d3
+    .select('body')
+    .append('div')
+    .attr('class', 'equip-map-tooltip')
+    .style('opacity', 0);
 
-  // 노드 그리기
+  // 노드/링크 툴팁 표시 함수 (공통)
+  function showTooltip(event, d, isLink = false) {
+    if (window.tooltipTimer) {
+      clearTimeout(window.tooltipTimer);
+      window.tooltipTimer = null;
+    }
+    tooltip.transition().duration(TOOLTIP_DURATION).style('opacity', 0.9);
+
+    // 노드/링크 정보 추출
+    let equip_id, equip_type, equip_field, equip_name, guksa_name, alarms;
+    if (isLink) {
+      // 링크의 source/target에서 정보 추출
+      const source = typeof d.source === 'object' ? d.source : equipmentMap[d.source];
+      const target = typeof d.target === 'object' ? d.target : equipmentMap[d.target];
+      // 링크의 대표 장비(예: source) 기준으로 정보 표시 (양쪽 다 보여주고 싶으면 확장 가능)
+      // to do list => 현재 링크 툴팁에 표시되는 경보는 소스 노드의 경보임 => 링크의 경보를 보여주도록 수정 필요 #########
+      equip_id = source.equip_id;
+      equip_type = source.equip_type;
+      equip_field = source.equip_field;
+      equip_name = source.equip_name;
+      guksa_name = source.guksa_name;
+      alarms = source.alarms;
+    } else {
+      equip_id = d.equip_id;
+      equip_type = d.equip_type;
+      equip_field = d.equip_field;
+      equip_name = d.equip_name;
+      guksa_name = d.guksa_name;
+      alarms = d.alarms;
+    }
+
+    // 경보 내역 HTML 생성 (공통 함수 사용)
+    const alarmHtml = createAlarmHtml(equip_id);
+
+    // 툴팁 내용
+    tooltip
+      .html(
+        `
+      <div style="font-weight:bold; font-size:14px; color:#333; margin-bottom:5px; border-bottom:1px solid #eee; padding-bottom:3px;">${equip_name}</div>
+      <div style="margin-top:3px;"><span style="font-weight:bold; color:#555;">유형:</span> ${equip_type}</div>
+      <div><span style="font-weight:bold; color:#555;">분야:</span> ${equip_field}</div>
+      <div><span style="font-weight:bold; color:#555;">국사:</span> ${guksa_name || '미상'}</div>
+      <div><span style="font-weight:bold; color:#555;">ID:</span> ${equip_id}</div>${alarmHtml}
+    `
+      )
+      .style('left', event.pageX + 10 + 'px')
+      .style('top', event.pageY - 28 + 'px')
+      .style('max-width', '350px')
+      .style('width', 'auto');
+
+    window.tooltipTimer = setTimeout(function () {
+      tooltip.style('opacity', 0);
+    }, TOOLTIP_AUTO_HIDE_DELAY);
+  }
+
+  // 툴팁 숨김 함수 (공통)
+  function hideTooltip() {
+    tooltip.transition().duration(500).style('opacity', 0);
+  }
+
+  // 노드에 마우스 이벤트 추가 - 흔들림 효과 제거
   const node = container
     .append('g')
     .attr('class', 'nodes')
@@ -787,7 +827,7 @@ function createEquipmentNetworkMap(data, alarmDataList) {
     .attr('stroke', '#fff') // 테두리 색상
     .attr('stroke-width', NODE_STROKE_WIDTH); // 테두리 두께
 
-  // 분야(field) 텍스트 - 노드 위에 추가, 분야별 동일 색상
+  // 분야(field 또는 sector) 텍스트 - 노드 위에 추가, 분야별 동일 색상
   node
     .append('text')
     .attr('dx', NODE_WIDTH_HALF) // 노드 중앙에 맞춤
@@ -805,93 +845,112 @@ function createEquipmentNetworkMap(data, alarmDataList) {
     .attr('dy', 23) // 위치 조정
     .attr('text-anchor', 'middle')
     .attr('fill', 'white')
-    .text((d) => d.equip_name)
+    .text((d) => {
+      // 20자 제한
+      const name = d.equip_name || '';
+      return name.length > MAX_NODE_NAME_LENGTH
+        ? name.slice(0, MAX_NODE_NAME_LENGTH) + '...'
+        : name;
+    })
     .style('font-size', '16px')
     .style('font-weight', 'bold')
-    .style('text-shadow', '1px 1px 1px rgba(0,0,0,0.3)'); // 텍스트 가독성 효과
+    .style('text-shadow', '1px 1px 1px rgba(0,0,0,0.3)');
 
-  // 노드 텍스트 (ID, 타입) 추가 - 글자 크기 키움
+  // 노드 텍스트 (타입, ID) 추가
   node
     .append('text')
     .attr('dx', NODE_WIDTH_HALF) // 노드 중앙에 맞춤
     .attr('dy', 40) // 아래쪽에 위치
     .attr('text-anchor', 'middle')
     .attr('fill', 'white')
-    .text((d) => `(${d.equip_id}, ${d.equip_type})`)
+    .text((d) => {
+      // 20자 제한
+      const type = d.equip_type || '';
+      const id = d.equip_id || '';
+      const label = `${type}:${id}`;
+
+      return label.length > MAX_NODE_NAME_LENGTH
+        ? label.slice(0, MAX_NODE_NAME_LENGTH) + '...'
+        : label;
+    })
     .style('font-size', '14px')
     .style('font-weight', 'bold');
 
-  // 툴팁 요소 생성
-  const tooltip = d3
-    .select('body')
-    .append('div')
-    .attr('class', 'equip-map-tooltip')
-    .style('opacity', 0);
+  // 노드에 경보 개수 배지 - (노드 우상단)
+  node
+    .filter((d) => d.alarms && d.alarms.length > 0) // alarms 배열이 있고 길이가 0보다 큰 노드만
+    .append('circle')
+    .attr('class', 'alarm-badge')
+    .attr('cx', NODE_WIDTH - 7) // 노드 우측에 배치
+    .attr('cy', -3) // 노드 위에 배치
+    .attr('r', 14) // 배지 크기
+    .attr('fill', '#ff3333') // 빨간색 배경
+    .attr('stroke', 'white')
+    .attr('stroke-width', 1.2);
+
+  // 노드에 경보 개수 텍스트
+  node
+    .filter((d) => d.alarms && d.alarms.length > 0)
+    .append('text')
+    .attr('class', 'alarm-count')
+    .attr('x', NODE_WIDTH - 7) // 원과 같은 x 위치
+    .attr('y', -2) // 약간 조정하여 원 중앙에 위치
+    .attr('text-anchor', 'middle')
+    .attr('dominant-baseline', 'middle')
+    .attr('fill', 'black') // 흰색 텍스트
+    .attr('font-size', '14px')
+    .attr('font-weight', 'bold')
+    .text((d) => d.alarms.length);
 
   // 노드에 마우스 이벤트 추가 - 흔들림 효과 제거
   node
     .on('mouseover', function (event, d) {
-      // 이전 타이머 제거 (showNodeTooltip 함수에서 가져온 코드)
-      if (window.tooltipTimer) {
-        clearTimeout(window.tooltipTimer);
-        window.tooltipTimer = null;
-      }
-
-      // 툴팁 표시 (두 코드를 통합)
-      tooltip.transition().duration(TOOLTIP_DURATION).style('opacity', 0.9);
-
-      // 경보 내역 HTML 생성 (별도 함수 호출)
-      const alarmHtml = createAlarmHtml(d.equip_id);
-
-      // 툴팁 내용 (기존의 구체적인 HTML 사용)
-      tooltip
-        .html(
-          `
-      <div style="font-weight:bold; font-size:14px; color:#333; margin-bottom:5px; border-bottom:1px solid #eee; padding-bottom:3px;">${
-        d.equip_name
-      }</div>
-      <div style="margin-top:3px;"><span style="font-weight:bold; color:#555;">유형:</span> ${
-        d.equip_type
-      }</div>
-      <div><span style="font-weight:bold; color:#555;">분야:</span> ${d.equip_field}</div>
-      <div><span style="font-weight:bold; color:#555;">국사:</span> ${d.guksa_name || '미상'}</div>
-      <div><span style="font-weight:bold; color:#555;">ID:</span> ${d.equip_id}</div>${alarmHtml}
-    `
-        )
-        .style('left', event.pageX + 10 + 'px')
-        .style('top', event.pageY - 28 + 'px')
-        .style('max-width', '350px') // 최대 너비 지정
-        .style('width', 'auto'); // 내용에 맞게 너비 조정
-
-      // 자동 숨김 타이머 설정 (showNodeTooltip 함수에서 가져온 코드)
-      window.tooltipTimer = setTimeout(function () {
-        tooltip.style('opacity', 0);
-      }, TOOLTIP_AUTO_HIDE_DELAY); //10초
-
-      // 호버 시 노드 강조
+      showTooltip(event, d, false);
       d3.select(this)
         .select('rect')
         .attr('stroke-width', NODE_HOVER_STROKE_WIDTH)
         .attr('stroke', '#333');
     })
     .on('mouseout', function () {
-      // tooltip 숨기기
-      tooltip.transition().duration(500).style('opacity', 0);
-
-      // 원래 스타일로 복원
+      hideTooltip();
       d3.select(this).select('rect').attr('stroke-width', NODE_STROKE_WIDTH).attr('stroke', '#fff');
     })
     .on('mouseleave', function () {
-      // hideNodeTooltip 함수와 동일한 기능
-      tooltip.style('opacity', 0);
-
-      // 원래 스타일로 복원 (mouseout과 동일)
+      hideTooltip();
       d3.select(this).select('rect').attr('stroke-width', NODE_STROKE_WIDTH).attr('stroke', '#fff');
+    });
+
+  // 링크 그룹에 마우스 이벤트 추가 (MW-MW 색깔)
+  link
+    .on('mouseover', function (event, d) {
+      showTooltip(event, d, true);
+      if (d.sourceField === 'MW' && d.targetField === 'MW') {
+        d3.select(this).select('path').attr('stroke-width', LINK_HOVER_STROKE_WIDTH);
+      } else {
+        d3.select(this)
+          .select('path')
+          .attr('stroke-width', LINK_HOVER_STROKE_WIDTH)
+          .attr('stroke', LINK_HOVER_COLOR);
+      }
+      d3.select(this).select('rect').attr('stroke', '#999').attr('stroke-width', 1);
+    })
+    .on('mouseout', function (event, d) {
+      hideTooltip();
+      if (d.sourceField === 'MW' && d.targetField === 'MW') {
+        d3.select(this).select('path').attr('stroke-width', LINK_STROKE_WIDTH);
+      } else {
+        d3.select(this)
+          .select('path')
+          .attr('stroke-width', LINK_STROKE_WIDTH)
+          .attr('stroke', LINK_COLOR);
+      }
+      d3.select(this).select('rect').attr('stroke', '#ddd').attr('stroke-width', 0.5);
     });
 
   // SVG 자체에 mouseleave 이벤트 추가 - 맵 영역 벗어날 때 툴팁 숨김
   svg.on('mouseleave', function () {
     hideAllTooltips();
+    hideTooltip();
   });
 
   // 시뮬레이션 기능을 제거하고 직접 위치 업데이트

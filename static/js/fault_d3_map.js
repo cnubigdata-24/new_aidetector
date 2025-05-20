@@ -1,3 +1,60 @@
+// 상수 정의
+const COLORS = {
+  DEFAULT: {
+    FILL: '#ff5555',
+    BORDER: '#cc0000',
+  },
+  GUKSA: {
+    FILL: '#0056b3',
+    BORDER: '#003366',
+  },
+  SECTOR: {
+    MW: { FILL: '#ffaa00', BORDER: '#e67700' },
+    선로: { FILL: '#ff8833', BORDER: '#cc5500' },
+    전송: { FILL: '#ff66cc', BORDER: '#cc0099' },
+    IP: { FILL: '#ff3333', BORDER: '#cc0000' },
+    무선: { FILL: '#ffcc66', BORDER: '#cc9933' },
+    교환: { FILL: '#cc0000', BORDER: '#990000' },
+  },
+};
+
+const LAYOUT = {
+  LEFT_MARGIN: 80,
+  TOP_MARGIN: 80,
+  NODE_RADIUS: 15,
+  NODE_RADIUS_HOVER: 18,
+  GUKSA_WIDTH: 60,
+  GUKSA_HEIGHT: 40,
+  GUKSA_WIDTH_HOVER: 66,
+  GUKSA_HEIGHT_HOVER: 45,
+  BADGE_RADIUS: 8,
+  BADGE_RADIUS_HOVER: 10,
+  SECTOR_ORDER: ['MW', '선로', '전송', 'IP', '무선', '교환'],
+};
+
+const STYLE = {
+  NODE_STROKE_WIDTH: 2.5,
+  LINK_STROKE_WIDTH: 2,
+  LINK_OPACITY: 0.6,
+  FONT_SIZE: {
+    GUKSA: '13px',
+    SECTOR: '12px',
+    LABEL: '11px',
+    BADGE: '8px',
+    BADGE_HOVER: '10px',
+  },
+};
+
+const FORCE = {
+  LINK_DISTANCE: 100,
+  CHARGE_STRENGTH: -50,
+  X_STRENGTH: 1,
+  Y_STRENGTH: 0.3,
+  COLLIDE_RADIUS: 20,
+  ALPHA_DECAY: 0.05,
+  ALPHA: 0.3,
+};
+
 // 네트워크 맵 생성 함수
 function createNetworkMap(equipData) {
   // 맵 컨테이너 초기화
@@ -9,12 +66,53 @@ function createNetworkMap(equipData) {
 
   // 노드 및 링크 데이터 준비
   const nodes = [
-    { id: guksaName, type: 'guksa', color: '#0056b3' }, // 국사 노드 (파란색)
+    { id: guksaName, type: 'guksa', color: COLORS.GUKSA.FILL, borderColor: COLORS.GUKSA.BORDER },
   ];
 
   const links = [];
 
-  // 중복 장비 이름 처리를 위한 맵 - 동일 장비는 하나의 노드로 통합
+  // 분야별 노드와 링크 생성
+  const uniqueEquipMap = createEquipmentNodes(equipData.equip_list);
+
+  // 유니크한 장비 노드 추가 및 링크 생성
+  addEquipmentNodesToMap(uniqueEquipMap, nodes, links, guksaName);
+
+  // 노드가 없으면 메시지 표시 후 종료
+  if (nodes.length <= 1) {
+    mapContainer.innerHTML = '<div class="no-data-message">표시할 장비 데이터가 없습니다.</div>';
+    return;
+  }
+
+  // SVG 설정 및 생성
+  const { svg, container, currentZoom } = setupSVG(mapContainer);
+
+  // 제목 추가
+  addTitle(mapContainer, guksaName, nodes.length - 1);
+
+  // 범례 추가
+  addLegend(mapContainer);
+
+  // 노드 위치 설정
+  setupNodePositions(nodes);
+
+  // 툴팁 생성
+  const tooltip = createTooltip();
+
+  // 힘 시뮬레이션 생성
+  const simulation = createSimulation(nodes, links);
+
+  // 링크 생성
+  const link = createLinks(container, links);
+
+  // 노드 생성
+  const node = createNodes(container, nodes, simulation, tooltip);
+
+  // 시뮬레이션 업데이트 함수 설정
+  setupSimulation(simulation, nodes, link, node);
+}
+
+// 장비 노드 생성 함수
+function createEquipmentNodes(equipList) {
   const uniqueEquipMap = new Map();
 
   // 분야별 카운터
@@ -27,8 +125,7 @@ function createNetworkMap(equipData) {
     교환: 0,
   };
 
-  // 장비 노드 추가 - 장비별로 그룹화
-  equipData.equip_list.forEach((equip) => {
+  equipList.forEach((equip) => {
     // 장비 이름 없으면 건너뛰기
     if (!equip.equip_name) return;
 
@@ -47,44 +144,18 @@ function createNetworkMap(equipData) {
         existingEquip.alarmMessages.push(equip.alarm_message);
       }
     } else {
-      // 최초 발견된 장비는 새 객체로 저장 분야별 카운터 증가
+      // 최초 발견된 장비 처리
       const sector = equip.sector || '알 수 없음';
+
+      // 분야별 카운터 증가
       if (sectorCounts[sector] !== undefined) {
         sectorCounts[sector]++;
       } else {
         sectorCounts[sector] = 1;
       }
 
-      // 분야에 따라 색상 지정 - 경보 색상을 더 잘 구분되도록 변경
-      let color = '#ff5555'; // 기본 경보 색상 (빨간색)
-      let borderColor = '#cc0000'; // 기본 테두리 색상 (더 진한 빨간색)
-
-      switch (sector) {
-        case 'MW':
-          color = '#ffaa00'; // 주황색 (더 밝게)
-          borderColor = '#e67700'; // 더 진한 주황색
-          break;
-        case 'IP':
-          color = '#ff3333'; // 선명한 빨간색
-          borderColor = '#cc0000'; // 진한 빨간색
-          break;
-        case '교환':
-          color = '#cc0000'; // 더 밝은 빨간색으로 변경
-          borderColor = '#990000'; // 테두리도 어두운 빨간색으로
-          break;
-        case '전송':
-          color = '#ff66cc'; // 핑크색
-          borderColor = '#cc0099'; // 진한 핑크색
-          break;
-        case '선로':
-          color = '#ff8833'; // 연한 주황색
-          borderColor = '#cc5500'; // 진한 주황색
-          break;
-        case '무선':
-          color = '#ffcc66'; // 매우 연한 주황색
-          borderColor = '#cc9933'; // 진한 황금색
-          break;
-      }
+      // 분야에 따른 색상 설정
+      const colorSet = COLORS.SECTOR[sector] || COLORS.DEFAULT;
 
       // 새 장비 정보 저장
       const newEquip = {
@@ -93,8 +164,8 @@ function createNetworkMap(equipData) {
         sector: sector,
         sectorIndex: sectorCounts[sector],
         alarmMessage: equip.alarm_message || '',
-        color: color,
-        borderColor: borderColor, // 테두리 색상 추가
+        color: colorSet.FILL,
+        borderColor: colorSet.BORDER,
       };
 
       // 장비 맵에 저장
@@ -102,29 +173,29 @@ function createNetworkMap(equipData) {
     }
   });
 
-  // 유니크한 장비 노드만 추가
+  return uniqueEquipMap;
+}
+
+// 노드와 링크에 장비 추가
+function addEquipmentNodesToMap(uniqueEquipMap, nodes, links, guksaName) {
   for (const equip of uniqueEquipMap.values()) {
     nodes.push(equip);
 
-    // 국사와 장비 간 링크 생성 (한 번만)
+    // 국사와 장비 간 링크 생성
     links.push({
       source: guksaName,
       target: equip.id,
       sector: equip.sector,
     });
   }
+}
 
-  // 노드가 없으면 메시지 표시 후 종료
-  if (nodes.length <= 1) {
-    mapContainer.innerHTML = '<div class="no-data-message">표시할 장비 데이터가 없습니다.</div>';
-    return;
-  }
-
-  // SVG 설정
+// SVG 설정 및 생성
+function setupSVG(mapContainer) {
   const width = mapContainer.clientWidth || 800;
   const height = 400;
 
-  // 줌 기능 추가를 위한 전체 그룹 생성
+  // SVG 생성
   const svg = d3
     .select('#map-container')
     .append('svg')
@@ -137,11 +208,7 @@ function createNetworkMap(equipData) {
   const container = svg.append('g');
 
   // 현재 줌 상태 저장
-  let currentZoom = {
-    k: 1, // 줌 레벨
-    x: 0, // x 오프셋
-    y: 0, // y 오프셋
-  };
+  let currentZoom = { k: 1, x: 0, y: 0 };
 
   // 줌 행동 정의
   const zoom = d3
@@ -155,89 +222,19 @@ function createNetworkMap(equipData) {
   // SVG에 줌 기능 적용
   svg.call(zoom);
 
-  // 제목 추가 (중앙 상단에 배치)
-  //   container
-  //     .append('text')
-  //     .attr('x', 130)
-  //     .attr('y', 30)
-  //     .attr('text-anchor', 'middle')
-  //     .style('font-size', '16px')
-  //     .style('font-weight', 'bold')
-  //     .text(`${guksaName} 경보 장비(${nodes.length - 1} 대)`);
+  return { svg, container, currentZoom, width, height };
+}
 
-  // 제목을 맵 컨테이너 상단에 고정으로 배치 (SVG 밖에 위치)
+// 제목 추가
+function addTitle(mapContainer, guksaName, equipmentCount) {
   const titleDiv = document.createElement('div');
   titleDiv.className = 'map-title';
-  titleDiv.textContent = `${guksaName} 경보 장비(${nodes.length - 1} 대)`;
+  titleDiv.textContent = `${guksaName} 경보 장비(${equipmentCount} 대)`;
   mapContainer.appendChild(titleDiv);
+}
 
-  // 국사 노드 좌측에 배치
-  const centerY = height / 2;
-
-  const leftMargin = 80; // 국사 노드를 더 좌측으로 이동
-  const topMargin = 80; // 국사 노드 수직 위치
-  nodes[0].fx = leftMargin;
-  nodes[0].fy = topMargin;
-
-  // 분야별 정렬 순서 정의 (MW, 선로, 전송, IP, 무선, 교환 순서)
-  const sectorOrder = ['MW', '선로', '전송', 'IP', '무선', '교환'];
-
-  // 분야별 노드 그룹화
-  const sectorGroups = {};
-  for (let i = 1; i < nodes.length; i++) {
-    const node = nodes[i];
-    if (!sectorGroups[node.sector]) {
-      sectorGroups[node.sector] = [];
-    }
-    sectorGroups[node.sector].push(node);
-  }
-
-  // 각 분야를 수평으로 배치
-  const rightWidth = width - leftMargin - 100; // 오른쪽 영역 너비
-  const sectorPositions = {};
-
-  sectorOrder.forEach((sector, index) => {
-    if (sectorGroups[sector] && sectorGroups[sector].length > 0) {
-      // 분야별 x 위치 설정 (균등 간격)
-      const xPos = leftMargin + 200 + (rightWidth / sectorOrder.length) * index;
-      sectorPositions[sector] = xPos;
-
-      // 분야 내 노드 수직 배치
-      const nodes = sectorGroups[sector];
-      const sectorHeight = height - 100; // 수직 공간
-      const nodeSpacing = Math.min(40, sectorHeight / nodes.length);
-
-      nodes.forEach((node, i) => {
-        // y 위치를 균등하게 배분 (분야 내 순서에 따라)
-        const yOffset = i * nodeSpacing;
-        const yPos = 80 + yOffset;
-
-        // 초기 위치 지정
-        node.x = xPos;
-        node.y = yPos;
-      });
-    }
-  });
-
-  // 툴팁 요소 생성
-  const tooltip = d3
-    .select('body')
-    .append('div')
-    .attr('class', 'map-tooltip')
-    .style('opacity', 0)
-    .style('position', 'absolute')
-    .style('background-color', 'white')
-    .style('border', '1px solid #ddd')
-    .style('border-radius', '4px')
-    .style('padding', '8px')
-    .style('pointer-events', 'none')
-    .style('font-size', '12px')
-    .style('z-index', 10)
-    .style('max-width', '350px') // 툴팁 최대 너비 설정
-    .style('overflow-y', 'auto') // 내용이 많을 경우 스크롤 추가
-    .style('max-height', '300px'); // 최대 높이 제한
-
-  // 범례 생성 (우측 상단에 배치) - SVG 밖에 고정 배치
+// 범례 추가
+function addLegend(mapContainer) {
   const legendDiv = document.createElement('div');
   legendDiv.className = 'map-legend';
   legendDiv.style.position = 'absolute';
@@ -263,13 +260,12 @@ function createNetworkMap(equipData) {
 
   // 범례 항목
   const sectors = [
-    { name: '국사', color: '#0056b3', borderColor: '#003366' },
-    { name: 'MW', color: '#ffaa00', borderColor: '#e67700' },
-    { name: '선로', color: '#ff8833', borderColor: '#cc5500' },
-    { name: '전송', color: '#ff66cc', borderColor: '#cc0099' },
-    { name: 'IP', color: '#ff3333', borderColor: '#cc0000' },
-    { name: '무선', color: '#ffcc66', borderColor: '#cc9933' },
-    { name: '교환', color: '#cc0000', borderColor: '#990000' },
+    { name: '국사', color: COLORS.GUKSA.FILL, borderColor: COLORS.GUKSA.BORDER },
+    ...LAYOUT.SECTOR_ORDER.map((sector) => ({
+      name: sector,
+      color: COLORS.SECTOR[sector].FILL,
+      borderColor: COLORS.SECTOR[sector].BORDER,
+    })),
   ];
 
   sectors.forEach((sector) => {
@@ -295,78 +291,128 @@ function createNetworkMap(equipData) {
   });
 
   mapContainer.appendChild(legendDiv);
+}
 
-  // 힘 시뮬레이션 생성 및 조정
-  const simulation = d3
+// 노드 위치 설정
+function setupNodePositions(nodes) {
+  // 분야별 노드 그룹화
+  const sectorGroups = {};
+
+  for (let i = 1; i < nodes.length; i++) {
+    const node = nodes[i];
+    if (!sectorGroups[node.sector]) {
+      sectorGroups[node.sector] = [];
+    }
+    sectorGroups[node.sector].push(node);
+  }
+
+  // 국사 노드 위치 고정
+  nodes[0].fx = LAYOUT.LEFT_MARGIN;
+  nodes[0].fy = LAYOUT.TOP_MARGIN;
+
+  // 각 분야를 수평으로 배치
+  const rightWidth = 600; // 오른쪽 영역 너비 (적절히 조정)
+  const sectorCount = LAYOUT.SECTOR_ORDER.length;
+
+  LAYOUT.SECTOR_ORDER.forEach((sector, index) => {
+    if (sectorGroups[sector] && sectorGroups[sector].length > 0) {
+      // 분야별 x 위치 설정 (균등 간격)
+      const xPos = LAYOUT.LEFT_MARGIN + 200 + (rightWidth / sectorCount) * index;
+
+      // 분야 내 노드 수직 배치
+      const nodes = sectorGroups[sector];
+      const sectorHeight = 300; // 수직 공간
+      const nodeSpacing = Math.min(40, sectorHeight / nodes.length);
+
+      nodes.forEach((node, i) => {
+        // y 위치를 균등하게 배분 (분야 내 순서에 따라)
+        const yOffset = i * nodeSpacing;
+        const yPos = LAYOUT.TOP_MARGIN + yOffset;
+
+        // 초기 위치 지정
+        node.x = xPos;
+        node.y = yPos;
+      });
+    }
+  });
+}
+
+// 툴팁 생성
+function createTooltip() {
+  return d3
+    .select('body')
+    .append('div')
+    .attr('class', 'map-tooltip')
+    .style('opacity', 0)
+    .style('position', 'absolute')
+    .style('background-color', 'white')
+    .style('border', '1px solid #ddd')
+    .style('border-radius', '4px')
+    .style('padding', '8px')
+    .style('pointer-events', 'none')
+    .style('font-size', '12px')
+    .style('z-index', 10)
+    .style('max-width', '350px')
+    .style('overflow-y', 'auto')
+    .style('max-height', '300px');
+}
+
+// 힘 시뮬레이션 생성
+function createSimulation(nodes, links) {
+  return d3
     .forceSimulation(nodes)
     .force(
       'link',
       d3
         .forceLink(links)
         .id((d) => d.id)
-        .distance((d) => {
-          // 동일 분야 내에서 순서에 따라 거리 조정
-          if (d.target.sectorIndex) {
-            return 100; // 기본 거리
-          }
-          return 100;
-        })
+        .distance(() => FORCE.LINK_DISTANCE)
     )
-    .force('charge', d3.forceManyBody().strength(-50))
+    .force('charge', d3.forceManyBody().strength(FORCE.CHARGE_STRENGTH))
     .force(
       'x',
       d3
         .forceX()
         .x((d) => {
-          if (d.type === 'guksa') return leftMargin;
-          return sectorPositions[d.sector] || width / 2;
+          if (d.type === 'guksa') return LAYOUT.LEFT_MARGIN;
+          return d.x || 400; // 기본 중앙 위치
         })
-        .strength(1)
-    ) // 분야별 x 위치로 강하게 당김
+        .strength(FORCE.X_STRENGTH)
+    )
     .force(
       'y',
       d3
         .forceY()
         .y((d) => {
-          if (d.type === 'guksa') return centerY;
-          return d.y || centerY;
+          if (d.type === 'guksa') return LAYOUT.TOP_MARGIN;
+          return d.y || 200; // 기본 중앙 위치
         })
-        .strength(0.3)
+        .strength(FORCE.Y_STRENGTH)
     )
-    .force('collide', d3.forceCollide().radius(20)) // 노드 간 충돌 방지
-    .alphaDecay(0.05) // 시뮬레이션이 점점 안정화되는 속도
-    .alpha(0.3); // 초기 시뮬레이션 강도
+    .force('collide', d3.forceCollide().radius(FORCE.COLLIDE_RADIUS))
+    .alphaDecay(FORCE.ALPHA_DECAY)
+    .alpha(FORCE.ALPHA);
+}
 
-  // 링크 생성
-  const link = container
+// 링크 생성
+function createLinks(container, links) {
+  return container
     .append('g')
     .selectAll('line')
     .data(links)
     .enter()
     .append('line')
     .attr('stroke', (d) => {
-      // 분야에 따른 링크 색상 변경 - 노드와 같은 색상으로 변경
-      switch (d.sector) {
-        case 'MW':
-          return '#ffaa00'; // 주황색 (더 밝게)
-        case 'IP':
-          return '#ff3333'; // 선명한 빨간색
-        case '교환':
-          return '#cc0000'; // 교환 색상 변경
-        case '전송':
-          return '#ff66cc'; // 핑크색
-        case '선로':
-          return '#ff8833'; // 연한 주황색
-        case '무선':
-          return '#ffcc66'; // 매우 연한 주황색
-        default:
-          return '#ff5555'; // 기본 빨간색
-      }
+      return d.sector && COLORS.SECTOR[d.sector]
+        ? COLORS.SECTOR[d.sector].FILL
+        : COLORS.DEFAULT.FILL;
     })
-    .attr('stroke-opacity', 0.6)
-    .attr('stroke-width', 2);
+    .attr('stroke-opacity', STYLE.LINK_OPACITY)
+    .attr('stroke-width', STYLE.LINK_STROKE_WIDTH);
+}
 
-  // 노드 그룹 생성
+// 노드 생성
+function createNodes(container, nodes, simulation, tooltip) {
   const node = container
     .append('g')
     .selectAll('g')
@@ -374,45 +420,49 @@ function createNetworkMap(equipData) {
     .enter()
     .append('g')
     .attr('class', (d) => `node ${d.type === 'guksa' ? 'node-guksa' : `node-${d.sector}`}`)
-    .call(d3.drag().on('start', dragstarted).on('drag', dragged).on('end', dragended));
+    .call(
+      d3
+        .drag()
+        .on('start', (event, d) => dragstarted(event, d, simulation))
+        .on('drag', dragged)
+        .on('end', (event, d) => dragended(event, d, simulation))
+    );
 
-  // 노드에 원 또는 사각형 추가 (국사는 라운드된 사각형, 장비는 원)
+  // 노드 형태 추가 (국사: 사각형, 장비: 원)
   node.each(function (d) {
     const selection = d3.select(this);
 
     if (d.type === 'guksa') {
-      // 국사 노드는 라운드된 사각형으로
       selection
         .append('rect')
-        .attr('width', 60)
-        .attr('height', 40)
-        .attr('x', -30) // 중앙 배치를 위해 width의 절반만큼 왼쪽으로
-        .attr('y', -20) // 중앙 배치를 위해 height의 절반만큼 위로
-        .attr('rx', 5) // 모서리 둥글게 (값 축소)
-        .attr('ry', 5) // 모서리 둥글게 (값 축소)
+        .attr('width', LAYOUT.GUKSA_WIDTH)
+        .attr('height', LAYOUT.GUKSA_HEIGHT)
+        .attr('x', -LAYOUT.GUKSA_WIDTH / 2)
+        .attr('y', -LAYOUT.GUKSA_HEIGHT / 2)
+        .attr('rx', 5)
+        .attr('ry', 5)
         .attr('fill', d.color)
-        .attr('stroke', '#001f3f')
-        .attr('stroke-width', 2.5);
+        .attr('stroke', d.borderColor)
+        .attr('stroke-width', STYLE.NODE_STROKE_WIDTH);
     } else {
-      // 장비 노드는 원형 유지
       selection
         .append('circle')
-        .attr('r', 15)
+        .attr('r', LAYOUT.NODE_RADIUS)
         .attr('fill', d.color)
-        .attr('stroke', d.borderColor || '#333')
-        .attr('stroke-width', 2.5);
+        .attr('stroke', d.borderColor)
+        .attr('stroke-width', STYLE.NODE_STROKE_WIDTH);
     }
   });
 
-  // 경보 개수 표시 배지 추가 (여러 경보가 있는 장비 노드에만)
+  // 경보 개수 표시 배지 추가
   node
     .filter((d) => d.type === 'equip' && d.alarmMessages && d.alarmMessages.length > 1)
     .append('circle')
     .attr('class', 'alarm-badge')
     .attr('cx', 12)
     .attr('cy', -12)
-    .attr('r', 8)
-    .attr('fill', '#f7f7f7') // 연한 회색 계열로 직접 지정
+    .attr('r', LAYOUT.BADGE_RADIUS)
+    .attr('fill', '#f7f7f7')
     .attr('stroke', 'white')
     .attr('stroke-width', 1.5);
 
@@ -425,152 +475,165 @@ function createNetworkMap(equipData) {
     .attr('y', -11)
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'middle')
-    .attr('fill', 'black') // 검은색으로 변경
-    .attr('font-size', '12px')
+    .attr('fill', 'black')
+    .attr('font-size', STYLE.FONT_SIZE.BADGE)
     .attr('font-weight', 'bold')
     .text((d) => d.alarmMessages.length);
 
-  // 노드 내부에 텍스트 추가 - 위치 조정 (국사 노드는 사각형 중앙에)
+  // 노드 내부 텍스트 추가
   node
     .append('text')
     .text((d) => {
-      if (d.type === 'guksa') return d.id.substring(0, 5); // 국사명 표시 (짧게)
-      return d.sector; // 분야만 표시
+      if (d.type === 'guksa') return d.id.substring(0, 5);
+      return d.sector;
     })
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'middle')
     .attr('fill', 'white')
-    .attr('font-size', (d) => (d.type === 'guksa' ? '13px' : '12px'))
-    .attr('font-weight', 'bold')
-    .attr('dy', (d) => (d.type === 'guksa' ? 0 : 0)); // 국사 노드는 중앙에 텍스트
+    .attr('font-size', (d) => (d.type === 'guksa' ? STYLE.FONT_SIZE.GUKSA : STYLE.FONT_SIZE.SECTOR))
+    .attr('font-weight', 'bold');
 
-  // 노드 아래에 텍스트 라벨 추가
+  // 노드 아래 라벨 추가
   node
     .append('text')
     .text((d) => {
-      if (d.type === 'guksa') return ''; // 국사 노드는 내부에 이미 표시함
-      // 장비는 이름만 표시 (길이 제한)
+      if (d.type === 'guksa') return '';
       const maxLength = 15;
       return d.id.length > maxLength ? d.id.slice(0, maxLength) + '...' : d.id;
     })
     .attr('text-anchor', 'middle')
     .attr('x', 0)
     .attr('y', (d) => (d.type === 'guksa' ? 40 : 25))
-    .attr('font-size', '11px')
+    .attr('font-size', STYLE.FONT_SIZE.LABEL)
     .attr('fill', '#333');
 
-  // 마우스 오버 시 강조 효과 업데이트
+  // 마우스 이벤트 추가
   node
     .on('mouseover', function (event, d) {
-      let tooltipContent = '';
-
-      if (d.type === 'guksa') {
-        tooltipContent = `<strong>국사:</strong> ${d.id}<br><strong>장비 수:</strong> ${
-          nodes.length - 1
-        }`;
-      } else {
-        // 기본 장비 정보
-        tooltipContent = `
-          <strong>장비:</strong> ${d.id}<br>
-          <strong>분야:</strong> ${d.sector}<br>
-        `;
-
-        // 경보 메시지 추가
-        if (d.alarmMessages && d.alarmMessages.length > 0) {
-          tooltipContent += `<strong>경보 (${d.alarmMessages.length}개):</strong><br>`;
-          tooltipContent +=
-            '<ul style="margin: 2px 0; padding-left: 15px; list-style-type: disc;">';
-          d.alarmMessages.forEach((msg, index) => {
-            tooltipContent += `<li style="margin-bottom: 3px;">${index + 1}. ${msg}</li>`;
-          });
-          tooltipContent += '</ul>';
-        } else if (d.alarmMessage) {
-          tooltipContent += `<strong>경보:</strong> ${d.alarmMessage}`;
-        }
-      }
-
-      tooltip
-        .html(tooltipContent)
-        .style('left', event.pageX + 10 + 'px')
-        .style('top', event.pageY - 28 + 'px')
-        .transition()
-        .duration(200)
-        .style('opacity', 0.9);
-
-      // 마우스 오버 시 강조 효과 - 국사는 사각형, 장비는 원 처리
-      if (d.type === 'guksa') {
-        d3.select(this)
-          .select('rect')
-          .transition()
-          .duration(200)
-          .attr('width', 66)
-          .attr('height', 45)
-          .attr('x', -33)
-          .attr('y', -22.5);
-      } else {
-        d3.select(this).select('circle').transition().duration(200).attr('r', 18);
-      }
-
-      // 경보 여러개인 경우 배지도 커지게
-      d3.select(this)
-        .select('.alarm-badge')
-        .transition()
-        .duration(200)
-        .attr('r', 10)
-        .attr('cx', 15)
-        .attr('cy', -15);
-
-      d3.select(this)
-        .select('.alarm-count')
-        .transition()
-        .duration(200)
-        .attr('x', 15)
-        .attr('y', -13)
-        .attr('font-size', '10px');
+      handleMouseOver(this, event, d, tooltip);
     })
     .on('mouseout', function (event, d) {
-      tooltip.transition().duration(500).style('opacity', 0);
-
-      // 강조 효과 제거 - 국사는 사각형, 장비는 원 처리
-      if (d.type === 'guksa') {
-        d3.select(this)
-          .select('rect')
-          .transition()
-          .duration(200)
-          .attr('width', 60)
-          .attr('height', 40)
-          .attr('x', -30)
-          .attr('y', -20);
-      } else {
-        d3.select(this).select('circle').transition().duration(200).attr('r', 15);
-      }
-
-      // 경보 배지 원래 크기로
-      d3.select(this)
-        .select('.alarm-badge')
-        .transition()
-        .duration(200)
-        .attr('r', 8)
-        .attr('cx', 12)
-        .attr('cy', -12);
-
-      d3.select(this)
-        .select('.alarm-count')
-        .transition()
-        .duration(200)
-        .attr('x', 12)
-        .attr('y', -10)
-        .attr('font-size', '8px');
+      handleMouseOut(this, tooltip);
     });
 
-  // 시뮬레이션 틱마다 위치 업데이트
+  return node;
+}
+
+// 마우스 오버 처리
+function handleMouseOver(element, event, d, tooltip) {
+  let tooltipContent = '';
+
+  if (d.type === 'guksa') {
+    tooltipContent = `<strong>국사:</strong> ${d.id}<br><strong>장비 수:</strong> ${
+      d.nodeCount || '알 수 없음'
+    }`;
+  } else {
+    // 기본 장비 정보
+    tooltipContent = `
+      <strong>장비:</strong> ${d.id}<br>
+      <strong>분야:</strong> ${d.sector}<br>
+    `;
+
+    // 경보 메시지 추가
+    if (d.alarmMessages && d.alarmMessages.length > 0) {
+      tooltipContent += `<strong>경보 (${d.alarmMessages.length}개):</strong><br>`;
+      tooltipContent += '<ul style="margin: 2px 0; padding-left: 15px; list-style-type: disc;">';
+      d.alarmMessages.forEach((msg, index) => {
+        tooltipContent += `<li style="margin-bottom: 3px;">${index + 1}. ${msg}</li>`;
+      });
+      tooltipContent += '</ul>';
+    } else if (d.alarmMessage) {
+      tooltipContent += `<strong>경보:</strong> ${d.alarmMessage}`;
+    }
+  }
+
+  tooltip
+    .html(tooltipContent)
+    .style('left', event.pageX + 10 + 'px')
+    .style('top', event.pageY - 28 + 'px')
+    .transition()
+    .duration(200)
+    .style('opacity', 0.9);
+
+  // 마우스 오버 시 강조 효과
+  if (d.type === 'guksa') {
+    d3.select(element)
+      .select('rect')
+      .transition()
+      .duration(200)
+      .attr('width', LAYOUT.GUKSA_WIDTH_HOVER)
+      .attr('height', LAYOUT.GUKSA_HEIGHT_HOVER)
+      .attr('x', -LAYOUT.GUKSA_WIDTH_HOVER / 2)
+      .attr('y', -LAYOUT.GUKSA_HEIGHT_HOVER / 2);
+  } else {
+    d3.select(element)
+      .select('circle')
+      .transition()
+      .duration(200)
+      .attr('r', LAYOUT.NODE_RADIUS_HOVER);
+  }
+
+  // 경보 배지 크기 조정
+  d3.select(element)
+    .select('.alarm-badge')
+    .transition()
+    .duration(200)
+    .attr('r', LAYOUT.BADGE_RADIUS_HOVER)
+    .attr('cx', 15)
+    .attr('cy', -15);
+
+  d3.select(element)
+    .select('.alarm-count')
+    .transition()
+    .duration(200)
+    .attr('x', 15)
+    .attr('y', -13)
+    .attr('font-size', STYLE.FONT_SIZE.BADGE_HOVER);
+}
+
+// 마우스 아웃 처리
+function handleMouseOut(element, tooltip) {
+  tooltip.transition().duration(500).style('opacity', 0);
+
+  // 강조 효과 제거
+  d3.select(element)
+    .select('rect')
+    .transition()
+    .duration(200)
+    .attr('width', LAYOUT.GUKSA_WIDTH)
+    .attr('height', LAYOUT.GUKSA_HEIGHT)
+    .attr('x', -LAYOUT.GUKSA_WIDTH / 2)
+    .attr('y', -LAYOUT.GUKSA_HEIGHT / 2);
+
+  d3.select(element).select('circle').transition().duration(200).attr('r', LAYOUT.NODE_RADIUS);
+
+  // 경보 배지 원래 크기로
+  d3.select(element)
+    .select('.alarm-badge')
+    .transition()
+    .duration(200)
+    .attr('r', LAYOUT.BADGE_RADIUS)
+    .attr('cx', 12)
+    .attr('cy', -12);
+
+  d3.select(element)
+    .select('.alarm-count')
+    .transition()
+    .duration(200)
+    .attr('x', 12)
+    .attr('y', -10)
+    .attr('font-size', STYLE.FONT_SIZE.BADGE);
+}
+
+// 시뮬레이션 설정
+function setupSimulation(simulation, nodes, link, node) {
   simulation.on('tick', () => {
     // 노드 위치 제한 (화면 벗어나지 않도록)
     nodes.forEach((d) => {
       if (d.type !== 'guksa') {
         // 국사 노드는 고정
-        d.x = Math.max(30, Math.min(width - 30, d.x));
-        d.y = Math.max(30, Math.min(height - 30, d.y));
+        d.x = Math.max(30, Math.min(770, d.x)); // 적절히 조정된 범위
+        d.y = Math.max(30, Math.min(370, d.y)); // 적절히 조정된 범위
       }
     });
 
@@ -582,27 +645,24 @@ function createNetworkMap(equipData) {
 
     node.attr('transform', (d) => `translate(${d.x},${d.y})`);
   });
+}
 
-  // 드래그 함수들
-  function dragstarted(event, d) {
-    if (!event.active) simulation.alphaTarget(0.3).restart();
-    d.fx = d.x;
-    d.fy = d.y;
-  }
+// 드래그 시작 함수
+function dragstarted(event, d, simulation) {
+  if (!event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+}
 
-  function dragged(event, d) {
-    d.fx = event.x;
-    d.fy = event.y;
-  }
+// 드래그 중 함수
+function dragged(event, d) {
+  d.fx = event.x;
+  d.fy = event.y;
+}
 
-  function dragended(event, d) {
-    if (!event.active) simulation.alphaTarget(0);
-
-    // 모든 노드를 드래그한 위치에 고정 (국사 노드 포함)
-    d.fx = d.x;
-    d.fy = d.y;
-  }
-
-  // 시뮬레이션 시작
-  simulation.restart();
+// 드래그 종료 함수
+function dragended(event, d, simulation) {
+  if (!event.active) simulation.alphaTarget(0);
+  d.fx = d.x;
+  d.fy = d.y;
 }

@@ -870,7 +870,7 @@ select {
 .alarm-badge {
   filter: none;
   stroke-width: 1.5px;
-  fill: #dddddd !important;
+  fill: #f3f3f3 !important;
 }
 
 .alarm-count {
