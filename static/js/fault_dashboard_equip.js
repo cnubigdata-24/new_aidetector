@@ -9,7 +9,7 @@ const MAX_NODE_NAME_LENGTH = 20;
 
 // 링크 관련 상수
 const LINK_STROKE_WIDTH = 3;
-const LINK_HOVER_STROKE_WIDTH = 5;
+const LINK_HOVER_STROKE_WIDTH = 10;
 const LINK_OPACITY = 0.7;
 const LINK_HOVER_OPACITY = 1;
 
@@ -26,6 +26,18 @@ const ZOOM_MAX_SCALE = 5;
 const TOOLTIP_DURATION = 200;
 const TOOLTIP_AUTO_HIDE_DELAY = 10000; // 10초
 const MAX_TOOLTIP_ALARMS = 5;
+
+// 근본 원인 노드 관련 상수 - 여기에 추가
+const ROOT_CAUSE_HIGHLIGHT_COLOR = '#FF5533'; // 밝은 적색 (근본원인 강조색)
+const ROOT_CAUSE_STROKE_WIDTH = 3; // 테두리 두께
+const ROOT_CAUSE_ANIMATION_DURATION = 1000; // 애니메이션 지속 시간
+
+const nodeZoom = d3
+  .zoom()
+  .scaleExtent([1, 1.05])
+  .on('zoom', function (event) {
+    d3.select(this).attr('transform', event.transform);
+  });
 
 // 분야별 색상
 const FIELD_COLORS = {
@@ -44,12 +56,11 @@ const LINK_HOVER_COLOR = '#FF3333'; // 링크 호버 색상
 const LINK_MULTI_BASE_COLOR = 200; // 다중 링크 기본 색상 R값
 const LINK_MULTI_VARIATION = 25; // 링크마다 색상 변화 값
 const FIRST_CENTRAL_NODE_BORDER_COLOR = '#000000';
-
-// 스타일 정의 - CSS를 JavaScript로 통합 (css를 별도로 분리할까 고민 중)
 const STYLES = `
   /* 노드 스타일 */
   .equip-node {
     cursor: pointer;
+    /* transition 속성은 D3 transition에서 처리하므로 제거 */
   }
 
   .equip-node rect {
@@ -61,9 +72,8 @@ const STYLES = `
     stroke-width: ${NODE_STROKE_WIDTH};
   }
 
-  /* hover 효과에서 transform 제거하고 테두리만 변경 */
+  /* 호버 효과 - 밝기만 변경 */
   .equip-node:hover rect {
-    stroke-width: 3;
     filter: brightness(1.05);
   }
 
@@ -149,6 +159,17 @@ const STYLES = `
     stroke-width: 3;
   }
 
+  /* 근본 원인 노드 스타일 */
+  /*
+  .root-cause-node {
+    filter: drop-shadow(0 0 8px rgba(255, 85, 51, 0.7)) !important;
+  }
+  */
+  .root-cause-label {
+    font-size: 14px;
+    font-weight: bold;
+    pointer-events: none; /* 마우스 이벤트 무시 */
+  }
 
   /* 툴팁 스타일 */
   .equip-map-tooltip {
@@ -838,6 +859,8 @@ function createEquipTopologyMap(data, alarmDataList) {
     .attr('height', NODE_HEIGHT) // 노드 높이
     .attr('rx', NODE_CORNER_RADIUS) // 둥근 모서리
     .attr('ry', NODE_CORNER_RADIUS)
+    .attr('x', 0) // 초기 x 위치 설정
+    .attr('y', 0) // 초기 y 위치 설정
     .attr('fill', (d) => getNodeColor(d.equip_field)) // 항상 분야 색상 적용
     .attr('fill-opacity', 1) // 투명도 제거
     .attr('stroke', '#fff') // 테두리 색상
@@ -925,46 +948,61 @@ function createEquipTopologyMap(data, alarmDataList) {
     .attr('font-weight', 'bold')
     .text((d) => d.alarms.length);
 
+  // 노드 마우스 이벤트 처리 - D3 zoom behavior 활용
+  node.each(function () {
+    // 각 노드에 대한 초기 transform 설정
+    const initialTransform = d3.zoomIdentity.translate(0, 0).scale(1);
+
+    d3.select(this).datum().zoomState = initialTransform;
+  });
+
   // 노드에 마우스 이벤트 추가 - 흔들림 효과 제거
   node
     .on('mouseover', function (event, d) {
       showTooltip(event, d, false);
 
-      if (d.id !== centralNodeId) {
-        // 첫 번째 노드가 아니면
-        d3.select(this)
-          .select('rect')
-          .attr('stroke-width', NODE_HOVER_STROKE_WIDTH)
-          .attr('stroke', '#333');
-      }
+      // 중앙 노드가 아닌 경우에만 확대 효과 적용
+      //if (d.id !== centralNodeId) {
+      // 현재 transform 상태
+      const currentTransform = d.zoomState || d3.zoomIdentity;
+
+      // 1.05배 확대
+      d3.select(this)
+        .transition()
+        .duration(150)
+        .attr('transform', function () {
+          // 원래 위치 유지
+          const x = d.x - NODE_WIDTH / 2;
+          const y = d.y - NODE_HEIGHT / 2;
+
+          // 중앙을 기준으로 확대
+          const centerX = NODE_WIDTH / 2;
+          const centerY = NODE_HEIGHT / 2;
+
+          return `translate(${x}, ${y}) scale(1.05) translate(${-centerX * 0.05}, ${-centerY * 0.05})`;
+        });
+      //}
     })
-    .on('mouseout', function () {
+    .on('mouseout', function (event, d) {
       hideTooltip();
 
-      if (d.id !== centralNodeId) {
-        // 마우스 아웃 시 stroke를 완전히 없애야 함
-        d3.select(this).select('rect').attr('stroke', 'none').attr('stroke-width', 0);
-      } else {
-        // 중앙 노드는 유지
-        d3.select(this)
-          .select('rect')
-          .attr('stroke', FIRST_CENTRAL_NODE_BORDER_COLOR)
-          .attr('stroke-width', 4);
-      }
-    })
-    .on('mouseleave', function () {
-      hideTooltip();
+      // 원래 크기로 복원
+      d3.select(this)
+        .transition()
+        .duration(150)
+        .attr('transform', function () {
+          const x = d.x - NODE_WIDTH / 2;
+          const y = d.y - NODE_HEIGHT / 2;
+          return `translate(${x}, ${y})`;
+        });
 
-      if (d.id !== centralNodeId) {
-        // 마우스 아웃 시 stroke를 완전히 없애야 함
-        d3.select(this).select('rect').attr('stroke', 'none').attr('stroke-width', 0);
-      } else {
-        // 중앙 노드는 유지
-        d3.select(this)
-          .select('rect')
-          .attr('stroke', FIRST_CENTRAL_NODE_BORDER_COLOR)
-          .attr('stroke-width', 4);
-      }
+      // 중앙 노드는 테두리 유지
+      //       if (d.id === centralNodeId) {
+      //         d3.select(this)
+      //           .select('rect')
+      //           .attr('stroke', FIRST_CENTRAL_NODE_BORDER_COLOR)
+      //           .attr('stroke-width', 4);
+      //       }
     });
 
   // 링크 그룹에 마우스 이벤트 추가 (MW-MW 색깔)
@@ -1297,13 +1335,323 @@ function createEquipTopologyMap(data, alarmDataList) {
       .style('margin', '0px')
       .style('padding', '0px 0px')
       .style('cursor', 'pointer')
-      .text('중앙애 배치')
+      .text('중앙으로 이동')
       .on('click', () => fitAllNodes());
   }
 
   // 컨트롤 패널 추가 (활성화)
   addControlPanel();
 
-  // 맵을 화면에 맞추기
+  try {
+    console.log('근본 원인 노드 강조 기능 호출...');
+    highlightRootCauseNodes(centralNodeId, levels, nodesData, linksData);
+  } catch (error) {
+    console.error('근본 원인 노드 강조 중 오류 발생:', error);
+  }
+
   setTimeout(fitAllNodes, 100);
+}
+
+// 근본 원인 노드 강조 함수 (완전히 새롭게 작성)
+function highlightRootCauseNodes(centralNodeId, levels, nodesData, linksData) {
+  console.log('개선된 근본 원인 노드 강조 함수 시작...');
+
+  // 매개변수 확인
+  if (!centralNodeId || !levels || !nodesData) {
+    console.warn('필수 매개변수가 누락되었습니다. 강조 기능을 건너뜁니다.');
+    return;
+  }
+
+  // 근본 원인 찾기
+  const rootCauses = findRootCauseNodes(nodesData, linksData, levels, centralNodeId);
+
+  // 기존 강조 효과 모두 제거
+  clearRootCauseEffects();
+
+  // 근본 원인 노드가 없는 경우
+  if (!rootCauses.nodes || rootCauses.nodes.length === 0) {
+    console.log('근본 원인 노드를 찾을 수 없습니다.');
+    return;
+  }
+
+  // 근본 원인 노드에 시각 효과 적용
+  applyVisualPatternEffect(rootCauses.nodes);
+
+  // 근본 원인 링크가 있다면 링크에도 효과 적용
+  if (rootCauses.links && rootCauses.links.length > 0) {
+    applyLinkVisualEffect(rootCauses.links);
+  }
+}
+
+function applyLinkVisualEffect(linkIds) {
+  if (!linkIds || linkIds.length === 0) return;
+
+  console.log('링크 애니메이션 적용 시작:', linkIds);
+
+  // 링크에 강조 효과 적용
+  d3.selectAll('.equip-link')
+    .filter((d) => linkIds.includes(d.id))
+    .each(function (d) {
+      const linkElement = d3.select(this);
+
+      // 링크 색상과 두께 변경
+      linkElement
+        .classed('root-cause-link', true)
+        .attr('stroke', '#FF0000')
+        .attr('stroke-width', LINK_STROKE_WIDTH * 1.5);
+
+      // 점멸 애니메이션 추가
+      linkElement.node().innerHTML = `
+        <animate attributeName="stroke-opacity" 
+                 values="1;0.3;1" 
+                 dur="1s" 
+                 repeatCount="indefinite" />
+        <animate attributeName="stroke-width" 
+                 values="${LINK_STROKE_WIDTH * 1.5};${LINK_STROKE_WIDTH * 2.5};${
+        LINK_STROKE_WIDTH * 1.5
+      }" 
+                 dur="1s" 
+                 repeatCount="indefinite" />
+      `;
+
+      // "장애 구간" 라벨 추가
+      const linkGroup = linkElement.closest('g');
+      d3.select(linkGroup)
+        .append('text')
+        .attr('class', 'root-cause-link-label')
+        .attr('x', function () {
+          const source = typeof d.source === 'object' ? d.source : equipmentMap[d.source];
+          const target = typeof d.target === 'object' ? d.target : equipmentMap[d.target];
+          return (source.x + target.x) / 2;
+        })
+        .attr('y', function () {
+          const source = typeof d.source === 'object' ? d.source : equipmentMap[d.source];
+          const target = typeof d.target === 'object' ? d.target : equipmentMap[d.target];
+          return (source.y + target.y) / 2 - 15;
+        })
+        .attr('fill', '#FF0000')
+        .attr('font-weight', 'bold')
+        .text('장애 구간');
+
+      console.log(`링크 애니메이션 적용: ${d.id}`);
+    });
+}
+
+// 근본 원인 노드 및 링크 식별 로직 개선
+function findRootCauseNodes(nodesData, linksData, levels, centralNodeId) {
+  console.log('개선된 근본 원인 노드 찾기 알고리즘 시작...');
+
+  // 경보가 있는 노드만 필터링
+  const nodesWithAlarms = nodesData.filter((node) => node.alarms && node.alarms.length > 0);
+  if (nodesWithAlarms.length === 0) {
+    console.log('경보가 있는 노드가 없습니다.');
+    return [];
+  }
+
+  console.log(`총 ${nodesWithAlarms.length}개의 경보 노드 발견.`);
+
+  // 부모-자식 관계 매핑 구성 (상위 노드 -> 하위 노드 관계)
+  const childrenMap = {};
+  nodesData.forEach((node) => {
+    const nodeId = node.id;
+    childrenMap[nodeId] = [];
+  });
+
+  // 연결 관계를 기반으로 자식 노드 설정
+  nodesData.forEach((node) => {
+    if (node.parent) {
+      childrenMap[node.parent].push(node.id);
+    }
+  });
+
+  console.log('부모-자식 관계 매핑 완료');
+
+  // 근본 원인 후보 노드 목록
+  let rootCauseCandidates = [];
+
+  // 경보가 있는 노드들에 대해
+  nodesWithAlarms.forEach((node) => {
+    // 모든 자식 노드가 경보 상태인지 확인
+    const isRootCause = isNodeRootCause(node.id, childrenMap, nodesWithAlarms);
+    if (isRootCause) {
+      rootCauseCandidates.push(node.id);
+    }
+  });
+
+  console.log(`첫 단계 근본 원인 후보: ${rootCauseCandidates.length}개`);
+
+  // 후보 노드 중에서 최상위 노드만 선택 (다른 근본 원인 노드의 자식이 아닌 노드들)
+  const finalRootCauses = filterTopLevelRootCauses(rootCauseCandidates, nodesData);
+
+  console.log(`최종 근본 원인 노드: ${finalRootCauses.length}개`);
+  console.log('근본 원인 노드 목록:', finalRootCauses);
+
+  // 근본 원인 링크도 찾기
+  const rootCauseLinks = findRootCauseLinks(linksData);
+
+  return {
+    nodes: finalRootCauses,
+    links: rootCauseLinks,
+  };
+}
+
+// 노드가 근본 원인인지 확인하는 함수
+function isNodeRootCause(nodeId, childrenMap, nodesWithAlarms) {
+  const children = childrenMap[nodeId] || [];
+
+  // 자식 노드가 없으면 그냥 경보만 확인 (리프 노드)
+  if (children.length === 0) {
+    const node = equipmentMap[nodeId];
+    return node && node.alarms && node.alarms.length > 0;
+  }
+
+  // 자식 노드들 중 경보가 없는 노드가 있는지 확인
+  const childrenWithoutAlarms = children.filter((childId) => {
+    const childNode = equipmentMap[childId];
+    return !(childNode && childNode.alarms && childNode.alarms.length > 0);
+  });
+
+  // 모든 자식이 경보 상태이고 현재 노드도 경보 상태면 근본 원인 후보
+  const node = equipmentMap[nodeId];
+  return childrenWithoutAlarms.length === 0 && node && node.alarms && node.alarms.length > 0;
+}
+
+// 최상위 근본 원인 노드만 필터링하는 함수 (다른 근본 원인의 자식이 아닌 노드들)
+function filterTopLevelRootCauses(candidates, nodesData) {
+  if (candidates.length <= 1) {
+    return candidates; // 1개 이하면 그대로 반환
+  }
+
+  const result = [];
+
+  // 각 후보에 대해 상위 노드 체인을 확인
+  candidates.forEach((nodeId) => {
+    let current = equipmentMap[nodeId];
+    let isChildOfAnotherRootCause = false;
+
+    // 상위 노드 체인 확인
+    while (current && current.parent) {
+      const parentId = current.parent;
+      // 부모가 다른 근본 원인 후보인지 확인
+      if (candidates.includes(parentId)) {
+        isChildOfAnotherRootCause = true;
+        break;
+      }
+      current = equipmentMap[parentId];
+    }
+
+    // 다른 근본 원인의 자식이 아니면 최종 목록에 추가
+    if (!isChildOfAnotherRootCause) {
+      result.push(nodeId);
+    }
+  });
+
+  return result;
+}
+
+// 근본 원인 링크 찾기 (링크에 경보가 있는 경우)
+function findRootCauseLinks(links) {
+  // 링크 데이터에 경보 정보가 있다고 가정
+  const rootCauseLinks = links.filter((link) => {
+    return link.alarms && link.alarms.length > 0;
+  });
+
+  return rootCauseLinks;
+}
+// SVG 애니메이션을 직접 사용한 노드 강조 함수
+function applyVisualPatternEffect(nodeIds) {
+  if (!nodeIds || nodeIds.length === 0) return;
+
+  console.log('애니메이션 적용 시작:', nodeIds);
+
+  // 기존 강조 효과 제거
+  clearRootCauseEffects();
+
+  // 노드에 강조 효과 적용
+  d3.selectAll('.equip-node')
+    .filter((d) => nodeIds.includes(d.id))
+    .each(function (d) {
+      const nodeElement = d3.select(this);
+      const rectElement = nodeElement.select('rect');
+
+      // 애니메이션 ID 생성 - 각 노드마다 고유한 ID 필요
+      const animationId = `pulse-${d.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+      // 스타일 적용
+      rectElement
+        .classed('root-cause-node', true)
+        .attr('stroke', ROOT_CAUSE_HIGHLIGHT_COLOR)
+        .attr('stroke-width', ROOT_CAUSE_STROKE_WIDTH);
+
+      // 애니메이션용 defs 요소 생성 (중복 방지)
+      let svgElement = d3.select('#map-container svg');
+      if (svgElement.empty()) {
+        console.error('SVG 요소를 찾을 수 없습니다!');
+        return;
+      }
+
+      let defs = svgElement.select('defs');
+      if (defs.empty()) {
+        defs = svgElement.append('defs');
+      }
+
+      if (defs.select(`#${animationId}`).empty()) {
+        defs
+          .append('animate')
+          .attr('id', animationId)
+          .attr('attributeName', 'stroke-width')
+          .attr(
+            'values',
+            `${ROOT_CAUSE_STROKE_WIDTH};${ROOT_CAUSE_STROKE_WIDTH * 2.5};${ROOT_CAUSE_STROKE_WIDTH}`
+          )
+          .attr('dur', '1.0s')
+          .attr('repeatCount', 'indefinite');
+      }
+
+      // rect 내부에 stroke 애니메이션 삽입
+      rectElement.node().innerHTML = `<animate attributeName="stroke-width" values="${ROOT_CAUSE_STROKE_WIDTH};${
+        ROOT_CAUSE_STROKE_WIDTH * 2.5
+      };${ROOT_CAUSE_STROKE_WIDTH}" dur="0.5s" repeatCount="indefinite" />`;
+
+      // 기존 분야명 텍스트를 찾아 "전송 장애 의심" 등으로 업데이트
+      nodeElement
+        .selectAll('text')
+        .filter(function () {
+          return d3.select(this).attr('dy') === '-10';
+        })
+        .each(function () {
+          const original = d3.select(this).text();
+          if (!original.includes('(장애 의심)')) {
+            d3.select(this).text(`${original} (장애 의심)`);
+          }
+        });
+
+      console.log(`노드 애니메이션 적용: ${d.equip_name} (ID: ${d.id})`);
+    });
+}
+
+// 기존 강조 효과를 모두 제거하는 함수
+function clearRootCauseEffects() {
+  // 기존 애니메이션 중지
+  if (window.rootCauseAnimationTimer) {
+    clearInterval(window.rootCauseAnimationTimer);
+    window.rootCauseAnimationTimer = null;
+  }
+
+  // 모든 root-cause-node 클래스 제거
+  d3.selectAll('.root-cause-node')
+    .classed('root-cause-node', false)
+    .attr('stroke', '#fff')
+    .attr('stroke-width', NODE_STROKE_WIDTH)
+    .style('filter', null);
+
+  // 모든 root-cause-link 클래스 제거
+  d3.selectAll('.root-cause-link')
+    .classed('root-cause-link', false)
+    .attr('stroke', LINK_COLOR)
+    .attr('stroke-width', LINK_STROKE_WIDTH)
+    .attr('stroke-opacity', LINK_OPACITY);
+
+  // 모든 라벨 제거
+  d3.selectAll('.root-cause-label, .root-cause-link-label').remove();
 }

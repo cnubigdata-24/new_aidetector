@@ -1082,7 +1082,7 @@ select {
 .fault-view-btn {
   background-color: #a32202;
   border: 1px solid #a32202;
-  padding: 0px 12px; /* 좌우만 padding */
+  padding: 0px 12px;
 
   margin-top: 3px;
   margin-bottom: 0px;
@@ -1090,7 +1090,7 @@ select {
   border-radius: 4px;
   cursor: pointer;
 
-  font-size: 14px;
+  font-size: 15px;
   color: #ffffff;
   font-weight: bold;
 
