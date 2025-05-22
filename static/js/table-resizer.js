@@ -262,6 +262,15 @@ function addTableSearchFilters(table) {
   filterInput.className = 'filter-input';
   filterInput.id = 'filter-value-input';
   filterInput.placeholder = '검색어 입력...';
+
+  // 엔터키 이벤트 추가
+  filterInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.keyCode === 13) {
+      e.preventDefault(); // 기본 동작 방지
+      applyTableFilter(); // Filter 버튼과 동일한 함수 호출
+    }
+  });
+
   filterForm.appendChild(filterInput);
 
   // 필터 적용 버튼
@@ -427,44 +436,65 @@ function updateTableWithFilteredData(data) {
   tbody.innerHTML = '';
 
   // 페이지당 행 수
-  const rowsPerPage = 10;
+  const rowsPerPage = ALARM_TABLE_PAGE_SIZE;
   const currentPage = 1;
 
   // 현재 페이지에 표시할 데이터 추출
   const startIdx = (currentPage - 1) * rowsPerPage;
   const pageData = data.slice(startIdx, startIdx + rowsPerPage);
 
-  // 테이블에 행 추가
+  // 테이블에 행 추가 (addRowsToAlarmTable과 동일한 방식)
   pageData.forEach((item) => {
+    if (!item) return;
+
     const row = document.createElement('tr');
 
-    // 유효 경보 행에 클래스 추가
-    if (item.valid_yn === '유효') {
+    // guksa_id 데이터 속성 추가 (클릭 이벤트에 필요)
+    row.setAttribute('data-guksa-id', item.guksa_id || '');
+
+    // 유효 경보 행에 클래스 추가 (Y 또는 '유효' 모두 처리)
+    if (item.valid_yn === 'Y' || item.valid_yn === '유효') {
       row.classList.add('valid-alarm');
     }
 
-    // 각 컬럼 데이터 추가
-    const fields = [
-      'guksa_id',
-      'sector',
-      'valid_yn',
-      'occur_datetime',
-      'equip_id',
-      'equip_type',
-      'equip_name',
-      'alarm_message',
+    // 국사 이름 처리
+    let guksaName = item.guksa_name || item.guksa_id || '-';
+
+    // addRowsToAlarmTable과 동일한 셀 구조 사용
+    const cells = [
+      { value: guksaName, className: 'col-guksa', title: item.guksa_id },
+      { value: item.sector || '-', className: 'col-sector' },
+      { value: item.valid_yn === 'Y' ? '유효' : '무효', className: 'col-valid' },
+      {
+        value:
+          typeof formatDateTime === 'function'
+            ? formatDateTime(item.occur_datetime)
+            : item.occur_datetime || '-',
+        className: 'col-occur-time',
+      },
+      { value: item.equip_id || '', className: 'col-equip-id' },
+      { value: item.equip_type || '-', className: 'col-equip-type' },
+      { value: item.equip_name || '-', className: 'col-equip-name' },
+      { value: item.alarm_message || '-', className: 'col-alarm-message' },
     ];
 
-    fields.forEach((field) => {
-      const cell = document.createElement('td');
-      cell.textContent = item[field] || '';
-      row.appendChild(cell);
+    // 셀 생성 및 추가
+    cells.forEach((cell) => {
+      const td = document.createElement('td');
+      td.className = cell.className;
+      td.textContent = cell.value;
+
+      if (cell.title) {
+        td.title = cell.title;
+      }
+
+      row.appendChild(td);
     });
 
     tbody.appendChild(row);
   });
 
-  // 페이지네이션 업데이트 (간단한 버전)
+  // 페이지네이션 업데이트
   updatePagination(data.length, rowsPerPage, currentPage);
 }
 
@@ -532,7 +562,7 @@ function resetTableFilter() {
 function getColumnFieldByIndex(index) {
   // 컬럼 필드 매핑
   const columnFields = [
-    'guksa_id', // 국사
+    'guksa_name', // 국사
     'sector', // 분야
     'valid_yn', // 유효/무효
     'occur_datetime', // 발생시간

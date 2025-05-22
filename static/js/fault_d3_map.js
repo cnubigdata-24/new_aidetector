@@ -1,4 +1,27 @@
-// 상수 정의
+// 간격 및 배치 관련 상수 정의
+const SPACING_CONFIG = {
+  // 국사-장비 간 기본 간격 (더 줄임)
+  GUKSA_TO_EQUIP_MIN: 50, // 300 → 200 (더 가깝게)
+  GUKSA_TO_EQUIP_MAX: 150, // 600 → 400 (더 가깝게)
+  GUKSA_TO_EQUIP_MULTIPLIER: 5, // 8 → 5 (증가율도 줄임)
+
+  // 분야별 그룹 간격
+  GROUP_BASE_WIDTH: 250,
+  GROUP_SPACING: 250,
+
+  // 그룹 내 노드 간격
+  NODE_VERTICAL_SPACING: 100,
+  NODE_HORIZONTAL_SPACING: 120,
+  NODES_PER_COLUMN: 8,
+
+  // SVG 크기
+  SVG_WIDTH: 1400, // 1600 → 1400 (폭도 조금 줄임)
+  SVG_HEIGHT: 600,
+
+  // 경계 설정
+  BOUNDARY_MARGIN: 30,
+};
+
 const COLORS = {
   DEFAULT: {
     FILL: '#ff5555',
@@ -21,14 +44,20 @@ const COLORS = {
 const LAYOUT = {
   LEFT_MARGIN: 80,
   TOP_MARGIN: 80,
-  NODE_RADIUS: 15,
-  NODE_RADIUS_HOVER: 18,
-  GUKSA_WIDTH: 60,
-  GUKSA_HEIGHT: 40,
-  GUKSA_WIDTH_HOVER: 66,
-  GUKSA_HEIGHT_HOVER: 45,
-  BADGE_RADIUS: 8,
-  BADGE_RADIUS_HOVER: 10,
+
+  NODE_RADIUS: 16,
+  NODE_RADIUS_HOVER: 19,
+
+  GUKSA_WIDTH: 100,
+  GUKSA_WIDTH_HOVER: 105,
+
+  GUKSA_HEIGHT: 35,
+  GUKSA_HEIGHT_HOVER: 38,
+
+  BADGE_RADIUS: 9,
+  BADGE_RADIUS_HOVER: 11,
+
+  SECTOR_SPACING: 800,
   SECTOR_ORDER: ['MW', '선로', '전송', 'IP', '무선', '교환'],
 };
 
@@ -36,24 +65,29 @@ const STYLE = {
   NODE_STROKE_WIDTH: 2.5,
   LINK_STROKE_WIDTH: 2,
   LINK_OPACITY: 0.6,
+
   FONT_SIZE: {
     GUKSA: '13px',
     SECTOR: '12px',
     LABEL: '11px',
-    BADGE: '8px',
+    BADGE: '9px',
     BADGE_HOVER: '10px',
   },
 };
 
 const FORCE = {
   LINK_DISTANCE: 100,
-  CHARGE_STRENGTH: -50,
-  X_STRENGTH: 1,
-  Y_STRENGTH: 0.3,
-  COLLIDE_RADIUS: 20,
+  CHARGE_STRENGTH: -30,
+  X_STRENGTH: 1.5,
+  Y_STRENGTH: 0.5,
+  COLLIDE_RADIUS: 18,
   ALPHA_DECAY: 0.05,
   ALPHA: 0.3,
 };
+
+// ========================================
+// 메인 함수들 (기존 구조 유지)
+// ========================================
 
 // 토폴로지 맵 생성 함수
 function createGuksaTopologyMap(equipData) {
@@ -90,9 +124,9 @@ function createGuksaTopologyMap(equipData) {
   addTitle(mapContainer, guksaName, nodes.length - 1);
 
   // 범례 추가
-  addLegend(mapContainer);
+  // addLegend(mapContainer); // 범례는 일단 제거
 
-  // 노드 위치 설정
+  // 노드 위치 설정 (개선된 함수 사용)
   setupNodePositions(nodes);
 
   // 툴팁 생성
@@ -111,7 +145,7 @@ function createGuksaTopologyMap(equipData) {
   setupSimulation(simulation, nodes, link, node);
 }
 
-// 장비 노드 생성 함수
+// 장비 노드 생성 함수 (기존 유지)
 function createEquipNodes(equipList) {
   const uniqueEquipMap = new Map();
 
@@ -176,7 +210,7 @@ function createEquipNodes(equipList) {
   return uniqueEquipMap;
 }
 
-// 노드와 링크에 장비 추가
+// 노드와 링크에 장비 추가 (기존 유지)
 function addEquipNodesToMap(uniqueEquipMap, nodes, links, guksaName) {
   for (const equip of uniqueEquipMap.values()) {
     nodes.push(equip);
@@ -190,10 +224,10 @@ function addEquipNodesToMap(uniqueEquipMap, nodes, links, guksaName) {
   }
 }
 
-// SVG 설정 및 생성
+// SVG 설정 및 생성 (크기 개선)
 function setupSVG(mapContainer) {
-  const width = mapContainer.clientWidth || 800;
-  const height = 400;
+  const width = mapContainer.clientWidth || SPACING_CONFIG.SVG_WIDTH;
+  const height = SPACING_CONFIG.SVG_HEIGHT;
 
   // SVG 생성
   const svg = d3
@@ -213,7 +247,7 @@ function setupSVG(mapContainer) {
   // 줌 행동 정의
   const zoom = d3
     .zoom()
-    .scaleExtent([0.5, 3]) // 줌 범위 (0.5x ~ 3x)
+    .scaleExtent([0.5, 3])
     .on('zoom', (event) => {
       container.attr('transform', event.transform);
       currentZoom = event.transform;
@@ -225,7 +259,7 @@ function setupSVG(mapContainer) {
   return { svg, container, currentZoom, width, height };
 }
 
-// 제목 추가
+// 제목 추가 (기존 유지)
 function addTitle(mapContainer, guksaName, equipmentCount) {
   const titleDiv = document.createElement('div');
   titleDiv.className = 'map-title';
@@ -233,7 +267,7 @@ function addTitle(mapContainer, guksaName, equipmentCount) {
   mapContainer.appendChild(titleDiv);
 }
 
-// 범례 추가
+// 범례 추가 (기존 유지)
 function addLegend(mapContainer) {
   const legendDiv = document.createElement('div');
   legendDiv.className = 'map-legend';
@@ -293,13 +327,17 @@ function addLegend(mapContainer) {
   mapContainer.appendChild(legendDiv);
 }
 
-// 노드 위치 설정
+// ========================================
+// 핵심 개선: 노드 위치 설정 함수
+// ========================================
 function setupNodePositions(nodes) {
   // 분야별 노드 그룹화
   const sectorGroups = {};
+  let totalEquipCount = 0;
 
   for (let i = 1; i < nodes.length; i++) {
     const node = nodes[i];
+    totalEquipCount++;
     if (!sectorGroups[node.sector]) {
       sectorGroups[node.sector] = [];
     }
@@ -310,34 +348,67 @@ function setupNodePositions(nodes) {
   nodes[0].fx = LAYOUT.LEFT_MARGIN;
   nodes[0].fy = LAYOUT.TOP_MARGIN;
 
-  // 각 분야를 수평으로 배치
-  const rightWidth = 600; // 오른쪽 영역 너비 (적절히 조정)
-  const sectorCount = LAYOUT.SECTOR_ORDER.length;
+  // 항상 분야별 그룹 배치 사용 (원형 배치 비활성화)
+  // 장비가 많아도 그룹핑 유지
+  setupSectorGroupPositions(sectorGroups, totalEquipCount);
+}
 
-  LAYOUT.SECTOR_ORDER.forEach((sector, index) => {
+// 분야별 그룹 위치 설정 (개선된 그룹핑)
+function setupSectorGroupPositions(sectorGroups, totalEquipCount) {
+  // 장비 수에 따라 동적으로 시작 거리 조정
+  let startDistance;
+
+  if (totalEquipCount <= 50) {
+    // 장비가 적으면 가까이 배치
+    startDistance = SPACING_CONFIG.GUKSA_TO_EQUIP_MIN;
+  } else if (totalEquipCount <= 150) {
+    // 중간 정도면 적당히 배치
+    startDistance =
+      SPACING_CONFIG.GUKSA_TO_EQUIP_MIN +
+      (totalEquipCount - 50) * (SPACING_CONFIG.GUKSA_TO_EQUIP_MULTIPLIER / 2);
+  } else {
+    // 장비가 많으면 더 멀리 배치
+    startDistance = Math.min(
+      SPACING_CONFIG.GUKSA_TO_EQUIP_MAX,
+      SPACING_CONFIG.GUKSA_TO_EQUIP_MIN + totalEquipCount * SPACING_CONFIG.GUKSA_TO_EQUIP_MULTIPLIER
+    );
+  }
+
+  let groupIndex = 0;
+
+  // MW, 선로, 전송, IP, 무선, 교환 순서로 그룹 배치
+  LAYOUT.SECTOR_ORDER.forEach((sector) => {
     if (sectorGroups[sector] && sectorGroups[sector].length > 0) {
-      // 분야별 x 위치 설정 (균등 간격)
-      const xPos = LAYOUT.LEFT_MARGIN + 200 + (rightWidth / sectorCount) * index;
+      const sectorNodes = sectorGroups[sector];
 
-      // 분야 내 노드 수직 배치
-      const nodes = sectorGroups[sector];
-      const sectorHeight = 300; // 수직 공간
-      const nodeSpacing = Math.min(40, sectorHeight / nodes.length);
+      // 그룹의 기본 X 위치 계산
+      const groupBaseX =
+        LAYOUT.LEFT_MARGIN + startDistance + groupIndex * SPACING_CONFIG.GROUP_SPACING;
 
-      nodes.forEach((node, i) => {
-        // y 위치를 균등하게 배분 (분야 내 순서에 따라)
-        const yOffset = i * nodeSpacing;
-        const yPos = LAYOUT.TOP_MARGIN + yOffset;
+      // 그룹 내 노드들을 격자 형태로 배치
+      sectorNodes.forEach((node, nodeIndex) => {
+        // 열과 행 계산
+        const column = Math.floor(nodeIndex / SPACING_CONFIG.NODES_PER_COLUMN);
+        const row = nodeIndex % SPACING_CONFIG.NODES_PER_COLUMN;
 
-        // 초기 위치 지정
-        node.x = xPos;
-        node.y = yPos;
+        // 노드 위치 설정
+        node.x = groupBaseX + column * SPACING_CONFIG.NODE_HORIZONTAL_SPACING;
+        node.y = LAYOUT.TOP_MARGIN + row * SPACING_CONFIG.NODE_VERTICAL_SPACING;
+
+        // 그룹 정보 추가
+        node.groupIndex = groupIndex;
+        node.sector = sector;
       });
+
+      console.log(
+        `그룹 ${groupIndex} [${sector}]: ${sectorNodes.length}개 노드, X위치: ${groupBaseX}`
+      );
+      groupIndex++;
     }
   });
 }
 
-// 툴팁 생성
+// 툴팁 생성 (기존 유지)
 function createTooltip() {
   return d3
     .select('body')
@@ -357,7 +428,33 @@ function createTooltip() {
     .style('max-height', '300px');
 }
 
-// 힘 시뮬레이션 생성
+// 장비가 많을 때 사용할 원형 배치 함수 (기존 구조 유지)
+function setupCircularLayout(nodes, sectorGroups, totalEquipCount) {
+  nodes[0].fx = LAYOUT.LEFT_MARGIN;
+  nodes[0].fy = LAYOUT.TOP_MARGIN;
+
+  const radius = Math.min(200, 120 + totalEquipCount * 0.5);
+  const centerX = LAYOUT.LEFT_MARGIN + 400;
+  const centerY = LAYOUT.TOP_MARGIN + 150;
+
+  let angleIndex = 0;
+  const totalNodes = totalEquipCount;
+
+  LAYOUT.SECTOR_ORDER.forEach((sector) => {
+    if (sectorGroups[sector] && sectorGroups[sector].length > 0) {
+      const sectorNodes = sectorGroups[sector];
+
+      sectorNodes.forEach((node) => {
+        const angle = (angleIndex / totalNodes) * 2 * Math.PI;
+        node.x = centerX + radius * Math.cos(angle);
+        node.y = centerY + radius * Math.sin(angle);
+        angleIndex++;
+      });
+    }
+  });
+}
+
+// 힘 시뮬레이션 생성 (그룹 유지 강화)
 function createSimulation(nodes, links) {
   return d3
     .forceSimulation(nodes)
@@ -375,9 +472,17 @@ function createSimulation(nodes, links) {
         .forceX()
         .x((d) => {
           if (d.type === 'guksa') return LAYOUT.LEFT_MARGIN;
-          return d.x || 400; // 기본 중앙 위치
+          // 그룹별 X 위치 유지
+          if (d.groupIndex !== undefined) {
+            const startDistance = Math.max(
+              SPACING_CONFIG.GUKSA_TO_EQUIP_MIN,
+              SPACING_CONFIG.GUKSA_TO_EQUIP_MAX
+            );
+            return LAYOUT.LEFT_MARGIN + startDistance + d.groupIndex * SPACING_CONFIG.GROUP_SPACING;
+          }
+          return LAYOUT.LEFT_MARGIN + 600; // 기본값
         })
-        .strength(FORCE.X_STRENGTH)
+        .strength(1.8) // X 위치 유지 강도 증가
     )
     .force(
       'y',
@@ -385,16 +490,16 @@ function createSimulation(nodes, links) {
         .forceY()
         .y((d) => {
           if (d.type === 'guksa') return LAYOUT.TOP_MARGIN;
-          return d.y || 200; // 기본 중앙 위치
+          return LAYOUT.TOP_MARGIN + 200; // 기본 Y 위치
         })
-        .strength(FORCE.Y_STRENGTH)
+        .strength(0.3) // Y 위치는 더 자유롭게
     )
     .force('collide', d3.forceCollide().radius(FORCE.COLLIDE_RADIUS))
     .alphaDecay(FORCE.ALPHA_DECAY)
     .alpha(FORCE.ALPHA);
 }
 
-// 링크 생성
+// 링크 생성 (기존 유지)
 function createLinks(container, links) {
   return container
     .append('g')
@@ -411,7 +516,7 @@ function createLinks(container, links) {
     .attr('stroke-width', STYLE.LINK_STROKE_WIDTH);
 }
 
-// 노드 생성
+// 노드 생성 (기존 유지)
 function createNodes(container, nodes, simulation, tooltip) {
   const node = container
     .append('g')
@@ -507,6 +612,18 @@ function createNodes(container, nodes, simulation, tooltip) {
     .attr('font-size', STYLE.FONT_SIZE.LABEL)
     .attr('fill', '#333');
 
+  // 국사 노드 위에 "국사" 라벨 추가
+  node
+    .filter((d) => d.type === 'guksa')
+    .append('text')
+    .text('국사')
+    .attr('text-anchor', 'middle')
+    .attr('x', 0)
+    .attr('y', -25)
+    .attr('font-size', STYLE.FONT_SIZE.LABEL)
+    .attr('font-weight', 'bold')
+    .attr('fill', '#333');
+
   // 마우스 이벤트 추가
   node
     .on('mouseover', function (event, d) {
@@ -519,7 +636,7 @@ function createNodes(container, nodes, simulation, tooltip) {
   return node;
 }
 
-// 마우스 오버 처리
+// 마우스 오버 처리 (기존 유지)
 function handleMouseOver(element, event, d, tooltip) {
   let tooltipContent = '';
 
@@ -528,13 +645,11 @@ function handleMouseOver(element, event, d, tooltip) {
       d.nodeCount || '알 수 없음'
     }`;
   } else {
-    // 기본 장비 정보
     tooltipContent = `
       <strong>장비:</strong> ${d.id}<br>
       <strong>분야:</strong> ${d.sector}<br>
     `;
 
-    // 경보 메시지 추가
     if (d.alarmMessages && d.alarmMessages.length > 0) {
       tooltipContent += `<strong>경보 (${d.alarmMessages.length}개):</strong><br>`;
       tooltipContent += '<ul style="margin: 2px 0; padding-left: 15px; list-style-type: disc;">';
@@ -591,11 +706,10 @@ function handleMouseOver(element, event, d, tooltip) {
     .attr('font-size', STYLE.FONT_SIZE.BADGE_HOVER);
 }
 
-// 마우스 아웃 처리
+// 마우스 아웃 처리 (기존 유지)
 function handleMouseOut(element, tooltip) {
   tooltip.transition().duration(500).style('opacity', 0);
 
-  // 강조 효과 제거
   d3.select(element)
     .select('rect')
     .transition()
@@ -607,7 +721,6 @@ function handleMouseOut(element, tooltip) {
 
   d3.select(element).select('circle').transition().duration(200).attr('r', LAYOUT.NODE_RADIUS);
 
-  // 경보 배지 원래 크기로
   d3.select(element)
     .select('.alarm-badge-guksa')
     .transition()
@@ -625,15 +738,20 @@ function handleMouseOut(element, tooltip) {
     .attr('font-size', STYLE.FONT_SIZE.BADGE);
 }
 
-// 시뮬레이션 설정
+// 시뮬레이션 설정 (경계 개선)
 function setupSimulation(simulation, nodes, link, node) {
   simulation.on('tick', () => {
     // 노드 위치 제한 (화면 벗어나지 않도록)
     nodes.forEach((d) => {
       if (d.type !== 'guksa') {
-        // 국사 노드는 고정
-        d.x = Math.max(30, Math.min(770, d.x)); // 적절히 조정된 범위
-        d.y = Math.max(30, Math.min(370, d.y)); // 적절히 조정된 범위
+        d.x = Math.max(
+          SPACING_CONFIG.BOUNDARY_MARGIN,
+          Math.min(SPACING_CONFIG.SVG_WIDTH - SPACING_CONFIG.BOUNDARY_MARGIN, d.x)
+        );
+        d.y = Math.max(
+          SPACING_CONFIG.BOUNDARY_MARGIN,
+          Math.min(SPACING_CONFIG.SVG_HEIGHT - SPACING_CONFIG.BOUNDARY_MARGIN, d.y)
+        );
       }
     });
 
@@ -647,20 +765,20 @@ function setupSimulation(simulation, nodes, link, node) {
   });
 }
 
-// 드래그 시작 함수
+// 드래그 시작 함수 (기존 유지)
 function dragstarted(event, d, simulation) {
   if (!event.active) simulation.alphaTarget(0.3).restart();
   d.fx = d.x;
   d.fy = d.y;
 }
 
-// 드래그 중 함수
+// 드래그 중 함수 (기존 유지)
 function dragged(event, d) {
   d.fx = event.x;
   d.fy = event.y;
 }
 
-// 드래그 종료 함수
+// 드래그 종료 함수 (기존 유지)
 function dragended(event, d, simulation) {
   if (!event.active) simulation.alphaTarget(0);
   d.fx = d.x;

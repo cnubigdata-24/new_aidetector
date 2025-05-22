@@ -1349,7 +1349,7 @@ function createEquipTopologyMap(data, alarmDataList) {
     console.error('근본 원인 노드 강조 중 오류 발생:', error);
   }
 
-  setTimeout(fitAllNodes, 100);
+  setTimeout(fitAllNodes, 50);
 }
 
 // 근본 원인 노드 강조 함수 (완전히 새롭게 작성)

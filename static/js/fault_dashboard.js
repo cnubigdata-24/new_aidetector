@@ -4,7 +4,7 @@
 
 // 상수 및 전역 변수 정의
 const SECTORS = ['MW', '선로', '전송', 'IP', '무선', '교환'];
-const PAGE_SIZE = 10;
+const ALARM_TABLE_PAGE_SIZE = 7;
 const TABLE_COLUMNS = [
   'guksa_id',
   'sector',
@@ -25,7 +25,7 @@ let _currentPage = 1; // 현재 페이지
 let _summaryAlarmData = []; // 요약 경보 데이터
 let _allEquipmentData = []; // 모든 장비 데이터
 
-// DOM 요소 선택 유틸리티 함수
+// DOM 요소 선택 유틸리티 함수 => 미사용 삭제 예정 To do List ########################
 const DOM = {
   dashboard: () => d3.select('#dashboard'),
   mapContainer: () => document.getElementById('map-container'),
@@ -44,7 +44,7 @@ const DOM = {
 
 // 초기화 함수
 function initDashboard() {
-  const dashboard = DOM.dashboard();
+  const dashboard = d3.select('#dashboard');
   dashboard.html(''); // 기존 내용 삭제
 
   // 가로 배열을 위해 바로 6개 분야를 추가
@@ -139,7 +139,7 @@ function initDashboardClickEvents() {
 
 // 테이블 row 클릭 이벤트 설정 함수
 function setupTableRowClick() {
-  const tBody = DOM.alarmTableBody();
+  const tBody = document.getElementById('alarmTableBody');
 
   tBody.addEventListener('click', function (event) {
     // 행 엘리먼트 찾기
@@ -335,25 +335,33 @@ async function fetchSideBarEquipListBySector(sector) {
     console.log('View 모드:', _selectedView);
     console.log('장비 목록 데이터:', data);
 
-    // Sidebar 장비 목록 업데이트
-    const equipSelect = document.getElementById('searchEquipName');
-    equipSelect.innerHTML = ''; // 기존 옵션 제거
-
-    if (data && data.length > 0) {
-      data.forEach((equip) => {
-        const option = document.createElement('option');
-
-        option.value = equip.equip_name;
-        option.textContent = equip.equip_name;
-        option.dataset.equipId = equip.equip_id;
-        equipSelect.appendChild(option);
-      });
+    // 새로운 필터 시스템에 데이터 설정 (기존 코드 대체)
+    if (typeof setAllEquipmentList === 'function') {
+      setAllEquipmentList(data || []);
     } else {
-      // 장비가 없는 경우
-      const option = document.createElement('option');
-      option.value = '';
-      option.textContent = '해당 분야의 장비가 없습니다';
-      equipSelect.appendChild(option);
+      // fallback: 기존 방식으로 처리
+      console.warn(
+        '[EquipFilter] setAllEquipmentList 함수를 찾을 수 없어 기존 방식으로 처리합니다.'
+      );
+
+      const equipSelect = document.getElementById('searchEquipName');
+      equipSelect.innerHTML = ''; // 기존 옵션 제거
+
+      if (data && data.length > 0) {
+        data.forEach((equip) => {
+          const option = document.createElement('option');
+          option.value = equip.equip_name;
+          option.textContent = equip.equip_name;
+          option.dataset.equipId = equip.equip_id;
+          equipSelect.appendChild(option);
+        });
+      } else {
+        // 장비가 없는 경우
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = '해당 분야의 장비가 없습니다';
+        equipSelect.appendChild(option);
+      }
     }
   } catch (error) {
     console.error('장비 목록 가져오기 오류:', error);
@@ -517,7 +525,7 @@ function refreshAlarmTable() {
 // 테이블에 데이터 표시
 function addRowsToAlarmTable(alarmDataList) {
   console.log('addRowsToAlarmTable 함수 실행: 실제 경보 테이블에 데이터를 추가');
-  const tBody = DOM.alarmTableBody();
+  const tBody = document.getElementById('alarmTableBody');
 
   if (!tBody) {
     console.error('테이블 본문 요소를 찾을 수 없습니다.');
@@ -959,7 +967,7 @@ async function fetchGuksaList() {
     }
 
     // 국사 선택 드롭다운 업데이트
-    const select = DOM.searchGuksa();
+    const select = document.getElementById('searchGuksa');
     if (!select) return;
 
     data.forEach((item) => {
@@ -1054,7 +1062,7 @@ function equipChangeEventHandler() {
 
 // 1. 국사 드롭다운 변경 이벤트 핸들러 추가
 function guksaChangeEventHandler() {
-  const guksaSelect = DOM.searchGuksa();
+  const guksaSelect = document.getElementById('searchGuksa');
 
   if (guksaSelect) {
     guksaSelect.addEventListener('change', function () {

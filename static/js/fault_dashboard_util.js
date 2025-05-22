@@ -154,14 +154,14 @@ async function callApi(endpoint, params = {}) {
 
 // 페이지네이션 렌더링
 function renderPagination(totalItems) {
-  const totalPages = Math.ceil(totalItems / PAGE_SIZE);
+  const totalPages = Math.ceil(totalItems / ALARM_TABLE_PAGE_SIZE);
 
   // 페이지네이션 높이에 따라 테이블 컨테이너 조정
   adjustTableHeight(totalPages);
 
   DOM.pagination().pagination({
     items: totalItems,
-    itemsOnPage: PAGE_SIZE,
+    itemsOnPage: ALARM_TABLE_PAGE_SIZE,
     currentPage: _currentPage,
     displayedPages: 10,
     edges: 4,
@@ -422,15 +422,15 @@ function getPageDataSafely(dataArray, prefix = '') {
   }
 
   // _currentPage 유효성 검사
-  const totalPages = Math.ceil(dataArray.length / PAGE_SIZE);
+  const totalPages = Math.ceil(dataArray.length / ALARM_TABLE_PAGE_SIZE);
   if (_currentPage <= 0 || _currentPage > totalPages) {
     console.warn(`${prefix} 현재 페이지(${_currentPage})가 유효하지 않아 1페이지로 재설정합니다.`);
     _currentPage = 1;
   }
 
   // 페이지 데이터 계산
-  const start = (_currentPage - 1) * PAGE_SIZE;
-  const end = start + PAGE_SIZE;
+  const start = (_currentPage - 1) * ALARM_TABLE_PAGE_SIZE;
+  const end = start + ALARM_TABLE_PAGE_SIZE;
 
   // 시작 인덱스가 배열 범위를 벗어나는지 확인
   if (start >= dataArray.length) {
@@ -438,8 +438,10 @@ function getPageDataSafely(dataArray, prefix = '') {
       `${prefix} 시작 인덱스(${start})가 데이터 길이(${dataArray.length})를 초과합니다.`
     );
     _currentPage = 1;
-    const pageData = dataArray.slice(0, PAGE_SIZE);
-    console.log(`${prefix} 페이지 재설정: 시작=0, 끝=${PAGE_SIZE}, 데이터 길이=${pageData.length}`);
+    const pageData = dataArray.slice(0, ALARM_TABLE_PAGE_SIZE);
+    console.log(
+      `${prefix} 페이지 재설정: 시작=0, 끝=${ALARM_TABLE_PAGE_SIZE}, 데이터 길이=${pageData.length}`
+    );
 
     if (pageData.length > 0) {
       return { success: true, data: pageData, isReset: true };
@@ -500,3 +502,132 @@ function updateCurrentPageData() {
     );
   }
 }
+
+function initEquipmentFilter() {
+  console.log('[EquipFilter] 장비 검색 필터 초기화');
+
+  const filterInput = document.getElementById('equipFilterInput');
+  const filterBtn = document.getElementById('equipFilterBtn');
+  const resetBtn = document.getElementById('equipResetBtn');
+
+  if (!filterInput || !filterBtn || !resetBtn) {
+    console.error('[EquipFilter] 필터 요소를 찾을 수 없습니다.');
+    return;
+  }
+
+  // Filter 버튼 클릭 이벤트
+  filterBtn.addEventListener('click', applyEquipmentFilter);
+
+  // Reset 버튼 클릭 이벤트
+  resetBtn.addEventListener('click', resetEquipmentFilter);
+
+  // 입력 필드에서 엔터키 이벤트
+  filterInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.keyCode === 13) {
+      e.preventDefault();
+      applyEquipmentFilter();
+    }
+  });
+
+  console.log('[EquipFilter] 장비 검색 필터 초기화 완료');
+}
+
+/**
+ * 장비 필터 적용
+ */
+function applyEquipmentFilter() {
+  const filterInput = document.getElementById('equipFilterInput');
+  const searchTerm = filterInput.value.toLowerCase().trim();
+
+  console.log(`[EquipFilter] 필터 적용: "${searchTerm}"`);
+
+  if (searchTerm === '') {
+    // 검색어가 없으면 전체 표시
+    resetEquipmentFilter();
+    return;
+  }
+
+  // 장비명에서 검색어와 일치하는 항목 필터링
+  _filteredEquipmentList = _allEquipmentList.filter((equip) => {
+    const equipName = (equip.equip_name || '').toLowerCase();
+    const equipId = (equip.equip_id || '').toLowerCase();
+
+    // 장비명 또는 장비ID에서 검색
+    return equipName.includes(searchTerm) || equipId.includes(searchTerm);
+  });
+
+  console.log(`[EquipFilter] 필터링 결과: ${_filteredEquipmentList.length}개 장비`);
+
+  // select 박스 업데이트
+  updateEquipmentSelectBox(_filteredEquipmentList);
+}
+
+/**
+ * 장비 필터 초기화
+ */
+function resetEquipmentFilter() {
+  const filterInput = document.getElementById('equipFilterInput');
+
+  // 입력 필드 초기화
+  if (filterInput) {
+    filterInput.value = '';
+  }
+
+  console.log('[EquipFilter] 필터 초기화');
+
+  // 전체 장비 목록으로 복원
+  _filteredEquipmentList = [..._allEquipmentList];
+  updateEquipmentSelectBox(_filteredEquipmentList);
+}
+
+/**
+ * 장비 select 박스 업데이트
+ * @param {Array} equipmentList - 표시할 장비 목록
+ */
+function updateEquipmentSelectBox(equipmentList) {
+  const selectElement = document.getElementById('searchEquipName');
+
+  if (!selectElement) {
+    console.error('[EquipFilter] searchEquipName 요소를 찾을 수 없습니다.');
+    return;
+  }
+
+  // 기존 옵션 제거
+  selectElement.innerHTML = '';
+
+  // 필터링된 장비 목록 추가
+  equipmentList.forEach((equip) => {
+    const option = document.createElement('option');
+
+    // 기존 방식과 동일하게 설정
+    option.value = equip.equip_name;
+    option.textContent = equip.equip_name;
+    option.dataset.equipId = equip.equip_id;
+
+    selectElement.appendChild(option);
+  });
+
+  console.log(`[EquipFilter] select 박스 업데이트 완료: ${equipmentList.length}개 장비`);
+}
+
+/**
+ * 전체 장비 목록 저장 (기존 장비 로딩 함수에서 호출)
+ * @param {Array} equipmentList - 전체 장비 목록
+ */
+function setAllEquipmentList(equipmentList) {
+  _allEquipmentList = equipmentList || [];
+  _filteredEquipmentList = [..._allEquipmentList];
+
+  console.log(`[EquipFilter] 전체 장비 목록 설정: ${_allEquipmentList.length}개`);
+
+  // select 박스 초기 설정
+  updateEquipmentSelectBox(_filteredEquipmentList);
+}
+
+// DOM 로드 완료 후 초기화
+document.addEventListener('DOMContentLoaded', function () {
+  // 약간 지연시켜 다른 스크립트가 먼저 로드되도록
+  setTimeout(() => {
+    initEquipmentFilter();
+  }, 1000);
+});

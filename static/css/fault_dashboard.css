@@ -55,8 +55,8 @@ html {
 
 /* 하단 영역 */
 .bottom-div {
-  height: 48% !important;
-  min-height: 230px;
+  height: 30% !important;
+  min-height: 150px;
   max-height: calc(100vh - 370px);
   max-width: 100%;
   position: relative;
@@ -285,15 +285,34 @@ html {
   margin-top: 10px;
 }
 
-.left-sidebar select,
-.left-sidebar button {
-  height: calc(2.5em * 1.1);
-  padding: 8px;
+/* 대상 국사, 경보발생 시간 */
+.left-sidebar select {
+  /* height: calc(2.5em * 1.1); */
+  height: 33px; /* 30px → 35px로 증가 */
+  padding: 6px 6px;
   cursor: pointer;
   width: 100%;
   box-sizing: border-box;
   margin-top: 6px;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  line-height: 1.2; /* 줄 간격 명시 */
+  border: 1px solid #ccc; /* 테두리 추가 (선택사항) */
+  border-radius: 4px; /* 둥근 모서리 추가 (선택사항) */
+}
+
+.left-sidebar button {
+  height: 35px;
+  padding: 6px 8px;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  line-height: 1.2; /* 줄 간격 명시 */
+  border: 1px solid #ccc; /* 테두리 추가 (선택사항) */
+  border-radius: 4px; /* 둥근 모서리 추가 (선택사항) */
 }
 
 /* 장비 선택 라디오 그룹 스타일 */
@@ -315,6 +334,53 @@ html {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+/* 경보 장비 검색 필터 스타일 */
+.equip-filter-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 20px;
+}
+
+.equip-filter-input {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+  box-sizing: border-box;
+  height: 35px;
+}
+
+.equip-filter-div {
+  display: flex;
+  gap: 5px;
+  height: 26px !important;
+  margin-top: 1px;
+  margin-bottom: 5px;
+}
+
+.equip-filter-btn {
+  flex: 1;
+  height: 26px !important; /* !important 추가 */
+  padding: 0 8px !important; /* 좌우 패딩은 유지 */
+  background-color: #e0e0e0;
+  color: #000;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 20px; /* 세로 중앙 정렬을 위해 추가 */
+  transition: background-color 0.2s;
+}
+.equip-filter-btn:hover {
+  background-color: #d5d5d5;
+}
+
+.equip-filter-btn:active {
+  background-color: #c0c0c0;
 }
 
 /* 경보발생 장비 선택 리스트 */
@@ -341,7 +407,7 @@ html {
 
 /* 드래그 핸들 */
 .drag-handle {
-  width: 5px;
+  width: 3px;
   background-color: #e0e0e0;
   cursor: col-resize;
   position: relative;
@@ -803,6 +869,183 @@ select {
   padding-bottom: 0px !important;
 }
 
+@media (max-width: 768px) {
+  .middle-map-container {
+    height: 300px;
+  }
+}
+
+/* 새로운 수평 분할 레이아웃 */
+.horizontal-split-area {
+  position: relative;
+  height: 400px;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  border: 1px solid #ddd;
+  border-radius: 0px;
+  margin-top: 2px;
+  margin-bottom: 0px;
+  background-color: #ffffff;
+  overflow: hidden;
+}
+
+.left-map-panel {
+  flex: 1;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #ddd;
+  background-color: #ffffff;
+}
+
+.right-chat-panel {
+  width: 400px;
+  min-width: 300px;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  background-color: #f9f9f9;
+}
+
+.panel-header {
+  height: 35px;
+  padding: 8px 15px;
+  background-color: #f0f0f0;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-weight: bold;
+  font-size: 14px;
+  color: #333;
+}
+
+.header-btn {
+  padding: 4px 12px;
+  background-color: #e9ecef;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.header-btn:hover {
+  background-color: #dee2e6;
+}
+
+/* 새로운 레이아웃용 맵 컨테이너 */
+.new-map-container {
+  flex: 1;
+  position: relative;
+  background-color: #ffffff;
+  overflow: hidden;
+  padding: 5px;
+}
+
+.chat-messages-container {
+  flex: 1;
+  padding: 15px;
+  overflow-y: auto;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-message {
+  max-width: 90%;
+  word-wrap: break-word;
+}
+
+.chat-message.system {
+  align-self: flex-start;
+}
+.chat-message.user {
+  align-self: flex-end;
+}
+.chat-message.ai {
+  align-self: flex-start;
+}
+
+.message-content {
+  padding: 10px 15px;
+  border-radius: 10px;
+  line-height: 1.4;
+  font-size: 13px;
+}
+
+.chat-message.system .message-content {
+  background-color: #e8f4fd;
+  color: #1565c0;
+  border: 1px solid #bbdefb;
+}
+
+.chat-message.user .message-content {
+  background-color: #007bff;
+  color: white;
+}
+
+.chat-message.ai .message-content {
+  background-color: #f8f9fa;
+  color: #333;
+  border: 1px solid #dee2e6;
+}
+
+.message-time {
+  font-size: 11px;
+  color: #888;
+  margin-top: 5px;
+  text-align: right;
+}
+
+.chat-message.system .message-time,
+.chat-message.ai .message-time {
+  text-align: left;
+}
+
+.chat-input-container {
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-top: 1px solid #ddd;
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+#chat-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  outline: none;
+  font-size: 13px;
+}
+
+#chat-input:focus {
+  border-color: #007bff;
+}
+
+#chat-send-btn {
+  padding: 8px 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 0.2s;
+}
+
+#chat-send-btn:hover {
+  background-color: #0056b3;
+}
+
 /* 동일 국사 기준 => 맵 제목 스타일 */
 .map-title {
   position: absolute;
@@ -1035,12 +1278,12 @@ select {
 /* 국사 노드 스타일 */
 .node-guksa rect {
   fill: #0056b3;
-  stroke: #003366;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  stroke: #000000;
+  /* filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2)); */
 }
 
 .node-guksa:hover rect {
-  filter: drop-shadow(0 0 6px rgba(0, 86, 179, 0.6));
+  /* filter: drop-shadow(0 0 6px rgba(0, 86, 179, 0.6)); */
   stroke-width: 3px;
 }
 
@@ -1132,11 +1375,4 @@ select {
   cursor: pointer;
   margin-right: 10px;
   margin-bottom: 0;
-}
-
-/* 반응형 스타일 */
-@media (max-width: 768px) {
-  .middle-map-container {
-    height: 300px;
-  }
 }

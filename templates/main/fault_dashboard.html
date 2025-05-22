@@ -21,7 +21,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/simplePagination.js/1.6/jquery.simplePagination.min.js"></script>
 
     <link rel="stylesheet" href="/static/css/fault_dashboard.css" />
-    <!-- <link rel="stylesheet" href="/static/css/fault_dashboard_equip.css" /> -->
   </head>
   <body>
     <div class="container">
@@ -29,7 +28,6 @@
         <div>
           <div style="display: flex; justify-content: space-between; align-items: center">
             <span class="default-title">대상 국사 </span>
-
             <span style="cursor: pointer; font-size: 10pt" onclick="refreshPage()">Refresh ⟳</span>
           </div>
           <div>
@@ -46,7 +44,6 @@
             <option value="10">최근 10분</option>
             <option value="15">최근 15분</option>
             <option value="20">최근 20분</option>
-
             <option value="30" selected>최근 30분</option>
             <option value="60">최근 1시간</option>
             <option value="120">최근 2시간</option>
@@ -62,17 +59,34 @@
             <label><input type="radio" name="sector" value="선로" /> 선로</label>
             <label><input type="radio" name="sector" value="전송" /> 전송</label>
             <label><input type="radio" name="sector" value="IP" checked /> IP</label>
-
             <label><input type="radio" name="sector" value="무선" /> 무선</label>
             <label><input type="radio" name="sector" value="교환" /> 교환</label>
           </div>
         </div>
+
         <div>
+          <!-- 경보발생 장비 검색 필터 -->
+          <div class="equip-filter-container">
+            <input
+              type="text"
+              id="equipFilterInput"
+              class="equip-filter-input"
+              placeholder="장비명 검색..."
+            />
+            <div class="equip-filter-div">
+              <button id="equipFilterBtn" class="equip-filter-btn">Filter</button>
+              <button id="equipResetBtn" class="equip-filter-btn">Reset</button>
+            </div>
+          </div>
+
+          <!-- 경보발생 장비 목록 -->
           <div>
             <select id="searchEquipName" class="equip-select" size="15"></select>
           </div>
         </div>
+
         <br />
+
         <button id="fault-point-btn" class="fault-view-btn">장애점 찾기</button>
       </div>
 
@@ -80,10 +94,10 @@
         <div class="toggle-btn" id="toggle-btn">◀</div>
       </div>
 
-      <!-- right-content 영역 내부 변경 -->
+      <!-- right-content 영역 -->
       <div class="right-content">
         <div class="top-dashboard">
-          <!-- 전체 현황 요약 라인 추가 -->
+          <!-- 전체 현황 요약 라인 -->
           <div class="dashboard-summary">
             <span class="summary-title">실시간 경보현황: </span>
             <span id="total-equip-count">경보 장비(0대)</span>
@@ -91,10 +105,9 @@
             <span id="total-valid-count">유효 경보(0개)</span>
             <span id="recent-update-time" class="recent-update-time">최근 장애</span>
 
-            <!-- 우상단에 장비/국사 기준 메뉴 추가 -->
+            <!-- 우상단에 장비/국사 기준 메뉴 -->
             <div class="view-toggle-buttons">
               <span class="summary-title">경보 맵 기준 선택</span>
-
               <button id="equip-view-btn" class="view-btn active">장비 연결 기준</button>
               <button id="guksa-view-btn" class="view-btn">동일 국사 기준</button>
             </div>
@@ -107,11 +120,40 @@
           ></div>
         </div>
 
-        <!-- 새로운 맵 컨테이너 추가 -->
-        <div class="middle-map-container" id="map-container">
-          <!-- 여기에 d3.js 맵이 추가될 예정 -->
+        <!-- 맵-채팅 분할 영역 -->
+        <div class="horizontal-split-area">
+          <!-- 좌측: 맵 영역 -->
+          <div class="left-map-panel">
+            <!-- <div class="panel-header">
+              <span class="panel-title">맵 영역</span>
+            </div> -->
+            <div class="new-map-container" id="map-container">
+              <!-- 여기에 d3.js 맵이 추가될 예정 -->
+            </div>
+          </div>
+
+          <!-- 우측: 채팅 결과 영역 -->
+          <div class="right-chat-panel">
+            <!-- <div class="panel-header">
+              <span class="panel-title">채팅 결과 영역</span>
+              <button id="chat-clear-btn" class="header-btn">Clear</button>
+            </div> -->
+            <div class="chat-messages-container" id="chat-messages-area">
+              <div class="chat-message system">
+                <div class="message-content">
+                  💡 장애점 찾기 버튼을 클릭하면 AI 분석 결과가 여기에 표시됩니다.
+                </div>
+                <div class="message-time">10:36</div>
+              </div>
+            </div>
+            <div class="chat-input-container">
+              <input type="text" id="chat-input" placeholder="질문을 입력하세요..." />
+              <button id="chat-send-btn">전송</button>
+            </div>
+          </div>
         </div>
 
+        <!-- 테이블 영역 (기존 유지) -->
         <div class="bottom-div">
           <div class="table-container">
             <table id="alarmTable" class="alarm-table">
