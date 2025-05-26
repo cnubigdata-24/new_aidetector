@@ -13,13 +13,13 @@
 
   <body>
     <div class="header">
-      <span class="header-title">NW Àå¾ÖÁ¡ ºÐ¼®/Å½Áö</span>&nbsp; (Advanced RAG)
+      <span class="header-title">NW ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ð¼ï¿½/Å½ï¿½ï¿½</span>&nbsp; (Advanced RAG)
       <div class="timestamp" id="timestamp"></div>
     </div>
 
     <div class="container">
       <div class="sidebar" id="summary-list">
-        <!-- Áú¹® ¿ä¾à Ç×¸ñÀÌ ¿©±â¿¡ µ¿ÀûÀ¸·Î Ãß°¡µÊ -->
+        <!-- ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½×¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½â¿¡ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß°ï¿½ï¿½ï¿½ -->
       </div>
 
       <div class="drag-handle" id="drag-handle">
@@ -34,27 +34,27 @@
         <div class="input-container">
           <div class="input-top">
             <div style="flex-shrink: 0">
-              [ A-RAG Prompt ] ÇöÀç ¼±ÅÃµÈ ±¹»ç¸í:
-              <span id="kuksa_name">{{ kuksa_id or '¾øÀ½' }}</span>
+              [ A-RAG Prompt ] ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ãµï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½:
+              <span id="kuksa_name">{{ kuksa_id or 'ï¿½ï¿½ï¿½ï¿½' }}</span>
             </div>
 
             <div style="display: flex; align-items: center; gap: 10px">
               <label
-                ><input type="radio" name="queryMode" value="fixed" checked /> Àå¾ÖÁ¡ Ãß·Ð</label
+                ><input type="radio" name="queryMode" value="fixed" checked /> ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß·ï¿½</label
               >
-              <label><input type="radio" name="queryMode" value="chat" /> ´ëÈ­ ¸ðµå</label>
+              <label><input type="radio" name="queryMode" value="chat" /> ï¿½ï¿½È­ ï¿½ï¿½ï¿½</label>
 
               <button class="button-getalarm" onclick="UIController.getRealTimeAlarmList()">
-                ½Ç½Ã°£ °æº¸ ¼öÁý
+                ï¿½Ç½Ã°ï¿½ ï¿½æº¸ ï¿½ï¿½ï¿½ï¿½
               </button>
               <button class="button-getcable" onclick="UIController.getDrCableInfo()">
-                ¼±·Î Àå¾Ö È®ÀÎ
+                ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ È®ï¿½ï¿½
               </button>
               <button class="button-getmwinfo" onclick="UIController.getMWInfoFromSNMP()">
-                Àü¿ø/ÆäÀÌµù È®ÀÎ
+                ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½Ìµï¿½ È®ï¿½ï¿½
               </button>
               <button class="button-initchat" onclick="UIController.clearConversation()">
-                ´ëÈ­ ÃÊ±âÈ­
+                ï¿½ï¿½È­ ï¿½Ê±ï¿½È­
               </button>
             </div>
           </div>
@@ -62,21 +62,21 @@
           <div>
             <textarea
               id="prompt-input"
-              placeholder="Àå¾ÖÁ¡À» Ã£À» ¼ö ÀÖµµ·Ï ÇöÀç Àå¾Ö Áõ»ó°ú ºÐ¾ßº° °æº¸¸¦ ÀÔ·ÂÇØ ÁÖ¼¼¿ä !!!
-    1. [Àå¾ÖÁ¡ Á¶È¸] Àå¾Ö Áõ»óÀÌ³ª °æº¸ Á¤º¸¸¦ ÀÔ·ÂÇÏ¸é À¯»çÇÑ °ú°Å »ç·Ê¸¦ Á¶È¸ÇØ µå¸³´Ï´Ù.
-    2. [»ó¼¼ °Ë»ö] ±¸Ã¼ÀûÀÎ °æº¸ ÄÚµå³ª Áõ»óÀ» ÀÔ·ÂÇÒ¼ö·Ï ´õ Á¤È®ÇÑ °á°ú¸¦ ¾òÀ» ¼ö ÀÖ½À´Ï´Ù.
-    3. [ÇÊÅÍ °Ë»ö] 'Àü¼Û ºÐ¾ß', 'IP ºÐ¾ß', '±³È¯ ºÐ¾ß'¿Í °°Àº Æ¯Á¤ ºÐ¾ß¸¦ Æ÷ÇÔÇÏ¿© °Ë»öÇÒ ¼ö ÀÖ½À´Ï´Ù."
+              placeholder="ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã£ï¿½ï¿½ ï¿½ï¿½ ï¿½Öµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ð¾ßºï¿½ ï¿½æº¸ï¿½ï¿½ ï¿½Ô·ï¿½ï¿½ï¿½ ï¿½Ö¼ï¿½ï¿½ï¿½ !!!
+    1. [ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¸] ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ì³ï¿½ ï¿½æº¸ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ô·ï¿½ï¿½Ï¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ê¸ï¿½ ï¿½ï¿½È¸ï¿½ï¿½ ï¿½å¸³ï¿½Ï´ï¿½.
+    2. [ï¿½ï¿½ ï¿½Ë»ï¿½] ï¿½ï¿½Ã¼ï¿½ï¿½ï¿½ï¿½ ï¿½æº¸ ï¿½Úµå³ª ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ô·ï¿½ï¿½Ò¼ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½È®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ö½ï¿½ï¿½Ï´ï¿½.
+    3. [ï¿½ï¿½ï¿½ï¿½ ï¿½Ë»ï¿½] 'ï¿½ï¿½ï¿½ï¿½ ï¿½Ð¾ï¿½', 'IP ï¿½Ð¾ï¿½', 'ï¿½ï¿½È¯ ï¿½Ð¾ï¿½'ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Æ¯ï¿½ï¿½ ï¿½Ð¾ß¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¿ï¿½ ï¿½Ë»ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ö½ï¿½ï¿½Ï´ï¿½."
             >
             </textarea>
 
-            <button class="send-button" onclick="UIController.handlePrompt()">¡è</button>
+            <button class="send-button" onclick="UIController.handlePrompt()">ï¿½ï¿½</button>
           </div>
         </div>
       </div>
     </div>
 
     <script>
-      //  * Àü¿ª º¯¼ö ¹× »óÅÂ °ü¸®
+      //  * ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
       const AppState = {
         requestTime: null,
         responseCount: 0,
@@ -85,7 +85,7 @@
         isSidebarVisible: true,
 
         init() {
-          console.log('Äõ¸®½ºÆ®¸µÀ¸·Î ¹ÞÀº kuksa_id:', this.kuksa_id);
+          console.log('ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ kuksa_id:', this.kuksa_id);
         },
       };
 
@@ -102,7 +102,7 @@
 
           return fetch(url, options).then((res) => {
             if (!res.ok) {
-              throw new Error(`¼­¹ö ¿À·ù: ${res.status}`);
+              throw new Error(`ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½: ${res.status}`);
             }
             return res.json();
           });
@@ -162,11 +162,11 @@
           if (!timestamp) return;
 
           const { durationMin, remainSec } = Utils.calculateDuration(requestTime, responseTime);
-          timestamp.innerHTML = `¿äÃ»: ${Utils.formatDateTime(
+          timestamp.innerHTML = `ï¿½ï¿½Ã»: ${Utils.formatDateTime(
             requestTime
-          )} ¡æ ÀÀ´ä: ${Utils.formatDateTime(
+          )} ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½: ${Utils.formatDateTime(
             responseTime
-          )} (¼Ò¿ä½Ã°£: ${durationMin}ºÐ ${remainSec}ÃÊ)`;
+          )} (ï¿½Ò¿ï¿½Ã°ï¿½: ${durationMin}ï¿½ï¿½ ${remainSec}ï¿½ï¿½)`;
         },
 
         addUserMessage(input, responseId) {
@@ -188,10 +188,10 @@
 
           if (mode === 'chat') {
             botLoading.innerHTML =
-              '?? <b>´äº¯ »ý¼º Áß...</b> <br><br> ¿äÃ»ÇÑ Áú¹®¿¡ ´ëÇØ ´äº¯À» »ý¼ºÇÕ´Ï´Ù.';
+              '?? <b>ï¿½äº¯ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½...</b> <br><br> ï¿½ï¿½Ã»ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½äº¯ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.';
           } else {
             botLoading.innerHTML =
-              '?? <b>Àå¾ÖÁ¡ Ãß·Ð Áß...</b> <br><br> ¹ß»ýÇÑ Àå¾ÖÁõ»ó°ú °æº¸ ÆÐÅÏÀ» ºÐ¼®ÇÏ¿© À¯»ç Àå¾Ö¹ß»ý »ç·Ê¸¦ ±âÁØÀ¸·Î Àå¾ÖÁ¡À» Ãß·ÐÇÕ´Ï´Ù.';
+              '?? <b>ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß·ï¿½ ï¿½ï¿½...</b> <br><br> ï¿½ß»ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½æº¸ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ð¼ï¿½ï¿½Ï¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ö¹ß»ï¿½ ï¿½ï¿½Ê¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß·ï¿½ï¿½Õ´Ï´ï¿½.';
           }
 
           responseBox.appendChild(botLoading);
@@ -241,7 +241,7 @@
           const errorMsg = document.createElement('div');
 
           errorMsg.className = 'bot-msg error';
-          errorMsg.innerHTML = `? <b>¿À·ù ¹ß»ý</b> <br>${error}`;
+          errorMsg.innerHTML = `? <b>ï¿½ï¿½ï¿½ï¿½ ï¿½ß»ï¿½</b> <br>${error}`;
 
           responseBox.appendChild(errorMsg);
           responseBox.scrollTop = responseBox.scrollHeight;
@@ -255,36 +255,36 @@
 
           if (mode === 'fixed') {
             promptInput.placeholder =
-              'NW Àå¾Ö¹ß»ý ½Ã Àå¾ÖÁ¡À» Ã£À» ¼ö ÀÖµµ·Ï ºÐ¾ßº° ¼¼ºÎ °æº¸³»¿ªÀ» ÀÔ·ÂÇØ ÁÖ¼¼¿ä !!!\n\n[Àå¾ÖÁ¡ Ãß·Ð] °æº¸³»¿ª/Àå¾ÖÁõ»ó ÀÔ·Â ½Ã À¯»ç Àå¾Ö»ç·Ê¸¦ ±âÁØÀ¸·Î Àå¾ÖÁ¡À» Ãß·Ð \n[À¯»ç Àå¾Ö»ç·Ê ÃßÃâ] ÀÔ·ÂµÈ °æº¸ÇöÈ²°ú À¯»çµµ°¡ ³ôÀº »ç·Ê 3°Ç (ÀüÃ¼ ³»¿ë ÀÔ·Â)';
+              'NW ï¿½ï¿½Ö¹ß»ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã£ï¿½ï¿½ ï¿½ï¿½ ï¿½Öµï¿½ï¿½ï¿½ ï¿½Ð¾ßºï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½æº¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ô·ï¿½ï¿½ï¿½ ï¿½Ö¼ï¿½ï¿½ï¿½ !!!\n\n[ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß·ï¿½] ï¿½æº¸ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ô·ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ö»ï¿½Ê¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß·ï¿½ \n[ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ö»ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½] ï¿½Ô·Âµï¿½ ï¿½æº¸ï¿½ï¿½È²ï¿½ï¿½ ï¿½ï¿½ï¿½çµµï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ 3ï¿½ï¿½ (ï¿½ï¿½Ã¼ ï¿½ï¿½ï¿½ï¿½ ï¿½Ô·ï¿½)';
           } else {
             promptInput.placeholder =
-              'Àå¾Ö¿¡ ´ëÇØ ÀÚÀ¯·Ó°Ô Áú¹®ÇÏ¼¼¿ä:\n- ÀÌ Àå¾ÖÀÇ ¿øÀÎÀº ¹«¾ùÀÎ°¡¿ä?\n- ¾î¶² Á¶Ä¡°¡ ÇÊ¿äÇÑ°¡¿ä?\n À¯»çÇÑ Àå¾Ö »ç·Ê°¡ ÀÖ¾ú³ª¿ä?';
+              'ï¿½ï¿½Ö¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ó°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¼ï¿½ï¿½ï¿½:\n- ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Î°ï¿½ï¿½ï¿½?\n- ï¿½î¶² ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½Ê¿ï¿½ï¿½Ñ°ï¿½ï¿½ï¿½?\n ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½Ê°ï¿½ ï¿½Ö¾ï¿½ï¿½ï¿½ï¿½ï¿½?';
           }
         },
       };
 
       const HTMLGenerator = {
-        // ÆÄ½ÌµÈ JSON µ¥ÀÌÅÍ ÀúÀå º¯¼ö
+        // ï¿½Ä½Ìµï¿½ JSON ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         parsedData: null,
 
         createChatModeResponse(input, response) {
           try {
             return `
         <details open>
-          <summary><b>?? ÀÀ´ä ÆîÄ¡±â/Á¢±â</b></summary>
-          <div><b>[Áú¹®]</b> <br>${input}</div> <br>
-          <div><b>[ÀÀ´ä]</b> <br>${response.replace(/\n/g, '<br>')}</div>
+          <summary><b>?? ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½/ï¿½ï¿½ï¿½ï¿½</b></summary>
+          <div><b>[ï¿½ï¿½ï¿½ï¿½]</b> <br>${input}</div> <br>
+          <div><b>[ï¿½ï¿½ï¿½ï¿½]</b> <br>${response.replace(/\n/g, '<br>')}</div>
         </details>
       `;
           } catch (e) {
-            console.error('Ã¤ÆÃ ÀÀ´ä »ý¼º ¿À·ù:', e);
-            return `<div class="error-message">ÀÀ´ä Ã³¸® Áß ¿À·ù°¡ ¹ß»ýÇß½À´Ï´Ù: ${e.message}</div>`;
+            console.error('Ã¤ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½:', e);
+            return `<div class="error-message">ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß»ï¿½ï¿½ß½ï¿½ï¿½Ï´ï¿½: ${e.message}</div>`;
           }
         },
 
         createOpinionSection() {
           if (!this.parsedData || !this.parsedData.opinion) {
-            return '<div class="empty-opinion">Á¾ÇÕ ÀÇ°ßÀ» »ý¼ºÇÒ ¼ö ¾ø½À´Ï´Ù.</div>';
+            return '<div class="empty-opinion">ï¿½ï¿½ï¿½ï¿½ ï¿½Ç°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½.</div>';
           }
 
           const opinion = this.parsedData.opinion;
@@ -304,29 +304,29 @@
             !Array.isArray(this.parsedData.summary) ||
             this.parsedData.summary.length === 0
           ) {
-            return '<div>¿ä¾à µ¥ÀÌÅÍ°¡ ¾ø½À´Ï´Ù.</div>';
+            return '<div>ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½.</div>';
           }
 
           const rows = this.parsedData.summary;
           let tableHTML = '<table class="summary-table">';
 
-          // Å×ÀÌºí Çì´õ
+          // ï¿½ï¿½ï¿½Ìºï¿½ ï¿½ï¿½ï¿½
           tableHTML += '<tr>';
-          tableHTML += '<th style="width:45px;">¼øÀ§</th>';
-          tableHTML += '<th style="width:60px;">À¯»çµµ</th>';
-          tableHTML += '<th style="width:85px;">ºÐ¾ß</th>';
-          tableHTML += '<th style="width:380px;">Àå¾ÖÁ¡</th>';
-          tableHTML += '<th>Àå¾Ö»ç·Ê</th>';
+          tableHTML += '<th style="width:45px;">ï¿½ï¿½ï¿½ï¿½</th>';
+          tableHTML += '<th style="width:60px;">ï¿½ï¿½ï¿½çµµ</th>';
+          tableHTML += '<th style="width:85px;">ï¿½Ð¾ï¿½</th>';
+          tableHTML += '<th style="width:380px;">ï¿½ï¿½ï¿½ï¿½ï¿½</th>';
+          tableHTML += '<th>ï¿½ï¿½Ö»ï¿½ï¿½</th>';
           tableHTML += '</tr>';
 
-          // Å×ÀÌºí ³»¿ë
+          // ï¿½ï¿½ï¿½Ìºï¿½ ï¿½ï¿½ï¿½ï¿½
           for (const row of rows) {
             tableHTML += '<tr>';
-            tableHTML += `<td>${row['¼øÀ§'] || 'ºÒ¸í'}</td>`;
-            tableHTML += `<td>${row['À¯»çµµ'] || row[' À¯»çµµ'] || 'ºÒ¸í'}</td>`;
-            tableHTML += `<td>${row['ºÐ¾ß'] || 'ºÒ¸í'}</td>`;
-            tableHTML += `<td>${row['Àå¾ÖÁ¡'] || 'ºÒ¸í'}</td>`;
-            tableHTML += `<td>${row['Àå¾Ö»ç·Ê'] || 'ºÒ¸í'}</td>`;
+            tableHTML += `<td>${row['ï¿½ï¿½ï¿½ï¿½'] || 'ï¿½Ò¸ï¿½'}</td>`;
+            tableHTML += `<td>${row['ï¿½ï¿½ï¿½çµµ'] || row[' ï¿½ï¿½ï¿½çµµ'] || 'ï¿½Ò¸ï¿½'}</td>`;
+            tableHTML += `<td>${row['ï¿½Ð¾ï¿½'] || 'ï¿½Ò¸ï¿½'}</td>`;
+            tableHTML += `<td>${row['ï¿½ï¿½ï¿½ï¿½ï¿½'] || 'ï¿½Ò¸ï¿½'}</td>`;
+            tableHTML += `<td>${row['ï¿½ï¿½Ö»ï¿½ï¿½'] || 'ï¿½Ò¸ï¿½'}</td>`;
             tableHTML += '</tr>';
           }
 
@@ -341,30 +341,30 @@
             !Array.isArray(this.parsedData.details) ||
             this.parsedData.details.length === 0
           ) {
-            return '<div>¼¼ºÎ ³»¿ªÀÌ ¾ø½À´Ï´Ù.</div>';
+            return '<div>ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½.</div>';
           }
 
           const details = this.parsedData.details;
           let detailsHTML = '<div class="details-container">';
 
-          // °¢ ¼¼ºÎ ³»¿ª Ç×¸ñÀ» ±âÁ¸ Å¬·¡½º·Î ½ºÅ¸ÀÏ¸µ
+          // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½×¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Å¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Å¸ï¿½Ï¸ï¿½
           for (const item of details) {
             detailsHTML += `
         <div class="detail-item">
           <div class="detail-header">
-            [Àå¾ÖÁ¡ Ãß·Ð #${item['¼øÀ§']}] (${item['ºÐ¾ß']}) ${item['Àå¾ÖÁ¡']} (À¯»çµµ: ${item['À¯»çµµ']})
+            [ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß·ï¿½ #${item['ï¿½ï¿½ï¿½ï¿½']}] (${item['ï¿½Ð¾ï¿½']}) ${item['ï¿½ï¿½ï¿½ï¿½ï¿½']} (ï¿½ï¿½ï¿½çµµ: ${item['ï¿½ï¿½ï¿½çµµ']})
           </div>
           <table class="detail-table">
       `;
 
-            // ÁÖ¿ä Á¤º¸ Ç×¸ñ
+            // ï¿½Ö¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½×¸ï¿½
             const infoFields = [
-              { key: '¹ß»ýÀÏÀÚ', value: item['¹ß»ýÀÏÀÚ'] || 'Á¤º¸ ¾øÀ½' },
-              { key: 'Àå¾Ö»ç·Ê', value: item['Àå¾Ö»ç·Ê'] || 'Á¤º¸ ¾øÀ½' },
-              { key: 'ºÐ¾ß', value: item['ºÐ¾ß'] || 'Á¤º¸ ¾øÀ½' },
+              { key: 'ï¿½ß»ï¿½ï¿½ï¿½ï¿½ï¿½', value: item['ï¿½ß»ï¿½ï¿½ï¿½ï¿½ï¿½'] || 'ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½' },
+              { key: 'ï¿½ï¿½Ö»ï¿½ï¿½', value: item['ï¿½ï¿½Ö»ï¿½ï¿½'] || 'ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½' },
+              { key: 'ï¿½Ð¾ï¿½', value: item['ï¿½Ð¾ï¿½'] || 'ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½' },
             ];
 
-            // ÇÊ¼ö Á¤º¸ Å×ÀÌºí Çà Ãß°¡
+            // ï¿½Ê¼ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ìºï¿½ ï¿½ï¿½ ï¿½ß°ï¿½
             for (const field of infoFields) {
               detailsHTML += `
           <tr>
@@ -374,14 +374,14 @@
         `;
             }
 
-            // ¼±ÅÃÀû Á¤º¸ Ç×¸ñµé (ÀÖ´Â °æ¿ì¸¸ Ç¥½Ã)
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½×¸ï¿½ï¿½ (ï¿½Ö´ï¿½ ï¿½ï¿½ì¸¸ Ç¥ï¿½ï¿½)
             const optionalFields = [
-              { key: 'Àå¾ÖºÐ¼®', value: item['Àå¾ÖºÐ¼®'] },
-              { key: '°æº¸ÇöÈ²', value: item['°æº¸ÇöÈ²'] },
-              { key: 'Á¶Ä¡³»¿ª', value: item['Á¶Ä¡³»¿ª'] },
+              { key: 'ï¿½ï¿½ÖºÐ¼ï¿½', value: item['ï¿½ï¿½ÖºÐ¼ï¿½'] },
+              { key: 'ï¿½æº¸ï¿½ï¿½È²', value: item['ï¿½æº¸ï¿½ï¿½È²'] },
+              { key: 'ï¿½ï¿½Ä¡ï¿½ï¿½ï¿½ï¿½', value: item['ï¿½ï¿½Ä¡ï¿½ï¿½ï¿½ï¿½'] },
             ];
 
-            // ¼±ÅÃÀû Á¤º¸ Å×ÀÌºí Çà Ãß°¡
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ìºï¿½ ï¿½ï¿½ ï¿½ß°ï¿½
             for (const field of optionalFields) {
               if (field.value) {
                 detailsHTML += `
@@ -400,23 +400,23 @@
           return detailsHTML;
         },
 
-        //  API ÀÀ´ä ÀüÃ¼ Ã³¸® ·¡ÆÛ
+        //  API ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ã¼ Ã³ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         createAllSection(json_string) {
           try {
-            // Àü´ÞµÈ µ¥ÀÌÅÍ°¡ °´Ã¼ÀÎÁö È®ÀÎ
+            // ï¿½ï¿½ï¿½Þµï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í°ï¿½ ï¿½ï¿½Ã¼ï¿½ï¿½ï¿½ï¿½ È®ï¿½ï¿½
             if (!json_string || typeof json_string !== 'object') {
-              throw new Error('À¯È¿ÇÑ API ÀÀ´ä µ¥ÀÌÅÍ°¡ ¾Æ´Õ´Ï´Ù.');
+              throw new Error('ï¿½ï¿½È¿ï¿½ï¿½ API ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í°ï¿½ ï¿½Æ´Õ´Ï´ï¿½.');
             }
 
-            // ÇÊ¼ö ÇÊµå È®ÀÎ
+            // ï¿½Ê¼ï¿½ ï¿½Êµï¿½ È®ï¿½ï¿½
             if (!json_string.opinion || !json_string.summary || !json_string.details) {
-              throw new Error('API ÀÀ´ä¿¡ ÇÊ¿äÇÑ ÇÊµå°¡ ´©¶ôµÇ¾ú½À´Ï´Ù.');
+              throw new Error('API ï¿½ï¿½ï¿½ä¿¡ ï¿½Ê¿ï¿½ï¿½ï¿½ ï¿½Êµå°¡ ï¿½ï¿½ï¿½ï¿½ï¿½Ç¾ï¿½ï¿½ï¿½ï¿½Ï´ï¿½.');
             }
 
-            // ÆÄ½ÌµÈ µ¥ÀÌÅÍ ÀúÀå
+            // ï¿½Ä½Ìµï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
             this.parsedData = json_string;
 
-            // °¢ ¼½¼Ç HTML »ý¼º
+            // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ HTML ï¿½ï¿½ï¿½ï¿½
             const opinionSection = this.createOpinionSection();
             const summaryTable = this.createSummarySection();
             const detailsSection = this.createDetailsSection();
@@ -425,24 +425,24 @@
 
             return `
         <div class="result-section">
-          <p class="section-title">? <b>Á¾ÇÕ ÀÇ°ß</b></p>${opinionSection}          
-          <p class="section-title">? <b>Àå¾ÖÁ¡ Ãß·Ð ¿ä¾à</b></p>${summaryTable}          
-          <p class="section-title">? <b>Àå¾ÖÁ¡ Ãß·Ð ¼¼ºÎ³»¿ª</b></p>${detailsSection}
+          <p class="section-title">? <b>ï¿½ï¿½ï¿½ï¿½ ï¿½Ç°ï¿½</b></p>${opinionSection}          
+          <p class="section-title">? <b>ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß·ï¿½ ï¿½ï¿½ï¿½</b></p>${summaryTable}          
+          <p class="section-title">? <b>ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß·ï¿½ ï¿½ï¿½ï¿½Î³ï¿½ï¿½ï¿½</b></p>${detailsSection}
           
           <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
-            ¡Ø Vector DB Query ½Ã°£: ${
+            ï¿½ï¿½ Vector DB Query ï¿½Ã°ï¿½: ${
               typeof processingTime === 'number' ? processingTime.toFixed(2) : processingTime
-            }ÃÊ
+            }ï¿½ï¿½
           </div>
         </div>
       `;
           } catch (e) {
-            console.error('Àå¾ÖÁ¡ Ãß·Ð ÀÀ´ä »ý¼º ¿À·ù:', e);
+            console.error('ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß·ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½:', e);
             return `
         <div class="error-message">
-          <p>µ¥ÀÌÅÍ Ã³¸® Áß ¿À·ù°¡ ¹ß»ýÇß½À´Ï´Ù:</p>
+          <p>ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß»ï¿½ï¿½ß½ï¿½ï¿½Ï´ï¿½:</p>
           <p>${e.message}</p>
-          <p>»ó¼¼ Á¤º¸: ${JSON.stringify(json_string).substring(0, 100)}...</p>
+          <p>ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½: ${JSON.stringify(json_string).substring(0, 100)}...</p>
         </div>
       `;
           }
@@ -450,23 +450,23 @@
 
         generateCableStatusTable(dataList) {
           if (!dataList || dataList.length === 0) {
-            return '<div>¼±·Î °æº¸ ³»¿ªÀÌ ¾ø½À´Ï´Ù.</div>';
+            return '<div>ï¿½ï¿½ï¿½ï¿½ ï¿½æº¸ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½.</div>';
           }
 
           let table = `
     <div class="cable-section">
       <table class="summary-table" style="width: max-content;">
         <tr style="height: 10px; font-size: 14px;">
-          <th>Àå¾Ö¹øÈ£</th>
-          <th>±¹»ç¸í</th>
-          <th>ÄÉÀÌºí¸í</th>
-          <th>µî±Þ</th>
-          <th>»óÅÂ</th>
-          <th>ÇÇÇØ¿øÀÎ</th>
-          <th>¹ß»ýÀÏ½Ã</th>
-          <th>º¹±¸ÀÏ½Ã</th>
-          <th>VOC °Ç¼ö</th>
-          <th>¿µÇâ°í°´¼ö</th>
+          <th>ï¿½ï¿½Ö¹ï¿½È£</th>
+          <th>ï¿½ï¿½ï¿½ï¿½ï¿½</th>
+          <th>ï¿½ï¿½ï¿½Ìºï¿½ï¿½ï¿½</th>
+          <th>ï¿½ï¿½ï¿½</th>
+          <th>ï¿½ï¿½ï¿½ï¿½</th>
+          <th>ï¿½ï¿½ï¿½Ø¿ï¿½ï¿½ï¿½</th>
+          <th>ï¿½ß»ï¿½ï¿½Ï½ï¿½</th>
+          <th>ï¿½ï¿½ï¿½ï¿½ï¿½Ï½ï¿½</th>
+          <th>VOC ï¿½Ç¼ï¿½</th>
+          <th>ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</th>
         </tr>
     `;
 
@@ -492,9 +492,9 @@
         },
       };
 
-      // API È£Ãâ ¸ðµâ
+      // API È£ï¿½ï¿½ ï¿½ï¿½ï¿½
       const APIService = {
-        // ½Ç½Ã°£ °æº¸ Á¶È¸
+        // ï¿½Ç½Ã°ï¿½ ï¿½æº¸ ï¿½ï¿½È¸
         getRealTimeAlarmList() {
           Utils.toggleButtonsDuringFetch(true);
 
@@ -502,32 +502,32 @@
             .then((data) => {
               if (data.alarms) {
                 document.getElementById('prompt-input').value =
-                  '°æº¸¼öÁý ³»¿ªÀÔ´Ï´Ù.\n\n' + data.alarms;
+                  'ï¿½æº¸ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ô´Ï´ï¿½.\n\n' + data.alarms;
               }
               return data;
             })
             .catch((err) => {
-              console.error('? °æº¸ µ¥ÀÌÅÍ ·Îµù ½ÇÆÐ:', err);
+              console.error('? ï¿½æº¸ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Îµï¿½ ï¿½ï¿½ï¿½ï¿½:', err);
             })
             .finally(() => {
               Utils.toggleButtonsDuringFetch(false);
             });
         },
 
-        // ±¤ÄÉÀÌºí ¼±·Î Àå¾ÖÁ¤º¸ ¼öÁý
+        // ï¿½ï¿½ï¿½ï¿½ï¿½Ìºï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         getDrCableInfo() {
           Utils.toggleButtonsDuringFetch(true);
 
           return Utils.fetchAPI('/api/cable_status')
             .then((data) => {
               if (!data.cable_status || !Array.isArray(data.cable_status)) {
-                throw new Error('À¯È¿ÇÑ ¼±·Î °æº¸ µ¥ÀÌÅÍ°¡ ¾ø½À´Ï´Ù.');
+                throw new Error('ï¿½ï¿½È¿ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½æº¸ ï¿½ï¿½ï¿½ï¿½ï¿½Í°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½.');
               }
 
               return data;
             })
             .catch((err) => {
-              console.error('? ¼±·Î °æº¸ µ¥ÀÌÅÍ ·Îµù ½ÇÆÐ:', err);
+              console.error('? ï¿½ï¿½ï¿½ï¿½ ï¿½æº¸ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Îµï¿½ ï¿½ï¿½ï¿½ï¿½:', err);
               throw err;
             })
             .finally(() => {
@@ -535,30 +535,30 @@
             });
         },
 
-        // MW Á¤º¸ ¼öÁý (Àü¿øÁ¤º¸ + º¯Á¶¹æ½Ä)
+        // MW ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ + ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
         getMWInfoFromSNMP() {
           Utils.toggleButtonsDuringFetch(true);
 
           const kuksaId = AppState.kuksa_id;
 
           if (!kuksaId) {
-            alert('Àå¾ÖÁ¡À» ºÐ¼®ÇÒ ´ë»ó kuksa_id°¡ ¾ø½À´Ï´Ù.');
-            return Promise.reject(new Error('kuksa_id°¡ ¾ø½À´Ï´Ù'));
+            alert('ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ð¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ kuksa_idï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½.');
+            return Promise.reject(new Error('kuksa_idï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½'));
           }
 
           return Utils.fetchAPI('/api/mw_info', 'POST', { kuksa_id: kuksaId })
             .then((response) => {
               if (!response || !response.response) {
-                alert('ZMQ Socket ¼­¹ö·ÎºÎÅÍ Á¤»óÀûÀÎ ÀÀ´äÀ» ¹ÞÁö ¸øÇß½À´Ï´Ù.');
-                throw new Error('ZMQ ÀÀ´ä ¾øÀ½');
+                alert('ZMQ Socket ï¿½ï¿½ï¿½ï¿½ï¿½Îºï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ß½ï¿½ï¿½Ï´ï¿½.');
+                throw new Error('ZMQ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½');
               }
 
-              console.log('M/W Àåºñ SNMP Á¤º¸ ¼ö½Å ¼º°ø:', response);
+              console.log('M/W ï¿½ï¿½ï¿½ SNMP ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½:', response);
               return response;
             })
             .catch((err) => {
-              console.error('M/W Àåºñ SNMP Á¤º¸ ¼öÁý ½ÇÆÐ:', err);
-              alert('M/W SNMP Á¤º¸ ¼öÁý Áß ¿À·ù°¡ ¹ß»ýÇß½À´Ï´Ù.\n°ü¸®ÀÚ¿¡°Ô ¹®ÀÇÇÏ¼¼¿ä.');
+              console.error('M/W ï¿½ï¿½ï¿½ SNMP ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½:', err);
+              alert('M/W SNMP ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß»ï¿½ï¿½ß½ï¿½ï¿½Ï´ï¿½.\nï¿½ï¿½ï¿½ï¿½ï¿½Ú¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¼ï¿½ï¿½ï¿½.');
               throw err;
             })
             .finally(() => {
@@ -566,7 +566,7 @@
             });
         },
 
-        // ¸ðµç µ¥ÀÌÅÍ ÇÑ ¹ø¿¡ ¼öÁý
+        // ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         collectAllData() {
           return Promise.all([
             this.getRealTimeAlarmList(),
@@ -575,10 +575,10 @@
           ]);
         },
 
-        // ±¹»ç¸í °¡Á®¿À±â
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         getKuksaName() {
           if (!AppState.kuksa_id) {
-            document.getElementById('kuksa_name').innerText = '¾øÀ½';
+            document.getElementById('kuksa_name').innerText = 'ï¿½ï¿½ï¿½ï¿½';
             return Promise.resolve();
           }
 
@@ -587,17 +587,17 @@
               if (data.kuksa_name) {
                 document.getElementById('kuksa_name').innerText = data.kuksa_name;
               } else {
-                document.getElementById('kuksa_name').innerText = '¾Ë ¼ö ¾øÀ½';
+                document.getElementById('kuksa_name').innerText = 'ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½';
               }
             })
             .catch((err) => {
-              console.error('±¹»ç¸í Á¶È¸ ½ÇÆÐ:', err);
-              document.getElementById('kuksa_name').innerText = 'Á¶È¸ ½ÇÆÐ';
+              console.error('ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¸ ï¿½ï¿½ï¿½ï¿½:', err);
+              document.getElementById('kuksa_name').innerText = 'ï¿½ï¿½È¸ ï¿½ï¿½ï¿½ï¿½';
             });
         },
       };
 
-      // ·ÎÄÃ ½ºÅä¸®Áö °ü¸® ¸ðµâ
+      // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ä¸®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
       const StorageService = {
         keys: {
           conversation: 'nw-rag-conversation',
@@ -605,7 +605,7 @@
           count: 'nw-rag-count',
         },
 
-        // ´ëÈ­ ³»¿ë ÀúÀå
+        // ï¿½ï¿½È­ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         saveConversation() {
           const responseBox = document.getElementById('response-box');
           const summaryList = document.getElementById('summary-list');
@@ -615,7 +615,7 @@
           localStorage.setItem(this.keys.count, AppState.responseCount.toString());
         },
 
-        // ´ëÈ­ ³»¿ë ºÒ·¯¿À±â
+        // ï¿½ï¿½È­ ï¿½ï¿½ï¿½ï¿½ ï¿½Ò·ï¿½ï¿½ï¿½ï¿½ï¿½
         loadConversation() {
           const savedConversation = localStorage.getItem(this.keys.conversation);
           const savedSummary = localStorage.getItem(this.keys.summary);
@@ -634,37 +634,37 @@
           }
         },
 
-        // ´ëÈ­ ³»¿ë ÃÊ±âÈ­
+        // ï¿½ï¿½È­ ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­
         clearConversation() {
-          if (confirm('¸ðµç ´ëÈ­ ³»¿ëÀ» ÃÊ±âÈ­ÇÏ½Ã°Ú½À´Ï±î?')) {
+          if (confirm('ï¿½ï¿½ï¿½ ï¿½ï¿½È­ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­ï¿½Ï½Ã°Ú½ï¿½ï¿½Ï±ï¿½?')) {
             document.getElementById('response-box').innerHTML = '';
             document.getElementById('summary-list').innerHTML = '';
             document.getElementById('prompt-input').value = '';
             AppState.responseCount = 0;
 
-            // ¼­¹ö¿¡ ´ëÈ­ ÃÊ±âÈ­ ¿äÃ»
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È­ ï¿½Ê±ï¿½È­ ï¿½ï¿½Ã»
             Utils.fetchAPI('/api/clear_conversation', 'POST', { clear: true }).catch((err) =>
-              console.error('´ëÈ­ ÃÊ±âÈ­ ¿À·ù:', err)
+              console.error('ï¿½ï¿½È­ ï¿½Ê±ï¿½È­ ï¿½ï¿½ï¿½ï¿½:', err)
             );
 
-            // Å¸ÀÓ½ºÅÆÇÁ ÃÊ±âÈ­
+            // Å¸ï¿½Ó½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­
             if (document.getElementById('timestamp')) {
               document.getElementById('timestamp').textContent = '';
             }
 
-            // ·ÎÄÃ ½ºÅä¸®Áö ÃÊ±âÈ­
+            // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ä¸®ï¿½ï¿½ ï¿½Ê±ï¿½È­
             Object.values(this.keys).forEach((key) => localStorage.removeItem(key));
           }
         },
       };
 
-      // UI ÄÁÆ®·Ñ·¯ ¸ðµâ - »ç¿ëÀÚ ¾×¼Ç Ã³¸® ÇÔ¼ö
+      // UI ï¿½ï¿½Æ®ï¿½Ñ·ï¿½ ï¿½ï¿½ï¿½ - ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½×¼ï¿½ Ã³ï¿½ï¿½ ï¿½Ô¼ï¿½
       const UIController = {
-        // ÇÁ·ÒÇÁÆ® ÀÔ·Â Ã³¸®
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ® ï¿½Ô·ï¿½ Ã³ï¿½ï¿½
         handlePrompt() {
           const input = document.getElementById('prompt-input').value.trim();
           if (!input) {
-            alert('°Ë»ö¾î¸¦ ÀÔ·ÂÇØ ÁÖ¼¼¿ä.');
+            alert('ï¿½Ë»ï¿½ï¿½î¸¦ ï¿½Ô·ï¿½ï¿½ï¿½ ï¿½Ö¼ï¿½ï¿½ï¿½.');
             return;
           }
 
@@ -674,12 +674,12 @@
           const requestTimeObj = new Date();
           const thisResponseId = ++AppState.responseCount;
 
-          // »ç¿ëÀÚ ¸Þ½ÃÁö ¹× ·Îµù Ç¥½Ã Ãß°¡
+          // ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Þ½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Îµï¿½ Ç¥ï¿½ï¿½ ï¿½ß°ï¿½
           const userMsg = DOMRenderer.addUserMessage(input, thisResponseId);
           const botLoading = DOMRenderer.addLoadingMessage(mode);
           const summaryItem = DOMRenderer.addSummaryItem(input, thisResponseId);
 
-          // API È£Ãâ
+          // API È£ï¿½ï¿½
           Utils.fetchAPI('/api/rag_popup', 'POST', { query: input, mode })
             .then((data) => {
               botLoading.remove();
@@ -690,8 +690,8 @@
               let htmlContent;
 
               if (data.success === false) {
-                htmlContent = `<div class="error-message">? ¿À·ù ¹ß»ý: ${
-                  data.error || '¾Ë ¼ö ¾ø´Â ¿À·ù'
+                htmlContent = `<div class="error-message">? ï¿½ï¿½ï¿½ï¿½ ï¿½ß»ï¿½: ${
+                  data.error || 'ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½'
                 }</div>`;
               } else {
                 if (mode === 'chat') {
@@ -719,50 +719,50 @@
             });
         },
 
-        // ½Ç½Ã°£ °æº¸ ¸ñ·Ï °¡Á®¿À±â
+        // ï¿½Ç½Ã°ï¿½ ï¿½æº¸ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         getRealTimeAlarmList() {
           APIService.getRealTimeAlarmList();
         },
 
-        // Dr. Cable¿¡¼­ ±¤ÄÉÀÌºí ¼±·Î ÇÇÇØÁ¤º¸ ¼öÁý
+        // Dr. Cableï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ìºï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         getDrCableInfo() {
           Utils.toggleButtonsDuringFetch(true);
 
           APIService.getDrCableInfo()
             .then((data) => {
               if (!data.cable_status || !Array.isArray(data.cable_status)) {
-                throw new Error('À¯È¿ÇÑ ¼±·Î °æº¸ µ¥ÀÌÅÍ°¡ ¾ø½À´Ï´Ù.');
+                throw new Error('ï¿½ï¿½È¿ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½æº¸ ï¿½ï¿½ï¿½ï¿½ï¿½Í°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½.');
               }
 
-              // 1) »ç¿ëÀÚ ÀÔ·Â ¸Þ½ÃÁö
-              const input = '°¡Àå ÃÖ±Ù¿¡ ¹ß»ýÇÑ ¼±·ÎÀå¾Ö ³»¿ªÀ» È®ÀÎÇØÁà...';
+              // 1) ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ô·ï¿½ ï¿½Þ½ï¿½ï¿½ï¿½
+              const input = 'ï¿½ï¿½ï¿½ï¿½ ï¿½Ö±Ù¿ï¿½ ï¿½ß»ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ È®ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½...';
               const thisResponseId = ++AppState.responseCount;
               const userMsg = DOMRenderer.addUserMessage(input, thisResponseId);
               const summaryItem = DOMRenderer.addSummaryItem(input, thisResponseId);
 
               const botLoading = document.createElement('div');
               botLoading.className = 'bot-msg loading';
-              botLoading.innerHTML = '?? <b>¼±·ÎÀå¾Ö Á¤º¸ Á¶È¸ Áß...</b>';
+              botLoading.innerHTML = '?? <b>ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¸ ï¿½ï¿½...</b>';
               document.getElementById('response-box').appendChild(botLoading);
 
               const unrecovered = data.unrecovered_alarm || { count: 0 };
               let warningMsg = '';
 
               if (unrecovered.count === 0) {
-                warningMsg = `<b>'ÇöÀç'</b> ÇØ´ç Áö¿ª¿¡ <b>¹Ìº¹±¸µÈ ¼±·Î Àå¾Ö´Â ¾ø´Â °ÍÀ¸·Î ÆÄ¾ÇÀÌ µË´Ï´Ù.</b><br>
-                  ¾Æ·¡ ¼±·Î Àå¾Ö ³»¿ªÀ» Âü°íÇØ ÁÖ½Ã°í, <b>'´Ù¸¥ ºÐ¾ßÀÇ °æº¸ ³»¿ª'</b>À» Ãß°¡·Î È®ÀÎÇÏ½Ã±â ¹Ù¶ø´Ï´Ù.`;
+                warningMsg = `<b>'ï¿½ï¿½ï¿½ï¿½'</b> ï¿½Ø´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ <b>ï¿½Ìºï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ä¾ï¿½ï¿½ï¿½ ï¿½Ë´Ï´ï¿½.</b><br>
+                  ï¿½Æ·ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ö½Ã°ï¿½, <b>'ï¿½Ù¸ï¿½ ï¿½Ð¾ï¿½ï¿½ï¿½ ï¿½æº¸ ï¿½ï¿½ï¿½ï¿½'</b>ï¿½ï¿½ ï¿½ß°ï¿½ï¿½ï¿½ È®ï¿½ï¿½ï¿½Ï½Ã±ï¿½ ï¿½Ù¶ï¿½ï¿½Ï´ï¿½.`;
               } else {
                 const recent = unrecovered.most_recent || {};
                 warningMsg = `${recent.alarm_occur_datetime || ''}, <b>
-                  ${recent.guksa_name || '¾Ë ¼ö ¾øÀ½'}</b>ÀÇ <b>¼±·ÎÀå¾Ö</b>(${
-                  recent.cable_name_core || '¾Ë ¼ö ¾øÀ½'
-                }, ${recent.fault_sector || '¾Ë ¼ö ¾øÀ½'}) 
-                   µî <b>
-                    ${unrecovered.count}°Ç</b>ÀÇ <b>¹Ìº¹±¸ Àå¾Ö</b>°¡ Á¶È¸µË´Ï´Ù. 
-                  <br>ÇöÀç Àå¾Ö°¡ ¾Æ·¡ ¼±·ÎÀå¾Ö ¿µÇâÀÎÁö È®ÀÎÀÌ ÇÊ¿äÇÕ´Ï´Ù.`;
+                  ${recent.guksa_name || 'ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½'}</b>ï¿½ï¿½ <b>ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</b>(${
+                  recent.cable_name_core || 'ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½'
+                }, ${recent.fault_sector || 'ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½'}) 
+                   ï¿½ï¿½ <b>
+                    ${unrecovered.count}ï¿½ï¿½</b>ï¿½ï¿½ <b>ï¿½Ìºï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½</b>ï¿½ï¿½ ï¿½ï¿½È¸ï¿½Ë´Ï´ï¿½. 
+                  <br>ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ö°ï¿½ ï¿½Æ·ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ È®ï¿½ï¿½ï¿½ï¿½ ï¿½Ê¿ï¿½ï¿½Õ´Ï´ï¿½.`;
               }
 
-              // ±âÁ¸ ¸Þ½ÃÁö Á¦°Å + »õ ¸Þ½ÃÁö Ãß°¡
+              // ï¿½ï¿½ï¿½ï¿½ ï¿½Þ½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ + ï¿½ï¿½ ï¿½Þ½ï¿½ï¿½ï¿½ ï¿½ß°ï¿½
               botLoading.remove();
               DOMRenderer.addBotMessage(`<div class="bot-warning">${warningMsg}</div>`);
 
@@ -772,9 +772,9 @@
               summaryItem.classList.add('completed');
             })
             .catch((err) => {
-              console.error('? ¼±·ÎÀå¾Ö µ¥ÀÌÅÍ È®ÀÎ ½ÇÆÐ:', err);
+              console.error('? ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ È®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½:', err);
               DOMRenderer.addErrorMessage(
-                `¼±·ÎÀå¾Ö µ¥ÀÌÅÍ¸¦ °¡Á®¿ÀÁö ¸øÇß½À´Ï´Ù.<br>${err.message}`
+                `ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ß½ï¿½ï¿½Ï´ï¿½.<br>${err.message}`
               );
             })
             .finally(() => {
@@ -782,11 +782,11 @@
             });
         },
 
-        // MW SNMP Á¤º¸ ¼öÁý ¡æ DOM¿¡ °á°ú Ãâ·Â Æ÷ÇÔ
+        // MW SNMP ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ DOMï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         getMWInfoFromSNMP() {
           Utils.toggleButtonsDuringFetch(true);
 
-          const input = 'ÇöÀç µµ¼­ M/W ÀåºñÀÇ Àü¿ø°ú ÆäÀÌµù »óÅÂ¸¦ È®ÀÎÇØÁà...';
+          const input = 'ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ M/W ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ìµï¿½ ï¿½ï¿½ï¿½Â¸ï¿½ È®ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½...';
           const thisResponseId = ++AppState.responseCount;
 
           const userMsg = DOMRenderer.addUserMessage(input, thisResponseId);
@@ -794,31 +794,31 @@
 
           const botLoading = document.createElement('div');
           botLoading.className = 'bot-msg loading';
-          botLoading.innerHTML = '?? <b>M/W ÀåºñÀÇ Àü¿ø°ú ÆäÀÌµù Á¤º¸ ºÐ¼® Áß...</b>';
+          botLoading.innerHTML = '?? <b>M/W ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ìµï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ð¼ï¿½ ï¿½ï¿½...</b>';
           document.getElementById('response-box').appendChild(botLoading);
 
           APIService.getMWInfoFromSNMP()
             .then((data) => {
               let resultHTML = '';
 
-              if (data.Á¤Àü_»óÅÂ_Àåºñ?.length) {
-                resultHTML += '<div><b>? Á¤Àü »óÅÂ Àåºñ</b><ul>';
-                data.Á¤Àü_»óÅÂ_Àåºñ.forEach((item) => {
-                  resultHTML += `<li>${item.Àåºñ¸í} (${item['SNMP IP']}) ¡æ Àü¿ø »óÅÂ: ${item.oid1}</li>`;
+              if (data.ï¿½ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½?.length) {
+                resultHTML += '<div><b>? ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½</b><ul>';
+                data.ï¿½ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½.forEach((item) => {
+                  resultHTML += `<li>${item.ï¿½ï¿½ï¿½ï¿½} (${item['SNMP IP']}) ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½: ${item.oid1}</li>`;
                 });
                 resultHTML += '</ul></div>';
               }
 
-              if (data.º¯Á¶_¹æ½Ä_ºÒÀÏÄ¡_Àåºñ?.length) {
-                resultHTML += '<div><b>?? º¯Á¶¹æ½Ä ºÒÀÏÄ¡ Àåºñ</b><ul>';
-                data.º¯Á¶_¹æ½Ä_ºÒÀÏÄ¡_Àåºñ.forEach((item) => {
-                  resultHTML += `<li>${item.Àåºñ¸í} (${item['SNMP IP']}) ¡æ oid2: ${item.oid2}, oid3: ${item.oid3}</li>`;
+              if (data.ï¿½ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½ï¿½Ä¡_ï¿½ï¿½ï¿½?.length) {
+                resultHTML += '<div><b>?? ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ä¡ ï¿½ï¿½ï¿½</b><ul>';
+                data.ï¿½ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½ï¿½Ä¡_ï¿½ï¿½ï¿½.forEach((item) => {
+                  resultHTML += `<li>${item.ï¿½ï¿½ï¿½ï¿½} (${item['SNMP IP']}) ï¿½ï¿½ oid2: ${item.oid2}, oid3: ${item.oid3}</li>`;
                 });
                 resultHTML += '</ul></div>';
               }
 
               if (!resultHTML) {
-                resultHTML = '<div>?? ÇöÀç Àü¿ø ¹× º¯Á¶¹æ½Ä ÀÌ»ó Â¡ÈÄ´Â ¹ß°ßµÇÁö ¾Ê¾Ò½À´Ï´Ù.</div>';
+                resultHTML = '<div>?? ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ì»ï¿½ Â¡ï¿½Ä´ï¿½ ï¿½ß°ßµï¿½ï¿½ï¿½ ï¿½Ê¾Ò½ï¿½ï¿½Ï´ï¿½.</div>';
               }
 
               botLoading.remove();
@@ -826,7 +826,7 @@
               summaryItem.classList.add('completed');
             })
             .catch((err) => {
-              console.error('MW SNMP ¼öÁý ¿À·ù:', err);
+              console.error('MW SNMP ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½:', err);
               botLoading.remove();
               DOMRenderer.addErrorMessage(err.message);
               summaryItem.classList.add('error');
@@ -836,12 +836,12 @@
             });
         },
 
-        // ´ëÈ­ ³»¿ë ÃÊ±âÈ­
+        // ï¿½ï¿½È­ ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­
         clearConversation() {
           StorageService.clearConversation();
         },
 
-        // »çÀÌµå¹Ù Åä±Û - ÆîÄ¡±â/Á¢±â
+        // ï¿½ï¿½ï¿½Ìµï¿½ï¿½ ï¿½ï¿½ï¿½ - ï¿½ï¿½Ä¡ï¿½ï¿½/ï¿½ï¿½ï¿½ï¿½
         toggleSidebar() {
           const sidebar = document.getElementById('summary-list');
           AppState.isSidebarVisible = !AppState.isSidebarVisible;
@@ -856,46 +856,46 @@
         },
       };
 
-      // ÃÊ±âÈ­ ¹× ÀÌº¥Æ® ¸®½º³Ê ¼³Á¤
+      // ï¿½Ê±ï¿½È­ ï¿½ï¿½ ï¿½Ìºï¿½Æ® ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
       function initApp() {
-        // ¾Û »óÅÂ ÃÊ±âÈ­
+        // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­
         AppState.init();
 
-        // ·ÎÄÃ ½ºÅä¸®Áö¿¡¼­ ´ëÈ­ ÀÌ·Â ·Îµå
+        // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ä¸®ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È­ ï¿½Ì·ï¿½ ï¿½Îµï¿½
         StorageService.loadConversation();
 
-        // ÇÃ·¹ÀÌ½ºÈ¦´õ ¾÷µ¥ÀÌÆ®
+        // ï¿½Ã·ï¿½ï¿½Ì½ï¿½È¦ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®
         DOMRenderer.updatePlaceholder();
 
-        // ¶óµð¿À ¹öÆ° º¯°æ ÀÌº¥Æ® ¸®½º³Ê
+        // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ° ï¿½ï¿½ï¿½ï¿½ ï¿½Ìºï¿½Æ® ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         document.querySelectorAll('input[name="queryMode"]').forEach((radio) => {
           radio.addEventListener('change', DOMRenderer.updatePlaceholder);
         });
 
-        // ÃÊ±â µ¥ÀÌÅÍ ·Îµå
+        // ï¿½Ê±ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Îµï¿½
         APIService.getRealTimeAlarmList();
 
-        // ±¹»ç¸í °¡Á®¿À±â
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         APIService.getKuksaName();
 
-        // ¹öÆ° ÀÌº¥Æ® ¸®½º³Ê
+        // ï¿½ï¿½Æ° ï¿½Ìºï¿½Æ® ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         window.getDrCableInfo = UIController.getDrCableInfo;
         window.getMWInfoFromSNMP = UIController.getMWInfoFromSNMP;
 
-        // ÀÚµ¿ ÀúÀå Å¸ÀÌ¸Ó ¼³Á¤
+        // ï¿½Úµï¿½ ï¿½ï¿½ï¿½ï¿½ Å¸ï¿½Ì¸ï¿½ ï¿½ï¿½ï¿½ï¿½
         setInterval(() => StorageService.saveConversation(), 60000);
 
-        // »çÀÌµå¹Ù µå·¡±× ¼³Á¤
+        // ï¿½ï¿½ï¿½Ìµï¿½ï¿½ ï¿½å·¡ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         setupSidebarDrag();
       }
 
-      // »çÀÌµå¹Ù µå·¡±× ±â´É ¼³Á¤
+      // ï¿½ï¿½ï¿½Ìµï¿½ï¿½ ï¿½å·¡ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
       function setupSidebarDrag() {
         const sidebar = document.getElementById('summary-list');
         const dragHandle = document.getElementById('drag-handle');
         const toggleBtn = document.getElementById('toggle-btn');
 
-        // µå·¡±× ÀÌº¥Æ® ¸®½º³Ê ¼³Á¤
+        // ï¿½å·¡ï¿½ï¿½ ï¿½Ìºï¿½Æ® ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         dragHandle.addEventListener('mousedown', (e) => {
           AppState.isDragging = true;
           document.body.style.cursor = 'col-resize';
@@ -915,11 +915,11 @@
           document.body.style.cursor = 'default';
         });
 
-        // Åä±Û ¹öÆ° Å¬¸¯ ÀÌº¥Æ®
+        // ï¿½ï¿½ï¿½ ï¿½ï¿½Æ° Å¬ï¿½ï¿½ ï¿½Ìºï¿½Æ®
         toggleBtn.addEventListener('click', UIController.toggleSidebar);
       }
 
-      // ÆäÀÌÁö ·Îµå ½Ã ¾Û ÃÊ±âÈ­
+      // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Îµï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½Ê±ï¿½È­
       document.addEventListener('DOMContentLoaded', initApp);
     </script>
   </body>

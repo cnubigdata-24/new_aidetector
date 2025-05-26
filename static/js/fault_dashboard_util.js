@@ -1,3 +1,5 @@
+// 🔴 🟡 🟢 ✅ ⚡ 🔥 💡 ✨ 🎯 📊 ❌ ⏱️
+
 // 노드 관련 상수
 const NODE_WIDTH = 250;
 const NODE_WIDTH_HALF = NODE_WIDTH / 2;

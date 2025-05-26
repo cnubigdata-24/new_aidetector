@@ -8,7 +8,7 @@
  * 4. 장애 시각화 처리
  */
 
-// 🔴 🟡 🟢 ✅ ⚡ 💡 ✨ 🎯 📊 ❌ ⏱️
+// 🔴 🟡 🟢 ✅ ⚡ 🔥 💡 ✨ 🎯 📊 ❌ ⏱️
 
 // 상수 정의
 const FAILURE_TYPES = {
@@ -546,7 +546,7 @@ function printAnalysisSummary() {
   console.log(`MW 페이딩 링크: ${failureAnalysisResults.mwFadingLinks.length}개`);
   console.log(`MW 정전 장비: ${failureAnalysisResults.mwPowerFailures.length}개`);
 
-  // 🔥 수정: 모든 분석 결과를 하나의 통합 메시지로 표시
+  // 수정: 모든 분석 결과를 하나의 통합 메시지로 표시
   if (typeof addChatMessage === 'function') {
     const lineCount = failureAnalysisResults.lineFailures?.length || 0;
     const fadingCount = failureAnalysisResults.mwFadingLinks?.length || 0;
@@ -559,7 +559,7 @@ function printAnalysisSummary() {
     unifiedMessage += `<strong>1. 선로 분야 장애:</strong> `;
     unifiedMessage += lineCount > 0 ? `🔴 ${lineCount}개 발견됨<br>` : `🟢 발견되지 않음<br>`;
 
-    unifiedMessage += `<strong>2. MW-MW 구간 페이딩석:</strong> `;
+    unifiedMessage += `<strong>2. MW-MW 구간 페이딩:</strong> `;
     unifiedMessage +=
       fadingCount > 0 ? `🔴 ${fadingCount}개 페이딩 의심 링크 발견됨<br>` : `🟢 발견되지 않음<br>`;
 
