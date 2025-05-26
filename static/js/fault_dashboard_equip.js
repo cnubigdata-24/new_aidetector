@@ -1,6 +1,13 @@
 // 장비 ID 매핑용 해시맵 생성
 const equipmentMap = {};
 
+// 장애의심 근본 원인 결과 저장 변수
+window.currentRootCauseResults = {
+  nodes: [], // 근본 원인 노드 ID 배열
+  nodeNames: [], // 근본 원인 노드 이름 배열
+  timestamp: null, // 분석 시점
+};
+
 // 스타일 시트 추가 함수
 function addStyleSheet() {
   const styleEl = document.createElement('style');
@@ -12,6 +19,13 @@ function addStyleSheet() {
 function createEquipTopologyMap(data, alarmDataList) {
   // 스타일 시트 추가
   addStyleSheet();
+
+  // 🔥 근본 원인 결과 전역변수 초기화
+  window.currentRootCauseResults = {
+    nodes: [],
+    nodeNames: [],
+    timestamp: null,
+  };
 
   console.log('경보 데이터 확인:', {
     alarmDataListProvided: !!alarmDataList,
@@ -1127,53 +1141,9 @@ function createEquipTopologyMap(data, alarmDataList) {
     console.error('근본 원인 노드 강조 중 오류 발생:', error);
   }
 
-  // ===== 새로 추가된 부분 시작 =====
-  // 장애 패턴 분석 수행 (새로운 룰 베이스 분석)
-  //   try {
-  //     console.log('장애 패턴 분석 시작...');
-
-  //     // 분석에 필요한 데이터 준비
-  //     const analysisData = {
-  //       nodes: nodesData,
-  //       links: linksData,
-  //       alarms: alarmDataList,
-  //     };
-
-  //     console.log('분석 데이터 확인:', {
-  //       노드수: analysisData.nodes.length,
-  //       링크수: analysisData.links.length,
-  //       경보수: analysisData.alarms ? analysisData.alarms.length : 0,
-  //     });
-
-  //     // 장애 패턴 분석 함수 호출 (비동기)
-  //     if (typeof analyzeFailurePatterns === 'function') {
-  //       // 약간의 지연을 두고 실행 (맵 렌더링 완료 후)
-  //       setTimeout(async () => {
-  //         try {
-  //           await analyzeFailurePatterns(analysisData.nodes, analysisData.links, analysisData.alarms);
-
-  //           // 분석 결과를 채팅창에 표시
-  //           displayFailureAnalysisResultsToChat();
-
-  //           console.log('장애 패턴 분석 완료');
-  //         } catch (analysisError) {
-  //           console.error('장애 패턴 분석 중 오류:', analysisError);
-  //         }
-  //       }, 1000); // 1초 후 실행
-  //     } else {
-  //       console.warn(
-  //         'analyzeFailurePatterns 함수를 찾을 수 없습니다. fault_dashboard_analyzer.js가 로드되었는지 확인하세요.'
-  //       );
-  //     }
-  //   } catch (error) {
-  //     console.error('장애 패턴 분석 초기화 오류:', error);
-  //   }
-  // ===== 새로 추가된 부분 끝 =====
-
   setTimeout(fitAllNodes, 50);
 }
 
-// ===== 추가 유틸리티 함수들 =====
 // ===== 추가 유틸리티 함수들 =====
 
 // 장애점 찾기 버튼 이벤트 초기화 함수
@@ -1259,8 +1229,8 @@ function displayFailureAnalysisResultsToChat() {
         const sourceNode = getNodeName(failure.sourceId);
         const targetNode = getNodeName(failure.targetId);
         lineMessage += `${index + 1}. ${sourceNode} ↔ ${targetNode}<br>`;
-        lineMessage += `   • 분야: ${failure.sourceField} - ${failure.targetField}<br>`;
-        lineMessage += `   • 설명: ${failure.description}<br>`;
+        lineMessage += `&nbsp&nbsp • 분야: ${failure.sourceField} - ${failure.targetField}<br>`;
+        lineMessage += `&nbsp&nbsp • 설명: ${failure.description}<br>`;
       });
       lineMessage +=
         '<small>💡 선로 분야 링크는 경보 발생 시 무조건 장애 의심으로 판단됩니다.</small>';
@@ -1277,20 +1247,20 @@ function displayFailureAnalysisResultsToChat() {
         const targetNode = getNodeName(failure.targetId);
         fadingMessage += `${index + 1}. ${sourceNode} ↔ ${targetNode}<br>`;
         if (failure.apiResult) {
-          fadingMessage += `   • 분석결과: ${failure.apiResult.result_msg}<br>`;
+          fadingMessage += `&nbsp&nbsp • 분석결과: ${failure.apiResult.result_msg}<br>`;
           if (failure.apiResult.analysis_data) {
             const data = failure.apiResult.analysis_data;
-            fadingMessage += `   • SNR: ${data.source_snr?.toFixed(1) || 'N/A'}dB ↔ ${
+            fadingMessage += `&nbsp&nbsp • SNR: ${data.source_snr?.toFixed(1) || 'N/A'}dB ↔ ${
               data.target_snr?.toFixed(1) || 'N/A'
             }dB<br>`;
-            fadingMessage += `   • BER: ${data.source_ber?.toExponential(2) || 'N/A'} ↔ ${
+            fadingMessage += `&nbsp&nbsp • BER: ${data.source_ber?.toExponential(2) || 'N/A'} ↔ ${
               data.target_ber?.toExponential(2) || 'N/A'
             }<br>`;
           }
         }
       });
       fadingMessage +=
-        '<small>💡 MW 장비간 링크에서 SNR/BER 값 변동이 큰 경우 페이딩으로 판단됩니다.</small>';
+        '<small>💡 MW 장비간 SNR/BER/XPI의 변동이 큰 경우 페이딩으로 판단합니다.</small>';
       addChatMessage(fadingMessage, 'analysis');
     }
   }, 200);
@@ -1301,15 +1271,15 @@ function displayFailureAnalysisResultsToChat() {
       let powerMessage = `🔴 <strong>MW 한전 정전 의심 장비 ${results.mwPowerFailures.length}개 발견</strong><br>`;
       results.mwPowerFailures.forEach((failure, index) => {
         powerMessage += `${index + 1}. ${failure.equipName} (${failure.nodeId})<br>`;
-        powerMessage += `   • 국사: ${failure.guksaName}<br>`;
-        powerMessage += `   • 장비유형: ${failure.equipType}<br>`;
+        powerMessage += `&nbsp&nbsp • 국사: ${failure.guksaName}<br>`;
+        powerMessage += `&nbsp&nbsp • 장비유형: ${failure.equipType}<br>`;
         if (failure.apiResult) {
-          powerMessage += `   • 분석결과: ${failure.apiResult.result_msg}<br>`;
+          powerMessage += `&nbsp&nbsp • 분석결과: ${failure.apiResult.result_msg}<br>`;
           if (failure.apiResult.power_data) {
             const data = failure.apiResult.power_data;
-            powerMessage += `   • 인입전압: ${data.input_voltage}mV (기준: ${data.threshold_voltage}mV)<br>`;
+            powerMessage += `&nbsp&nbsp • 인입전압: ${data.input_voltage}mV (기준: ${data.threshold_voltage}mV)<br>`;
             if (data.battery_voltage) {
-              powerMessage += `   • 배터리전압: ${data.battery_voltage}mV<br>`;
+              powerMessage += `&nbsp&nbsp • 배터리전압: ${data.battery_voltage}mV<br>`;
             }
           }
         }
@@ -1328,19 +1298,21 @@ function displayFailureAnalysisResultsToChat() {
       (results.mwPowerFailures?.length || 0);
 
     let summaryMessage = `📊 <strong>종합 분석 결과</strong><br>`;
-    summaryMessage += `• 총 ${totalFailures}개의 장애 패턴이 감지되었습니다.<br>`;
-    summaryMessage += `• 분석 시간: ${new Date(results.analysisTimestamp).toLocaleString()}<br>`;
+    summaryMessage += `&nbsp&nbsp • 총 ${totalFailures}개의 장애 패턴이 감지되었습니다.<br>`;
+    summaryMessage += `&nbsp&nbsp • 분석 시간: ${new Date(
+      results.analysisTimestamp
+    ).toLocaleString()}<br>`;
 
     if (totalFailures > 0) {
       summaryMessage += `<br>🎯 <strong>권장 조치사항:</strong><br>`;
       if (results.lineFailures?.length > 0) {
-        summaryMessage += `• 선로 분야 장애: 즉시 현장 점검 필요<br>`;
+        summaryMessage += `&nbsp&nbsp • 선로 분야 장애: 즉시 현장 점검 필요<br>`;
       }
       if (results.mwFadingLinks?.length > 0) {
-        summaryMessage += `• MW 페이딩: 안테나 정렬 및 장애물 확인<br>`;
+        summaryMessage += `&nbsp&nbsp • MW 페이딩: 안테나 정렬 및 장애물 확인<br>`;
       }
       if (results.mwPowerFailures?.length > 0) {
-        summaryMessage += `• MW 정전: 한전 정전 여부 확인 및 배터리 점검<br>`;
+        summaryMessage += `&nbsp&nbsp • MW 정전: 한전 정전 여부 확인 및 배터리 점검<br>`;
       }
       summaryMessage += `<br>💡 맵에서 해당 장비/링크가 강조 표시됩니다.`;
     } else {
@@ -1351,34 +1323,67 @@ function displayFailureAnalysisResultsToChat() {
   }, 400);
 }
 
-// 근본 원인 노드 강조 함수 (완전히 새롭게 작성)
+// 근본 원인 노드 강조 함수 (수정된 버전)
 function highlightRootCauseNodes(centralNodeId, levels, nodesData, linksData) {
   console.log('개선된 근본 원인 노드 강조 함수 시작...');
 
   // 매개변수 확인
   if (!centralNodeId || !levels || !nodesData) {
     console.warn('필수 매개변수가 누락되었습니다. 강조 기능을 건너뜁니다.');
+    // 빈 결과로 초기화
+    window.currentRootCauseResults = {
+      nodes: [],
+      nodeNames: [],
+      timestamp: new Date().toISOString(),
+    };
     return;
   }
 
   // 근본 원인 찾기
   const rootCauses = findRootCauseNodes(nodesData, linksData, levels, centralNodeId);
+  const rootCauseNodeIds = rootCauses.nodes || [];
+  const rootCauseNodeNames = [];
 
-  // 기존 강조 효과 모두 제거
-  clearRootCauseEffects();
+  // 노드 ID를 이름으로 변환 (🔥 수정: equipmentMap 사용)
+  rootCauseNodeIds.forEach((nodeId) => {
+    const node = equipmentMap[nodeId]; // currentEquipmentMap -> equipmentMap 수정
+    if (node) {
+      rootCauseNodeNames.push(node.equip_name || node.equip_id || nodeId);
+    } else {
+      rootCauseNodeNames.push(nodeId);
+    }
+  });
 
-  // 근본 원인 노드가 없는 경우
-  if (!rootCauses.nodes || rootCauses.nodes.length === 0) {
-    console.log('근본 원인 노드를 찾을 수 없습니다.');
-    return;
-  }
+  // 🔥 수정: 전역 변수에 결과 저장 (효과 적용 전에 먼저 저장)
+  window.currentRootCauseResults = {
+    nodes: rootCauseNodeIds,
+    nodeNames: rootCauseNodeNames,
+    timestamp: new Date().toISOString(),
+  };
 
-  // 근본 원인 노드에 시각 효과 적용
-  applyVisualPatternEffect(rootCauses.nodes);
+  console.log('근본 원인 분석 결과 저장:', window.currentRootCauseResults);
 
-  // 근본 원인 링크가 있다면 링크에도 효과 적용
-  if (rootCauses.links && rootCauses.links.length > 0) {
-    applyLinkVisualEffect(rootCauses.links);
+  // 🔥 수정: 조건부 효과 제거 및 적용
+  if (rootCauseNodeIds.length > 0) {
+    console.log(`${rootCauseNodeIds.length}개의 근본 원인 노드 발견, 시각 효과 적용`);
+
+    // 새로운 근본 원인이 발견된 경우에만 기존 효과 제거
+    clearRootCauseEffects();
+
+    // 근본 원인 노드에 시각 효과 적용
+    applyVisualPatternEffect(rootCauseNodeIds);
+
+    // 근본 원인 링크가 있다면 링크에도 효과 적용
+    if (rootCauses.links && rootCauses.links.length > 0) {
+      console.log(`${rootCauses.links.length}개의 근본 원인 링크에 효과 적용`);
+      applyLinkVisualEffect(rootCauses.links);
+    }
+
+    console.log('근본 원인 노드 강조 완료:', rootCauseNodeNames);
+  } else {
+    console.log('근본 원인 노드를 찾을 수 없습니다. 기존 효과 유지');
+    // 🔥 수정: 근본 원인이 없어도 기존 효과는 제거하지 않음
+    // clearRootCauseEffects() 호출 안 함
   }
 }
 

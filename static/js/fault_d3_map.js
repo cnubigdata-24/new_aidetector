@@ -113,7 +113,8 @@ function createGuksaTopologyMap(equipData) {
 
   // 노드가 없으면 메시지 표시 후 종료
   if (nodes.length <= 1) {
-    mapContainer.innerHTML = '<div class="no-data-message">표시할 장비 데이터가 없습니다.</div>';
+    mapContainer.innerHTML =
+      '<div class="no-data-message">표시할 장비 토폴로지 데이터가 없습니다.</div>';
     return;
   }
 

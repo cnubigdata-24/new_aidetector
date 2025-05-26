@@ -16,7 +16,7 @@ const LINK_HOVER_OPACITY = 1;
 // 맵 관련 상수
 const MAP_HEIGHT = 500;
 const MAP_PADDING = 50;
-const MAP_MARGIN_TOP = -100;
+const MAP_MARGIN_TOP = -50;
 const HORIZONTAL_SPACING = 450;
 const VERTICAL_SPACING = 100;
 const ZOOM_MIN_SCALE = 0.5;
@@ -287,20 +287,19 @@ function formatDateTime(datetimeStr) {
   return datetimeStr.replace('T', ' ').substring(0, 19);
 }
 
-// 시간 포맷팅 함수 (맵의 툴팀에 경보발생시간 추가)
+// 시간 포맷팅 함수 (맵의 툴팁에 경보발생시간 추가)
 function formatDateTimeForToolTip(dateTimeStr) {
   if (!dateTimeStr) return '-';
 
   try {
     const date = new Date(dateTimeStr);
-    return date.toLocaleString('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+
+    return `${year}-${month}-${day} ${hour}:${minute}`;
   } catch (e) {
     return dateTimeStr; // 변환 실패 시 원본 문자열 반환
   }
@@ -1104,23 +1103,26 @@ function handleEquipmentChange(equipInfo) {
       const equipName = equipInfo?.equipName || equipInfo?.equip_name || '알 수 없는 장비';
       const equipId = equipInfo?.equipId || equipInfo?.equip_id || '';
 
-      let message = `🔄 <strong>선택된 장비가 변경되었습니다</strong><br>`;
-      message += `• 장비명: ${equipName}`;
+      let message = `🔄 <strong>선택된 장비의 최근 경보현황</strong><br>`;
+      message += `&nbsp&nbsp • 장비명: ${equipName}`;
       if (equipId) {
-        message += `<br>• 장비ID: ${equipId}`;
+        message += `<br>&nbsp&nbsp • 장비ID: ${equipId}`;
 
-        // 해당 장비의 최근 경보 3개 추가
-        const equipAlarms = getRecentAlarmsForEquip(equipId, 3);
+        // 해당 장비의 최근 경보 5개 추가
+        const equipAlarms = getRecentAlarmsForEquip(equipId, 5);
+
         if (equipAlarms.length > 0) {
-          message += `<br>• 최근 경보 ${equipAlarms.length}개:`;
+          message += `<br>&nbsp&nbsp • 최근 경보: ${equipAlarms.length}개`;
+
           equipAlarms.forEach((alarm, index) => {
             const alarmTime = formatDateTimeForToolTip(alarm.occur_datetime) || '-';
             const alarmMsg = alarm.alarm_message || '메시지 없음';
-            const truncatedMsg = alarmMsg.length > 30 ? alarmMsg.slice(0, 30) + '...' : alarmMsg;
-            message += `<br>  ${index + 1}. ${alarmTime}: ${truncatedMsg}`;
+            const truncatedMsg = alarmMsg.length > 50 ? alarmMsg.slice(0, 50) + '...' : alarmMsg;
+            // message += `<br> &nbsp&nbsp ${index + 1}. ${alarmTime}: ${truncatedMsg}`;
+            message += `<br> &nbsp&nbsp&nbsp&nbsp [${alarmTime}] ${truncatedMsg}`;
           });
         } else {
-          message += `<br>• 최근 경보: 없음`;
+          message += `<br>&nbsp&nbsp • 최근 경보: 없음`;
         }
       }
 

@@ -285,7 +285,7 @@ function addTableSearchFilters(table) {
   // 필터 초기화 버튼
   const resetButton = document.createElement('button');
   resetButton.className = 'filter-reset';
-  resetButton.textContent = 'Reset Filter';
+  resetButton.textContent = 'Reset';
   resetButton.addEventListener('click', resetTableFilter);
   filterContainer.appendChild(resetButton);
 

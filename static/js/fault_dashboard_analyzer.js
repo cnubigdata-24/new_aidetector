@@ -8,7 +8,7 @@
  * 4. 장애 시각화 처리
  */
 
-// 🔴 🟢 ✅ ⚡ 💡
+// 🔴 🟡 🟢 ✅ ⚡ 💡 ✨ 🎯 📊 ❌ ⏱️
 
 // 상수 정의
 const FAILURE_TYPES = {
@@ -76,9 +76,6 @@ async function checkLineFailure(linksData, alarmDataList) {
 
   if (!linksData || !Array.isArray(linksData)) {
     console.warn('링크 데이터가 없습니다.');
-    if (typeof addChatMessage === 'function') {
-      addChatMessage('<strong>1. 선로 분야 장애 분석:</strong> 링크 데이터 없음', 'error');
-    }
     return;
   }
 
@@ -123,17 +120,8 @@ async function checkLineFailure(linksData, alarmDataList) {
   // 결과 저장
   failureAnalysisResults.lineFailures = lineFailureLinks;
 
-  // 통합 결과 메시지
-  if (typeof addChatMessage === 'function') {
-    if (lineFailureLinks.length > 0) {
-      addChatMessage(
-        `<strong>1. 선로 분야 장애 분석:</strong> 🔴 {lineFailureLinks.length}개 발견됨`,
-        'analysis'
-      );
-    } else {
-      addChatMessage('<strong>1. 선로 분야 장애 분석:</strong> 🟢 발견되지 않음', 'success');
-    }
-  }
+  // 🔥 제거: addChatMessage 호출 부분 삭제
+  // (printAnalysisSummary에서 통합해서 처리)
 
   console.log(`선로 분야 링크 장애 체크 완료: ${lineFailureLinks.length}개 발견`);
 }
@@ -147,7 +135,7 @@ async function checkMWFading(linksData, nodesData, alarmDataList) {
   if (!linksData || !Array.isArray(linksData)) {
     console.warn('링크 데이터가 없습니다.');
     if (typeof addChatMessage === 'function') {
-      addChatMessage('<strong>2. MW-MW 구간 페이딩 분석:</strong> 링크 데이터 없음', 'error');
+      addChatMessage('<strong>❌ 2. MW-MW 구간 페이딩 분석:</strong> 링크 데이터 없음', 'error');
     }
     return;
   }
@@ -197,18 +185,6 @@ async function checkMWFading(linksData, nodesData, alarmDataList) {
   // 결과 저장
   failureAnalysisResults.mwFadingLinks = mwFadingResults;
 
-  // 통합 결과 메시지
-  if (typeof addChatMessage === 'function') {
-    if (mwFadingResults.length > 0) {
-      addChatMessage(
-        `<strong>2. MW-MW 구간 페이딩 분석:</strong> 🔴 ${mwFadingResults.length}개 의심 링크 발견됨`,
-        'analysis'
-      );
-    } else {
-      addChatMessage('<strong>2. MW-MW 구간 페이딩 분석:</strong> 🟢 발견되지 않음', 'success');
-    }
-  }
-
   console.log(`MW-MW 구간 페이딩 체크 완료: ${mwFadingResults.length}개 발견`);
 }
 
@@ -220,7 +196,7 @@ async function checkMWPowerFailure(nodesData, alarmDataList) {
   if (!nodesData || !Array.isArray(nodesData)) {
     console.warn('노드 데이터가 없습니다.');
     if (typeof addChatMessage === 'function') {
-      addChatMessage('<strong>3. MW 장비 한전 정전 분석:</strong> 노드 데이터 없음', 'error');
+      addChatMessage('<strong>❌ 3. MW 장비 한전 정전 분석:</strong> 노드 데이터 없음', 'error');
     }
     return;
   }
@@ -259,18 +235,6 @@ async function checkMWPowerFailure(nodesData, alarmDataList) {
   // 결과 저장
   failureAnalysisResults.mwPowerFailures = mwPowerFailures;
 
-  // 통합 결과 메시지
-  if (typeof addChatMessage === 'function') {
-    if (mwPowerFailures.length > 0) {
-      addChatMessage(
-        `<strong>3. MW 장비 한전 정전 분석:</strong> 🔴 ${mwPowerFailures.length}개 의심 장비 발견됨`,
-        'analysis'
-      );
-    } else {
-      addChatMessage('<strong>3. MW 장비 한전 정전 분석:</strong> 🟢 발견되지 않음', 'success');
-    }
-  }
-
   console.log(`MW 장비 한전 정전 체크 완료: ${mwPowerFailures.length}개 발견`);
 }
 
@@ -292,7 +256,7 @@ async function callMWFadingAPI(sourceEquipId, targetEquipId) {
     });
 
     if (!response.ok) {
-      throw new Error(`API 호출 실패: ${response.status}`);
+      throw new Error(`❌ API 호출 실패: ${response.status}`);
     }
 
     const result = await response.json();
@@ -323,7 +287,7 @@ async function callMWPowerAPI(equipId, guksaName) {
     });
 
     if (!response.ok) {
-      throw new Error(`API 호출 실패: ${response.status}`);
+      throw new Error(`❌ API 호출 실패: ${response.status}`);
     }
 
     const result = await response.json();
@@ -582,18 +546,32 @@ function printAnalysisSummary() {
   console.log(`MW 페이딩 링크: ${failureAnalysisResults.mwFadingLinks.length}개`);
   console.log(`MW 정전 장비: ${failureAnalysisResults.mwPowerFailures.length}개`);
 
-  // 채팅창에 분석 완료 메시지
+  // 🔥 수정: 모든 분석 결과를 하나의 통합 메시지로 표시
   if (typeof addChatMessage === 'function') {
-    const totalFailures =
-      (failureAnalysisResults.lineFailures?.length || 0) +
-      (failureAnalysisResults.mwFadingLinks?.length || 0) +
-      (failureAnalysisResults.mwPowerFailures?.length || 0);
+    const lineCount = failureAnalysisResults.lineFailures?.length || 0;
+    const fadingCount = failureAnalysisResults.mwFadingLinks?.length || 0;
+    const powerCount = failureAnalysisResults.mwPowerFailures?.length || 0;
+    const totalFailures = lineCount + fadingCount + powerCount;
+
+    // 통합된 하나의 메시지 생성
+    let unifiedMessage = '<strong>🔍 장애점 찾기 분석 결과</strong><br><br>';
+
+    unifiedMessage += `<strong>1. 선로 분야 장애:</strong> `;
+    unifiedMessage += lineCount > 0 ? `🔴 ${lineCount}개 발견됨<br>` : `🟢 발견되지 않음<br>`;
+
+    unifiedMessage += `<strong>2. MW-MW 구간 페이딩석:</strong> `;
+    unifiedMessage +=
+      fadingCount > 0 ? `🔴 ${fadingCount}개 페이딩 의심 링크 발견됨<br>` : `🟢 발견되지 않음<br>`;
+
+    unifiedMessage += `<strong>3. MW 장비 한전 정전 추정:</strong> `;
+    unifiedMessage +=
+      powerCount > 0
+        ? `🔴 ${powerCount}개 정전 의심 장비 발견됨<br><br>`
+        : `🟢 배터리 모드 장비 없음<br><br>`;
 
     if (totalFailures > 0) {
-      addChatMessage(
-        '<strong>장애 패턴 분석이 완료되었습니다!</strong> 결과를 확인하세요.',
-        'summary'
-      );
+      unifiedMessage += `<strong>📊 종합 결과:</strong> 총 ${totalFailures}개의 장애 패턴이 감지되었습니다.<br>`;
+      unifiedMessage += `💡 맵에서 해당 장비/링크가 강조 표시됩니다.`;
 
       // 상세 결과를 채팅창에 표시
       setTimeout(() => {
@@ -602,8 +580,11 @@ function printAnalysisSummary() {
         }
       }, 500);
     } else {
-      addChatMessage('<strong>분석 완료:</strong> 🟢 모든 장비가 정상 상태입니다.', 'success');
+      unifiedMessage += `<strong>> 분석 완료:</strong> 모든 장비가 정상 상태입니다.`;
     }
+
+    // 하나의 통합된 메시지로 표시
+    addChatMessage(unifiedMessage, 'summary');
   }
 
   // 상세 결과 출력
