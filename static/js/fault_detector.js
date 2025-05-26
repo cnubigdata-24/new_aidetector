@@ -346,7 +346,7 @@
 
           // 페이딩 정보 (존재하는 경우)
           if (fadingCount > 0) {
-            alarm_string += 'MW 전파 페이딩 영향 🛑';
+            alarm_string += 'MW 전파 페이딩 영향 🔴';
             parts.push(
               `<b>변조율이 크게 하락한 MW 장비</b> (${fadingSample}, 총 ${fadingCount}건)가 존재합니다.
           <br>⚠️ 전파 페이딩에 의한 영향일 수 있으니 확인하시기 바랍니다.`
@@ -361,7 +361,7 @@
 
           // 배터리 모드 정보 (존재하는 경우)
           if (batteryCount > 0) {
-            alarm_string += ' / 한전 정전 영향 🛑';
+            alarm_string += ' / 한전 정전 영향 🔴';
             parts.push(
               `<b>MW 장비 중 배터리 모드로 운용 중인 장비</b> (${batterySample}, 총 ${batteryCount}건)가 존재합니다.
           <br>⚠️ 한전 정전의 가능성이 있으니 확인하시기 바랍니다.`
@@ -650,7 +650,7 @@
                   아래 선로 장애 내역을 참고해 주시고, <b>'다른 분야의 경보 내역'</b>을 추가로 확인하시기 바랍니다.`;
             } else {
               const recent = unrecovered.most_recent || {};
-              warningMsg = `선로 장애 영향 🛑 <br><br> ${recent.alarm_occur_datetime || ''}, <b>
+              warningMsg = `선로 장애 영향 🔴 <br><br> ${recent.alarm_occur_datetime || ''}, <b>
                   ${recent.guksa_name || '알 수 없음'}</b>의 <b>선로장애</b>(${
                 recent.cable_name_core || '알 수 없음'
               }, ${recent.fault_sector || '알 수 없음'}) 

@@ -1,232 +1,10 @@
-// 노드 관련 상수
-const NODE_WIDTH = 250;
-const NODE_WIDTH_HALF = NODE_WIDTH / 2;
-const NODE_HEIGHT = 50;
-const NODE_CORNER_RADIUS = 10;
-const NODE_STROKE_WIDTH = 2;
-const NODE_HOVER_STROKE_WIDTH = 4;
-const MAX_NODE_NAME_LENGTH = 20;
-
-// 링크 관련 상수
-const LINK_STROKE_WIDTH = 3;
-const LINK_HOVER_STROKE_WIDTH = 10;
-const LINK_OPACITY = 0.7;
-const LINK_HOVER_OPACITY = 1;
-
-// 맵 관련 상수
-const MAP_HEIGHT = 500;
-const MAP_PADDING = 50;
-const MAP_MARGIN_TOP = -100;
-const HORIZONTAL_SPACING = 450;
-const VERTICAL_SPACING = 100;
-const ZOOM_MIN_SCALE = 0.5;
-const ZOOM_MAX_SCALE = 5;
-
-// 툴팁 관련 상수
-const TOOLTIP_DURATION = 200;
-const TOOLTIP_AUTO_HIDE_DELAY = 10000; // 10초
-const MAX_TOOLTIP_ALARMS = 5;
-
-// 근본 원인 노드 관련 상수 - 여기에 추가
-const ROOT_CAUSE_HIGHLIGHT_COLOR = '#FF5533'; // 밝은 적색 (근본원인 강조색)
-const ROOT_CAUSE_STROKE_WIDTH = 3; // 테두리 두께
-const ROOT_CAUSE_ANIMATION_DURATION = 1000; // 애니메이션 지속 시간
-
-const nodeZoom = d3
-  .zoom()
-  .scaleExtent([1, 1.05])
-  .on('zoom', function (event) {
-    d3.select(this).attr('transform', event.transform);
-  });
-
-// 분야별 색상
-const FIELD_COLORS = {
-  MW: '#ff8c00', // 주황색
-  IP: '#2ca02c', // 녹색
-  교환: '#279fd6', // 하늘색
-  전송: '#9467bd', // 보라색
-  선로: '#8c564b', // 갈색
-  무선: '#51f13c', // 파란색
-};
-
-// 기본 색상 상수
-const DEFAULT_COLOR = '#999'; // 기본 회색
-const LINK_COLOR = '#FF0000'; // 링크 기본 색상
-const LINK_HOVER_COLOR = '#FF3333'; // 링크 호버 색상
-const LINK_MULTI_BASE_COLOR = 200; // 다중 링크 기본 색상 R값
-const LINK_MULTI_VARIATION = 25; // 링크마다 색상 변화 값
-const FIRST_CENTRAL_NODE_BORDER_COLOR = '#000000';
-const STYLES = `
-  /* 노드 스타일 */
-  .equip-node {
-    cursor: pointer;
-    /* transition 속성은 D3 transition에서 처리하므로 제거 */
-  }
-
-  .equip-node rect {
-    width: ${NODE_WIDTH}px;
-    height: ${NODE_HEIGHT}px;
-    rx: ${NODE_CORNER_RADIUS};
-    ry: ${NODE_CORNER_RADIUS};
-    fill-opacity: 1;
-    stroke-width: ${NODE_STROKE_WIDTH};
-  }
-
-  /* 호버 효과 - 밝기만 변경 */
-  .equip-node:hover rect {
-    filter: brightness(1.05);
-  }
-
-  /* 링크 스타일 */
-  .equip-link {
-    stroke-width: ${LINK_STROKE_WIDTH};
-    stroke-opacity: ${LINK_OPACITY};
-  }
-
-  .equip-link:hover {
-    stroke-width: ${LINK_HOVER_STROKE_WIDTH};
-    stroke-opacity: ${LINK_HOVER_OPACITY};
-  }
-
-  /* 링크 라벨 스타일 */
-  .link-label-bg {
-    fill: white;
-    fill-opacity: 0.9;
-    rx: 6;
-    ry: 6;
-    stroke: #ddd;
-    stroke-width: 0.5;
-  }
-
-  .link-label {
-    text-anchor: middle;
-    font-weight: bold;
-    font-size: 15px;
-    fill: #333;
-    cursor: pointer; 
-    pointer-events: auto; /* 마우스 이벤트 활성화 */    
-  }
-
-  /* 맵 제목 스타일 */
-  .map-title {
-    position: absolute;
-    top: 3px;
-    left: 0px;
-    font-size: 14px;
-    font-weight: bold;
-    color: #333;
-    z-index: 20;
-    background-color: rgba(249, 249, 249, 0.8);
-    padding: 5px 10px;
-    border-radius: 4px;
-  }
-
-  /* 분야별 노드 색상 - 색상 개선 */
-  .node-MW rect {
-    fill: ${FIELD_COLORS.MW};
-    box-shadow: 0 4px 8px rgba(255, 140, 0, 0.3);
-  }
-
-  .node-IP rect {
-    fill: ${FIELD_COLORS.IP};
-    box-shadow: 0 4px 8px rgba(44, 160, 44, 0.3);
-  }
-
-  .node-교환 rect {
-    fill: ${FIELD_COLORS.교환};
-    box-shadow: 0 4px 8px rgba(35, 21, 230, 0.3);
-  }
-
-  .node-전송 rect {
-    fill: ${FIELD_COLORS.전송};
-    box-shadow: 0 4px 8px rgba(148, 103, 189, 0.3);
-  }
-
-  .node-선로 rect {
-    fill: ${FIELD_COLORS.선로};
-    box-shadow: 0 4px 8px rgba(140, 86, 75, 0.3);
-  }
-
-  .node-무선 rect {
-    fill: ${FIELD_COLORS.무선};
-    box-shadow: 0 4px 8px rgba(35, 122, 8, 0.3);
-  }
-
-  /* 중앙 노드(도초 MSPP) 스타일 - 노란색으로 강조 */
-  .center-node rect {
-    fill: #ffcc00;
-    stroke: #ff8800;
-    stroke-width: 3;
-  }
-
-  /* 근본 원인 노드 스타일 */
-  /*
-  .root-cause-node {
-    filter: drop-shadow(0 0 8px rgba(255, 85, 51, 0.7)) !important;
-  }
-  */
-  .root-cause-label {
-    font-size: 14px;
-    font-weight: bold;
-    pointer-events: none; /* 마우스 이벤트 무시 */
-  }
-
-  /* 툴팁 스타일 */
-  .equip-map-tooltip {
-    position: absolute;
-    padding: 10px;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.3s;
-    z-index: 1000;
-  }
-
-  /* 맵 컨트롤 패널 */
-  .map-control-panel {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 5px;
-    z-index: 1000;
-  }
-
-  .fit-map-btn {
-    margin: 0px;
-    padding: 0px 0px;
-    cursor: pointer;
-    border-radius: 4px;
-    border: 0px solid #ccc;
-    background:rgb(255, 255, 255);
-  }
-
-  .fit-map-btn:hover {
-    background:rgb(252, 252, 252);
-  }
-
-  .no-data-message {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    color: #888;
-    font-style: italic;
-  }
-`;
-
 // 장비 ID 매핑용 해시맵 생성
 const equipmentMap = {};
 
 // 스타일 시트 추가 함수
 function addStyleSheet() {
   const styleEl = document.createElement('style');
-  styleEl.textContent = STYLES;
+  styleEl.textContent = DEFAULT_MAP_STYLES;
   document.head.appendChild(styleEl);
 }
 
@@ -258,16 +36,17 @@ function createEquipTopologyMap(data, alarmDataList) {
 
   // 노드 데이터 준비 - id 필드를 일관되게 설정
   const nodesData = equipmentList.map((d) => {
-    // ID 필드 우선순위: equip_id가 있으면 사용, 없으면 id 사용
     const nodeId = d.equip_id || d.id;
 
     let nodeAlarms = [];
     if (alarmDataList && Array.isArray(alarmDataList)) {
       nodeAlarms = alarmDataList.filter((alarm) => alarm && alarm.equip_id === nodeId);
-      // 디버깅: 장비별 경보 수 로깅
-      if (nodeAlarms.length > 0) {
-        console.log(`장비 ${nodeId}(${d.equip_name}): ${nodeAlarms.length}개 경보 발견`);
-      }
+      // 시간순 정렬 (최신순)
+      nodeAlarms.sort((a, b) => {
+        const dateA = new Date(a.occur_datetime || 0);
+        const dateB = new Date(b.occur_datetime || 0);
+        return dateB - dateA;
+      });
     }
 
     const node = {
@@ -278,10 +57,9 @@ function createEquipTopologyMap(data, alarmDataList) {
       equip_field: d.equip_field || '분야 미상',
       guksa_name: d.guksa_name || '정보 없음',
       up_down: d.up_down || 'none',
-      // 추가 속성 (나중에 참조하기 위한 용도)
       connections: [],
-      level: -1, // 레벨 초기화 (토폴로지 분석에 사용)
-      alarms: nodeAlarms,
+      level: -1,
+      alarms: nodeAlarms, // 정렬된 경보 정보
     };
 
     // 장비 ID 맵에 저장
@@ -1328,7 +1106,7 @@ function createEquipTopologyMap(data, alarmDataList) {
       .style('padding', '5px')
       .style('z-index', '1000');
 
-    // 맵 다시 맞추기 버튼
+    // 맵 중앙으로 이동 버튼
     controlPanel
       .append('button')
       .attr('class', 'fit-map-btn')
@@ -1349,7 +1127,228 @@ function createEquipTopologyMap(data, alarmDataList) {
     console.error('근본 원인 노드 강조 중 오류 발생:', error);
   }
 
+  // ===== 새로 추가된 부분 시작 =====
+  // 장애 패턴 분석 수행 (새로운 룰 베이스 분석)
+  //   try {
+  //     console.log('장애 패턴 분석 시작...');
+
+  //     // 분석에 필요한 데이터 준비
+  //     const analysisData = {
+  //       nodes: nodesData,
+  //       links: linksData,
+  //       alarms: alarmDataList,
+  //     };
+
+  //     console.log('분석 데이터 확인:', {
+  //       노드수: analysisData.nodes.length,
+  //       링크수: analysisData.links.length,
+  //       경보수: analysisData.alarms ? analysisData.alarms.length : 0,
+  //     });
+
+  //     // 장애 패턴 분석 함수 호출 (비동기)
+  //     if (typeof analyzeFailurePatterns === 'function') {
+  //       // 약간의 지연을 두고 실행 (맵 렌더링 완료 후)
+  //       setTimeout(async () => {
+  //         try {
+  //           await analyzeFailurePatterns(analysisData.nodes, analysisData.links, analysisData.alarms);
+
+  //           // 분석 결과를 채팅창에 표시
+  //           displayFailureAnalysisResultsToChat();
+
+  //           console.log('장애 패턴 분석 완료');
+  //         } catch (analysisError) {
+  //           console.error('장애 패턴 분석 중 오류:', analysisError);
+  //         }
+  //       }, 1000); // 1초 후 실행
+  //     } else {
+  //       console.warn(
+  //         'analyzeFailurePatterns 함수를 찾을 수 없습니다. fault_dashboard_analyzer.js가 로드되었는지 확인하세요.'
+  //       );
+  //     }
+  //   } catch (error) {
+  //     console.error('장애 패턴 분석 초기화 오류:', error);
+  //   }
+  // ===== 새로 추가된 부분 끝 =====
+
   setTimeout(fitAllNodes, 50);
+}
+
+// ===== 추가 유틸리티 함수들 =====
+// ===== 추가 유틸리티 함수들 =====
+
+// 장애점 찾기 버튼 이벤트 초기화 함수
+function initFaultPointButton() {
+  const faultPointBtn = document.getElementById('fault-point-btn');
+
+  if (!faultPointBtn) {
+    console.warn('장애점 찾기 버튼을 찾을 수 없습니다.');
+    return;
+  }
+
+  // 기존 이벤트 리스너 제거 (중복 방지)
+  faultPointBtn.removeEventListener('click', handleFaultPointClick);
+
+  // 새 이벤트 리스너 추가
+  faultPointBtn.addEventListener('click', handleFaultPointClick);
+
+  console.log('장애점 찾기 버튼 이벤트 리스너 추가 완료');
+}
+
+// 장애점 찾기 버튼 클릭 핸들러
+async function handleFaultPointClick() {
+  console.log('장애점 찾기 버튼 클릭됨');
+
+  try {
+    // 버튼 비활성화 (중복 클릭 방지)
+    const faultPointBtn = document.getElementById('fault-point-btn');
+    if (faultPointBtn) {
+      faultPointBtn.disabled = true;
+      faultPointBtn.textContent = '분석 중...';
+    }
+
+    // 분석 실행
+    if (typeof runFailureAnalysis === 'function') {
+      await runFailureAnalysis();
+    } else {
+      console.error('runFailureAnalysis 함수를 찾을 수 없습니다.');
+      if (typeof addChatMessage === 'function') {
+        addChatMessage(
+          '❌ <strong>분석 함수를 찾을 수 없습니다.</strong> 페이지를 새로고침 해주세요.',
+          'error'
+        );
+      }
+    }
+  } catch (error) {
+    console.error('장애점 찾기 실행 중 오류:', error);
+    if (typeof addChatMessage === 'function') {
+      addChatMessage(`❌ <strong>분석 실행 중 오류:</strong> ${error.message}`, 'error');
+    }
+  } finally {
+    // 버튼 활성화
+    const faultPointBtn = document.getElementById('fault-point-btn');
+    if (faultPointBtn) {
+      faultPointBtn.disabled = false;
+      faultPointBtn.textContent = '장애점 찾기';
+    }
+  }
+}
+
+// 장비 분석 결과를 채팅창에 누적하여 표시하는 함수
+function displayFailureAnalysisResultsToChat() {
+  if (typeof getFailureAnalysisResults !== 'function') {
+    console.warn('getFailureAnalysisResults 함수를 사용할 수 없습니다.');
+    return;
+  }
+
+  const results = getFailureAnalysisResults();
+  const chatArea = document.getElementById('chat-messages-area');
+
+  if (!chatArea || !results) {
+    console.warn('채팅 영역을 찾을 수 없거나 분석 결과가 없습니다.');
+    return;
+  }
+
+  // 구분선 추가
+  addChatMessage('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'system');
+
+  // 1. 선로 장애 분석 결과
+  setTimeout(() => {
+    if (results.lineFailures && results.lineFailures.length > 0) {
+      let lineMessage = `🔴 <strong>선로 분야 장애 ${results.lineFailures.length}개 발견</strong><br>`;
+      results.lineFailures.forEach((failure, index) => {
+        const sourceNode = getNodeName(failure.sourceId);
+        const targetNode = getNodeName(failure.targetId);
+        lineMessage += `${index + 1}. ${sourceNode} ↔ ${targetNode}<br>`;
+        lineMessage += `   • 분야: ${failure.sourceField} - ${failure.targetField}<br>`;
+        lineMessage += `   • 설명: ${failure.description}<br>`;
+      });
+      lineMessage +=
+        '<small>💡 선로 분야 링크는 경보 발생 시 무조건 장애 의심으로 판단됩니다.</small>';
+      addChatMessage(lineMessage, 'analysis');
+    }
+  }, 100);
+
+  // 2. MW 페이딩 분석 결과
+  setTimeout(() => {
+    if (results.mwFadingLinks && results.mwFadingLinks.length > 0) {
+      let fadingMessage = `🟡 <strong>MW 페이딩 의심 링크 ${results.mwFadingLinks.length}개 발견</strong><br>`;
+      results.mwFadingLinks.forEach((failure, index) => {
+        const sourceNode = getNodeName(failure.sourceId);
+        const targetNode = getNodeName(failure.targetId);
+        fadingMessage += `${index + 1}. ${sourceNode} ↔ ${targetNode}<br>`;
+        if (failure.apiResult) {
+          fadingMessage += `   • 분석결과: ${failure.apiResult.result_msg}<br>`;
+          if (failure.apiResult.analysis_data) {
+            const data = failure.apiResult.analysis_data;
+            fadingMessage += `   • SNR: ${data.source_snr?.toFixed(1) || 'N/A'}dB ↔ ${
+              data.target_snr?.toFixed(1) || 'N/A'
+            }dB<br>`;
+            fadingMessage += `   • BER: ${data.source_ber?.toExponential(2) || 'N/A'} ↔ ${
+              data.target_ber?.toExponential(2) || 'N/A'
+            }<br>`;
+          }
+        }
+      });
+      fadingMessage +=
+        '<small>💡 MW 장비간 링크에서 SNR/BER 값 변동이 큰 경우 페이딩으로 판단됩니다.</small>';
+      addChatMessage(fadingMessage, 'analysis');
+    }
+  }, 200);
+
+  // 3. MW 정전 분석 결과
+  setTimeout(() => {
+    if (results.mwPowerFailures && results.mwPowerFailures.length > 0) {
+      let powerMessage = `🔴 <strong>MW 한전 정전 의심 장비 ${results.mwPowerFailures.length}개 발견</strong><br>`;
+      results.mwPowerFailures.forEach((failure, index) => {
+        powerMessage += `${index + 1}. ${failure.equipName} (${failure.nodeId})<br>`;
+        powerMessage += `   • 국사: ${failure.guksaName}<br>`;
+        powerMessage += `   • 장비유형: ${failure.equipType}<br>`;
+        if (failure.apiResult) {
+          powerMessage += `   • 분석결과: ${failure.apiResult.result_msg}<br>`;
+          if (failure.apiResult.power_data) {
+            const data = failure.apiResult.power_data;
+            powerMessage += `   • 인입전압: ${data.input_voltage}mV (기준: ${data.threshold_voltage}mV)<br>`;
+            if (data.battery_voltage) {
+              powerMessage += `   • 배터리전압: ${data.battery_voltage}mV<br>`;
+            }
+          }
+        }
+      });
+      powerMessage +=
+        '<small>💡 MW 장비의 인입전압이 기준값 이하일 때 한전 정전으로 판단됩니다.</small>';
+      addChatMessage(powerMessage, 'analysis');
+    }
+  }, 300);
+
+  // 4. 종합 분석 결과
+  setTimeout(() => {
+    const totalFailures =
+      (results.lineFailures?.length || 0) +
+      (results.mwFadingLinks?.length || 0) +
+      (results.mwPowerFailures?.length || 0);
+
+    let summaryMessage = `📊 <strong>종합 분석 결과</strong><br>`;
+    summaryMessage += `• 총 ${totalFailures}개의 장애 패턴이 감지되었습니다.<br>`;
+    summaryMessage += `• 분석 시간: ${new Date(results.analysisTimestamp).toLocaleString()}<br>`;
+
+    if (totalFailures > 0) {
+      summaryMessage += `<br>🎯 <strong>권장 조치사항:</strong><br>`;
+      if (results.lineFailures?.length > 0) {
+        summaryMessage += `• 선로 분야 장애: 즉시 현장 점검 필요<br>`;
+      }
+      if (results.mwFadingLinks?.length > 0) {
+        summaryMessage += `• MW 페이딩: 안테나 정렬 및 장애물 확인<br>`;
+      }
+      if (results.mwPowerFailures?.length > 0) {
+        summaryMessage += `• MW 정전: 한전 정전 여부 확인 및 배터리 점검<br>`;
+      }
+      summaryMessage += `<br>💡 맵에서 해당 장비/링크가 강조 표시됩니다.`;
+    } else {
+      summaryMessage += `<br>✨ 모든 장비가 정상 상태입니다.`;
+    }
+
+    addChatMessage(summaryMessage, 'summary');
+  }, 400);
 }
 
 // 근본 원인 노드 강조 함수 (완전히 새롭게 작성)
@@ -1381,60 +1380,6 @@ function highlightRootCauseNodes(centralNodeId, levels, nodesData, linksData) {
   if (rootCauses.links && rootCauses.links.length > 0) {
     applyLinkVisualEffect(rootCauses.links);
   }
-}
-
-function applyLinkVisualEffect(linkIds) {
-  if (!linkIds || linkIds.length === 0) return;
-
-  console.log('링크 애니메이션 적용 시작:', linkIds);
-
-  // 링크에 강조 효과 적용
-  d3.selectAll('.equip-link')
-    .filter((d) => linkIds.includes(d.id))
-    .each(function (d) {
-      const linkElement = d3.select(this);
-
-      // 링크 색상과 두께 변경
-      linkElement
-        .classed('root-cause-link', true)
-        .attr('stroke', '#FF0000')
-        .attr('stroke-width', LINK_STROKE_WIDTH * 1.5);
-
-      // 점멸 애니메이션 추가
-      linkElement.node().innerHTML = `
-        <animate attributeName="stroke-opacity" 
-                 values="1;0.3;1" 
-                 dur="1s" 
-                 repeatCount="indefinite" />
-        <animate attributeName="stroke-width" 
-                 values="${LINK_STROKE_WIDTH * 1.5};${LINK_STROKE_WIDTH * 2.5};${
-        LINK_STROKE_WIDTH * 1.5
-      }" 
-                 dur="1s" 
-                 repeatCount="indefinite" />
-      `;
-
-      // "장애 구간" 라벨 추가
-      const linkGroup = linkElement.closest('g');
-      d3.select(linkGroup)
-        .append('text')
-        .attr('class', 'root-cause-link-label')
-        .attr('x', function () {
-          const source = typeof d.source === 'object' ? d.source : equipmentMap[d.source];
-          const target = typeof d.target === 'object' ? d.target : equipmentMap[d.target];
-          return (source.x + target.x) / 2;
-        })
-        .attr('y', function () {
-          const source = typeof d.source === 'object' ? d.source : equipmentMap[d.source];
-          const target = typeof d.target === 'object' ? d.target : equipmentMap[d.target];
-          return (source.y + target.y) / 2 - 15;
-        })
-        .attr('fill', '#FF0000')
-        .attr('font-weight', 'bold')
-        .text('장애 구간');
-
-      console.log(`링크 애니메이션 적용: ${d.id}`);
-    });
 }
 
 // 근본 원인 노드 및 링크 식별 로직 개선
@@ -1558,100 +1503,6 @@ function findRootCauseLinks(links) {
 
   return rootCauseLinks;
 }
-// SVG 애니메이션을 직접 사용한 노드 강조 함수
-function applyVisualPatternEffect(nodeIds) {
-  if (!nodeIds || nodeIds.length === 0) return;
 
-  console.log('애니메이션 적용 시작:', nodeIds);
-
-  // 기존 강조 효과 제거
-  clearRootCauseEffects();
-
-  // 노드에 강조 효과 적용
-  d3.selectAll('.equip-node')
-    .filter((d) => nodeIds.includes(d.id))
-    .each(function (d) {
-      const nodeElement = d3.select(this);
-      const rectElement = nodeElement.select('rect');
-
-      // 애니메이션 ID 생성 - 각 노드마다 고유한 ID 필요
-      const animationId = `pulse-${d.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
-
-      // 스타일 적용
-      rectElement
-        .classed('root-cause-node', true)
-        .attr('stroke', ROOT_CAUSE_HIGHLIGHT_COLOR)
-        .attr('stroke-width', ROOT_CAUSE_STROKE_WIDTH);
-
-      // 애니메이션용 defs 요소 생성 (중복 방지)
-      let svgElement = d3.select('#map-container svg');
-      if (svgElement.empty()) {
-        console.error('SVG 요소를 찾을 수 없습니다!');
-        return;
-      }
-
-      let defs = svgElement.select('defs');
-      if (defs.empty()) {
-        defs = svgElement.append('defs');
-      }
-
-      if (defs.select(`#${animationId}`).empty()) {
-        defs
-          .append('animate')
-          .attr('id', animationId)
-          .attr('attributeName', 'stroke-width')
-          .attr(
-            'values',
-            `${ROOT_CAUSE_STROKE_WIDTH};${ROOT_CAUSE_STROKE_WIDTH * 2.5};${ROOT_CAUSE_STROKE_WIDTH}`
-          )
-          .attr('dur', '1.0s')
-          .attr('repeatCount', 'indefinite');
-      }
-
-      // rect 내부에 stroke 애니메이션 삽입
-      rectElement.node().innerHTML = `<animate attributeName="stroke-width" values="${ROOT_CAUSE_STROKE_WIDTH};${
-        ROOT_CAUSE_STROKE_WIDTH * 2.5
-      };${ROOT_CAUSE_STROKE_WIDTH}" dur="0.5s" repeatCount="indefinite" />`;
-
-      // 기존 분야명 텍스트를 찾아 "전송 장애 의심" 등으로 업데이트
-      nodeElement
-        .selectAll('text')
-        .filter(function () {
-          return d3.select(this).attr('dy') === '-10';
-        })
-        .each(function () {
-          const original = d3.select(this).text();
-          if (!original.includes('(장애 의심)')) {
-            d3.select(this).text(`${original} (장애 의심)`);
-          }
-        });
-
-      console.log(`노드 애니메이션 적용: ${d.equip_name} (ID: ${d.id})`);
-    });
-}
-
-// 기존 강조 효과를 모두 제거하는 함수
-function clearRootCauseEffects() {
-  // 기존 애니메이션 중지
-  if (window.rootCauseAnimationTimer) {
-    clearInterval(window.rootCauseAnimationTimer);
-    window.rootCauseAnimationTimer = null;
-  }
-
-  // 모든 root-cause-node 클래스 제거
-  d3.selectAll('.root-cause-node')
-    .classed('root-cause-node', false)
-    .attr('stroke', '#fff')
-    .attr('stroke-width', NODE_STROKE_WIDTH)
-    .style('filter', null);
-
-  // 모든 root-cause-link 클래스 제거
-  d3.selectAll('.root-cause-link')
-    .classed('root-cause-link', false)
-    .attr('stroke', LINK_COLOR)
-    .attr('stroke-width', LINK_STROKE_WIDTH)
-    .attr('stroke-opacity', LINK_OPACITY);
-
-  // 모든 라벨 제거
-  d3.selectAll('.root-cause-label, .root-cause-link-label').remove();
-}
+// 전역 함수로 등록
+window.initFaultPointButton = initFaultPointButton;

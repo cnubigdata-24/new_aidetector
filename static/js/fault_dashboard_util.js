@@ -1,3 +1,226 @@
+// 노드 관련 상수
+const NODE_WIDTH = 250;
+const NODE_WIDTH_HALF = NODE_WIDTH / 2;
+const NODE_HEIGHT = 50;
+const NODE_CORNER_RADIUS = 10;
+const NODE_STROKE_WIDTH = 2;
+const NODE_HOVER_STROKE_WIDTH = 4;
+const MAX_NODE_NAME_LENGTH = 20;
+
+// 링크 관련 상수
+const LINK_STROKE_WIDTH = 3;
+const LINK_HOVER_STROKE_WIDTH = 10;
+const LINK_OPACITY = 0.7;
+const LINK_HOVER_OPACITY = 1;
+
+// 맵 관련 상수
+const MAP_HEIGHT = 500;
+const MAP_PADDING = 50;
+const MAP_MARGIN_TOP = -100;
+const HORIZONTAL_SPACING = 450;
+const VERTICAL_SPACING = 100;
+const ZOOM_MIN_SCALE = 0.5;
+const ZOOM_MAX_SCALE = 5;
+
+// 툴팁 관련 상수
+const TOOLTIP_DURATION = 200;
+const TOOLTIP_AUTO_HIDE_DELAY = 10000; // 10초
+const MAX_TOOLTIP_ALARMS = 5;
+
+// 근본 원인 노드 관련 상수 - 여기에 추가
+const ROOT_CAUSE_HIGHLIGHT_COLOR = '#FF5533'; // 밝은 적색 (근본원인 강조색)
+const ROOT_CAUSE_STROKE_WIDTH = 3; // 테두리 두께
+const ROOT_CAUSE_ANIMATION_DURATION = 1000; // 애니메이션 지속 시간
+
+const nodeZoom = d3
+  .zoom()
+  .scaleExtent([1, 1.05])
+  .on('zoom', function (event) {
+    d3.select(this).attr('transform', event.transform);
+  });
+
+// 분야별 색상
+const FIELD_COLORS = {
+  MW: '#ff8c00', // 주황색
+  IP: '#2ca02c', // 녹색
+  교환: '#279fd6', // 하늘색
+  전송: '#9467bd', // 보라색
+  선로: '#8c564b', // 갈색
+  무선: '#51f13c', // 파란색
+};
+
+// 기본 색상 상수
+const DEFAULT_COLOR = '#999'; // 기본 회색
+const LINK_COLOR = '#FF0000'; // 링크 기본 색상
+const LINK_HOVER_COLOR = '#FF3333'; // 링크 호버 색상
+const LINK_MULTI_BASE_COLOR = 200; // 다중 링크 기본 색상 R값
+const LINK_MULTI_VARIATION = 25; // 링크마다 색상 변화 값
+const FIRST_CENTRAL_NODE_BORDER_COLOR = '#000000';
+
+const DEFAULT_MAP_STYLES = `
+  /* 노드 스타일 */
+  .equip-node {
+    cursor: pointer;
+    /* transition 속성은 D3 transition에서 처리하므로 제거 */
+  }
+
+  .equip-node rect {
+    width: ${NODE_WIDTH}px;
+    height: ${NODE_HEIGHT}px;
+    rx: ${NODE_CORNER_RADIUS};
+    ry: ${NODE_CORNER_RADIUS};
+    fill-opacity: 1;
+    stroke-width: ${NODE_STROKE_WIDTH};
+  }
+
+  /* 호버 효과 - 밝기만 변경 */
+  .equip-node:hover rect {
+    filter: brightness(1.05);
+  }
+
+  /* 링크 스타일 */
+  .equip-link {
+    stroke-width: ${LINK_STROKE_WIDTH};
+    stroke-opacity: ${LINK_OPACITY};
+  }
+
+  .equip-link:hover {
+    stroke-width: ${LINK_HOVER_STROKE_WIDTH};
+    stroke-opacity: ${LINK_HOVER_OPACITY};
+  }
+
+  /* 링크 라벨 스타일 */
+  .link-label-bg {
+    fill: white;
+    fill-opacity: 0.9;
+    rx: 6;
+    ry: 6;
+    stroke: #ddd;
+    stroke-width: 0.5;
+  }
+
+  .link-label {
+    text-anchor: middle;
+    font-weight: bold;
+    font-size: 15px;
+    fill: #333;
+    cursor: pointer; 
+    pointer-events: auto; /* 마우스 이벤트 활성화 */    
+  }
+
+  /* 맵 제목 스타일 */
+  .map-title {
+    position: absolute;
+    top: 3px;
+    left: 0px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    z-index: 20;
+    background-color: rgba(249, 249, 249, 0.8);
+    padding: 5px 10px;
+    border-radius: 4px;
+  }
+
+  /* 분야별 노드 색상 - 색상 개선 */
+  .node-MW rect {
+    fill: ${FIELD_COLORS.MW};
+    box-shadow: 0 4px 8px rgba(255, 140, 0, 0.3);
+  }
+
+  .node-IP rect {
+    fill: ${FIELD_COLORS.IP};
+    box-shadow: 0 4px 8px rgba(44, 160, 44, 0.3);
+  }
+
+  .node-교환 rect {
+    fill: ${FIELD_COLORS.교환};
+    box-shadow: 0 4px 8px rgba(35, 21, 230, 0.3);
+  }
+
+  .node-전송 rect {
+    fill: ${FIELD_COLORS.전송};
+    box-shadow: 0 4px 8px rgba(148, 103, 189, 0.3);
+  }
+
+  .node-선로 rect {
+    fill: ${FIELD_COLORS.선로};
+    box-shadow: 0 4px 8px rgba(140, 86, 75, 0.3);
+  }
+
+  .node-무선 rect {
+    fill: ${FIELD_COLORS.무선};
+    box-shadow: 0 4px 8px rgba(35, 122, 8, 0.3);
+  }
+
+  /* 중앙 노드(도초 MSPP) 스타일 - 노란색으로 강조 */
+  .center-node rect {
+    fill: #ffcc00;
+    stroke: #ff8800;
+    stroke-width: 3;
+  }
+
+  /* 근본 원인 노드 스타일 */
+  /*
+  .root-cause-node {
+    filter: drop-shadow(0 0 8px rgba(255, 85, 51, 0.7)) !important;
+  }
+  */
+  .root-cause-label {
+    font-size: 14px;
+    font-weight: bold;
+    pointer-events: none; /* 마우스 이벤트 무시 */
+  }
+
+  /* 툴팁 스타일 */
+  .equip-map-tooltip {
+    position: absolute;
+    padding: 10px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 1000;
+  }
+
+  /* 맵 컨트롤 패널 */
+  .map-control-panel {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 5px;
+    z-index: 1000;
+  }
+
+  .fit-map-btn {
+    margin: 0px;
+    padding: 0px 0px;
+    cursor: pointer;
+    border-radius: 4px;
+    border: 0px solid #ccc;
+    background:rgb(255, 255, 255);
+  }
+
+  .fit-map-btn:hover {
+    background:rgb(252, 252, 252);
+  }
+
+  .no-data-message {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    color: #888;
+    font-style: italic;
+  }
+`;
+
 // 드래그 요소 위치 계산
 function getDragAfterElement(container, x, y) {
   const draggableElements = [...container.querySelectorAll('.draggable:not(.dragging)')];
@@ -631,3 +854,298 @@ document.addEventListener('DOMContentLoaded', function () {
     initEquipmentFilter();
   }, 1000);
 });
+
+function applyLinkVisualEffect(linkIds) {
+  if (!linkIds || linkIds.length === 0) return;
+
+  console.log('링크 애니메이션 적용 시작:', linkIds);
+
+  // 링크에 강조 효과 적용
+  d3.selectAll('.equip-link')
+    .filter((d) => linkIds.includes(d.id))
+    .each(function (d) {
+      const linkElement = d3.select(this);
+
+      // 링크 색상과 두께 변경
+      linkElement
+        .classed('root-cause-link', true)
+        .attr('stroke', '#FF0000')
+        .attr('stroke-width', LINK_STROKE_WIDTH * 1.5);
+
+      // 점멸 애니메이션 추가
+      linkElement.node().innerHTML = `
+        <animate attributeName="stroke-opacity" 
+                 values="1;0.3;1" 
+                 dur="1s" 
+                 repeatCount="indefinite" />
+        <animate attributeName="stroke-width" 
+                 values="${LINK_STROKE_WIDTH * 1.5};${LINK_STROKE_WIDTH * 2.5};${
+        LINK_STROKE_WIDTH * 1.5
+      }" 
+                 dur="1s" 
+                 repeatCount="indefinite" />
+      `;
+
+      // "장애 구간" 라벨 추가
+      const linkGroup = linkElement.closest('g');
+      d3.select(linkGroup)
+        .append('text')
+        .attr('class', 'root-cause-link-label')
+        .attr('x', function () {
+          const source = typeof d.source === 'object' ? d.source : equipmentMap[d.source];
+          const target = typeof d.target === 'object' ? d.target : equipmentMap[d.target];
+          return (source.x + target.x) / 2;
+        })
+        .attr('y', function () {
+          const source = typeof d.source === 'object' ? d.source : equipmentMap[d.source];
+          const target = typeof d.target === 'object' ? d.target : equipmentMap[d.target];
+          return (source.y + target.y) / 2 - 15;
+        })
+        .attr('fill', '#FF0000')
+        .attr('font-weight', 'bold')
+        .text('장애 구간');
+
+      console.log(`링크 애니메이션 적용: ${d.id}`);
+    });
+}
+
+// SVG 애니메이션을 직접 사용한 노드 강조 함수
+function applyVisualPatternEffect(nodeIds) {
+  if (!nodeIds || nodeIds.length === 0) return;
+
+  console.log('애니메이션 적용 시작:', nodeIds);
+
+  // 기존 강조 효과 제거
+  clearRootCauseEffects();
+
+  // 노드에 강조 효과 적용
+  d3.selectAll('.equip-node')
+    .filter((d) => nodeIds.includes(d.id))
+    .each(function (d) {
+      const nodeElement = d3.select(this);
+      const rectElement = nodeElement.select('rect');
+
+      // 애니메이션 ID 생성 - 각 노드마다 고유한 ID 필요
+      const animationId = `pulse-${d.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+      // 스타일 적용
+      rectElement
+        .classed('root-cause-node', true)
+        .attr('stroke', ROOT_CAUSE_HIGHLIGHT_COLOR)
+        .attr('stroke-width', ROOT_CAUSE_STROKE_WIDTH);
+
+      // 애니메이션용 defs 요소 생성 (중복 방지)
+      let svgElement = d3.select('#map-container svg');
+      if (svgElement.empty()) {
+        console.error('SVG 요소를 찾을 수 없습니다!');
+        return;
+      }
+
+      let defs = svgElement.select('defs');
+      if (defs.empty()) {
+        defs = svgElement.append('defs');
+      }
+
+      if (defs.select(`#${animationId}`).empty()) {
+        defs
+          .append('animate')
+          .attr('id', animationId)
+          .attr('attributeName', 'stroke-width')
+          .attr(
+            'values',
+            `${ROOT_CAUSE_STROKE_WIDTH};${ROOT_CAUSE_STROKE_WIDTH * 2.5};${ROOT_CAUSE_STROKE_WIDTH}`
+          )
+          .attr('dur', '1.0s')
+          .attr('repeatCount', 'indefinite');
+      }
+
+      // rect 내부에 stroke 애니메이션 삽입
+      rectElement.node().innerHTML = `<animate attributeName="stroke-width" values="${ROOT_CAUSE_STROKE_WIDTH};${
+        ROOT_CAUSE_STROKE_WIDTH * 2.5
+      };${ROOT_CAUSE_STROKE_WIDTH}" dur="0.5s" repeatCount="indefinite" />`;
+
+      // 기존 분야명 텍스트를 찾아 "전송 장애 의심" 등으로 업데이트
+      nodeElement
+        .selectAll('text')
+        .filter(function () {
+          return d3.select(this).attr('dy') === '-10';
+        })
+        .each(function () {
+          const original = d3.select(this).text();
+          if (!original.includes('(장애 의심)')) {
+            d3.select(this).text(`${original} (장애 의심)`);
+          }
+        });
+
+      console.log(`노드 애니메이션 적용: ${d.equip_name} (ID: ${d.id})`);
+    });
+}
+
+// 기존 강조 효과를 모두 제거하는 함수
+function clearRootCauseEffects() {
+  // 기존 애니메이션 중지
+  if (window.rootCauseAnimationTimer) {
+    clearInterval(window.rootCauseAnimationTimer);
+    window.rootCauseAnimationTimer = null;
+  }
+
+  // 모든 root-cause-node 클래스 제거
+  d3.selectAll('.root-cause-node')
+    .classed('root-cause-node', false)
+    .attr('stroke', '#fff')
+    .attr('stroke-width', NODE_STROKE_WIDTH)
+    .style('filter', null);
+
+  // 모든 root-cause-link 클래스 제거
+  d3.selectAll('.root-cause-link')
+    .classed('root-cause-link', false)
+    .attr('stroke', LINK_COLOR)
+    .attr('stroke-width', LINK_STROKE_WIDTH)
+    .attr('stroke-opacity', LINK_OPACITY);
+
+  // 모든 라벨 제거
+  d3.selectAll('.root-cause-label, .root-cause-link-label').remove();
+}
+
+// 채팅 메시지 추가 함수
+function addChatMessage(content, type = 'system') {
+  const chatArea = document.getElementById('chat-messages-area');
+  if (!chatArea) return;
+
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `chat-message ${type}`;
+
+  const currentTime = new Date().toLocaleTimeString('ko-KR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  messageDiv.innerHTML = `
+    <div class="message-content">${content}</div>
+    <div class="message-time">${currentTime}</div>
+  `;
+
+  chatArea.appendChild(messageDiv);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+// 노드 이름 가져오기 헬퍼 함수
+function getNodeName(nodeId) {
+  if (typeof equipmentMap !== 'undefined' && equipmentMap[nodeId]) {
+    return equipmentMap[nodeId].equip_name || nodeId;
+  }
+  return nodeId;
+}
+
+// 채팅창 상단에 최초 한번만 표시되는 기본 안내 메시지 추가 (페이지 로드 시)
+let isFirstTimeMessage = true;
+
+// 채팅 입력 기능 (기존 HTML의 채팅 입력창 활용)
+function initChatInput() {
+  const chatInput = document.getElementById('chat-input');
+  const chatSendBtn = document.getElementById('chat-send-btn');
+
+  if (!chatInput || !chatSendBtn) {
+    console.warn('채팅 입력 요소를 찾을 수 없습니다.');
+    return;
+  }
+
+  // 엔터키 이벤트
+  chatInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendChatMessage();
+    }
+  });
+
+  // 전송 버튼 이벤트
+  chatSendBtn.addEventListener('click', sendChatMessage);
+
+  function sendChatMessage() {
+    const message = chatInput.value.trim();
+    if (!message) return;
+
+    // 사용자 메시지 추가
+    if (typeof addChatMessage === 'function') {
+      addChatMessage(`💬 ${message}`, 'user');
+
+      // 응답 메시지 (예시)
+      setTimeout(() => {
+        addChatMessage(
+          '🤖 죄송합니다. 현재는 장애점 찾기 기능만 지원됩니다. 장애점 찾기 버튼을 클릭해주세요.',
+          'system'
+        );
+      }, 500);
+    }
+
+    // 입력창 초기화
+    chatInput.value = '';
+  }
+
+  //   if (isFirstTimeMessage && typeof addChatMessage === 'function') {
+  //     addChatMessage(
+  //       '💡 경보발생 장비 선택 후 장애점 찾기 버튼을 클릭하면 AI 분석 결과가 여기에 표시됩니다.',
+  //       'system'
+  //     );
+  //     isFirstTimeMessage = false;
+  //   }
+}
+
+// 장비 변경 시 채팅창 초기화 함수 수정 - 기본 메시지 개선
+function handleEquipmentChange(equipInfo) {
+  console.log('장비 변경 감지:', equipInfo);
+
+  // 채팅창 초기화
+  if (typeof clearChatMessages === 'function') {
+    clearChatMessages();
+
+    // 장비 변경 시 안내 메시지 (경보 정보 포함)
+    if (typeof addChatMessage === 'function') {
+      const equipName = equipInfo?.equipName || equipInfo?.equip_name || '알 수 없는 장비';
+      const equipId = equipInfo?.equipId || equipInfo?.equip_id || '';
+
+      let message = `🔄 <strong>선택된 장비가 변경되었습니다</strong><br>`;
+      message += `• 장비명: ${equipName}`;
+      if (equipId) {
+        message += `<br>• 장비ID: ${equipId}`;
+
+        // 해당 장비의 최근 경보 3개 추가
+        const equipAlarms = getRecentAlarmsForEquip(equipId, 3);
+        if (equipAlarms.length > 0) {
+          message += `<br>• 최근 경보 ${equipAlarms.length}개:`;
+          equipAlarms.forEach((alarm, index) => {
+            const alarmTime = formatDateTimeForToolTip(alarm.occur_datetime) || '-';
+            const alarmMsg = alarm.alarm_message || '메시지 없음';
+            const truncatedMsg = alarmMsg.length > 30 ? alarmMsg.slice(0, 30) + '...' : alarmMsg;
+            message += `<br>  ${index + 1}. ${alarmTime}: ${truncatedMsg}`;
+          });
+        } else {
+          message += `<br>• 최근 경보: 없음`;
+        }
+      }
+
+      addChatMessage(message, 'system');
+    }
+  }
+}
+
+window.handleEquipmentChange = handleEquipmentChange;
+
+// 특정 장비의 최근 경보를 가져오는 함수
+function getRecentAlarmsForEquip(equipId, maxCount = 3) {
+  if (!_totalAlarmDataList || !Array.isArray(_totalAlarmDataList)) {
+    return [];
+  }
+
+  // 해당 장비의 경보만 필터링하고 시간순 정렬
+  const equipAlarms = _totalAlarmDataList
+    .filter((alarm) => alarm && alarm.equip_id === equipId)
+    .sort((a, b) => {
+      const dateA = new Date(a.occur_datetime || 0);
+      const dateB = new Date(b.occur_datetime || 0);
+      return dateB - dateA; // 최신순 정렬
+    })
+    .slice(0, maxCount);
+
+  return equipAlarms;
+}
