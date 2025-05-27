@@ -1,5 +1,5 @@
 /**
- * 분야별 장애의심 장비 노드와 링크 분석을 위한 룰 베이스 시스템
+ * 분야별 장애의심 장비 노드와 링크 분석을 위한 Rule-Based 장애점 찾기 모듈
  *
  * 주요 기능:
  * 1. 선로 분야 링크 장애 판단
@@ -8,7 +8,7 @@
  * 4. 장애 시각화 처리
  */
 
-// 🔴 🟡 🟢 ✅ ⚡ 🔥 💡 ✨ 🎯 📊 ❌ ⏱️
+// 🚩 🔴 🟡 🟢 🔵 🔘 🔥 ⚠️ 🚨 🔔 ☑️ ✅ ✔️ ⚡ 🔥 💡 ✨ 🎯 📊 ❌ ⏱️ 🧭 🗺️ 🔄 ⏳ 📌 🗂️ 🔍 💬 🗨️ ▶️ ⏹️
 
 // 상수 정의
 const FAILURE_TYPES = {
@@ -33,7 +33,7 @@ let failureAnalysisResults = {
   analysisTimestamp: null,
 };
 
-// 메인 장애 분석 함수 - 모든 분석을 순서대로 실행
+// 메인 장애 분석 함수 - 순서대로 비동기 실행
 async function analyzeFailurePatterns(nodesData, linksData, alarmDataList) {
   console.log('=== 장애 패턴 분석 시작 ===');
 
@@ -43,15 +43,15 @@ async function analyzeFailurePatterns(nodesData, linksData, alarmDataList) {
 
     // 1. 선로 분야 링크 장애 체크 - 메시지 제거
     console.log('1. 선로 분야 링크 장애 분석 중...');
-    await checkLineFailure(linksData, alarmDataList);
+    await checkCableFailure(linksData, alarmDataList);
 
     // 2. MW-MW 구간 페이딩 체크 - 메시지 제거
     console.log('2. MW-MW 구간 페이딩 분석 중...');
-    await checkMWFading(linksData, nodesData, alarmDataList);
+    await checkFading(linksData, nodesData, alarmDataList);
 
     // 3. MW 장비 한전 정전 체크 - 메시지 제거
     console.log('3. MW 장비 한전 정전 분석 중...');
-    await checkMWPowerFailure(nodesData, alarmDataList);
+    await checkPowerFailure(nodesData, alarmDataList);
 
     // 4. 분석 결과 시각화 적용
     console.log('4. 장애 시각화 적용 중...');
@@ -63,13 +63,11 @@ async function analyzeFailurePatterns(nodesData, linksData, alarmDataList) {
     console.log('=== 장애 패턴 분석 완료 ===');
   } catch (error) {
     console.error('장애 패턴 분석 중 오류 발생:', error);
-    if (typeof addChatMessage === 'function') {
-      addChatMessage(`❌ <strong>분석 중 오류 발생:</strong> ${error.message}`, 'error');
-    }
+    addChatMessage(`📌 <strong>분석 중 오류 발생:</strong> ${error.message}`, 'error', true);
   }
 }
 
-async function checkLineFailure(linksData, alarmDataList) {
+async function checkCableFailure(linksData, alarmDataList) {
   console.log('선로 분야 링크 장애 체크 시작...');
 
   const lineFailureLinks = [];
@@ -127,16 +125,18 @@ async function checkLineFailure(linksData, alarmDataList) {
 }
 
 // MW 장비간 링크에서 페이딩 현상 확인 및 API 호출
-async function checkMWFading(linksData, nodesData, alarmDataList) {
+async function checkFading(linksData, nodesData, alarmDataList) {
   console.log('MW-MW 구간 페이딩 체크 시작...');
 
   const mwFadingResults = [];
 
   if (!linksData || !Array.isArray(linksData)) {
     console.warn('링크 데이터가 없습니다.');
-    if (typeof addChatMessage === 'function') {
-      addChatMessage('<strong>❌ 2. MW-MW 구간 페이딩 분석:</strong> 링크 데이터 없음', 'error');
-    }
+    addChatMessage(
+      '<strong>📌 2. MW-MW 구간 페이딩 분석:</strong> 링크 데이터 없음',
+      'error',
+      true
+    );
     return;
   }
 
@@ -160,7 +160,7 @@ async function checkMWFading(linksData, nodesData, alarmDataList) {
         );
 
       if (hasAlarm) {
-        const fadingResult = await callMWFadingAPI(sourceId, targetId);
+        const fadingResult = await fetchFadingCheckAPI(sourceId, targetId);
 
         if (fadingResult && fadingResult.is_fading === 'fading') {
           const fadingInfo = {
@@ -188,16 +188,18 @@ async function checkMWFading(linksData, nodesData, alarmDataList) {
   console.log(`MW-MW 구간 페이딩 체크 완료: ${mwFadingResults.length}개 발견`);
 }
 
-async function checkMWPowerFailure(nodesData, alarmDataList) {
+async function checkPowerFailure(nodesData, alarmDataList) {
   console.log('MW 장비 한전 정전 체크 시작...');
 
   const mwPowerFailures = [];
 
   if (!nodesData || !Array.isArray(nodesData)) {
     console.warn('노드 데이터가 없습니다.');
-    if (typeof addChatMessage === 'function') {
-      addChatMessage('<strong>❌ 3. MW 장비 한전 정전 분석:</strong> 노드 데이터 없음', 'error');
-    }
+    addChatMessage(
+      '<strong>📌 3. MW 장비 한전 정전 분석:</strong> 노드 데이터 없음',
+      'error',
+      true
+    );
     return;
   }
 
@@ -209,7 +211,7 @@ async function checkMWPowerFailure(nodesData, alarmDataList) {
       const hasAlarm = node.alarms && node.alarms.length > 0;
 
       if (hasAlarm) {
-        const powerResult = await callMWPowerAPI(node.equip_id, node.guksa_name);
+        const powerResult = await fetchMWPowerCheckAPI(node.equip_id, node.guksa_name);
 
         if (powerResult && powerResult.battery_mode === 'battery') {
           const powerFailureInfo = {
@@ -239,7 +241,7 @@ async function checkMWPowerFailure(nodesData, alarmDataList) {
 }
 
 // MW 페이딩 체크 API 호출
-async function callMWFadingAPI(sourceEquipId, targetEquipId) {
+async function fetchFadingCheckAPI(sourceEquipId, targetEquipId) {
   try {
     const requestData = {
       source_equip_id: sourceEquipId,
@@ -270,7 +272,7 @@ async function callMWFadingAPI(sourceEquipId, targetEquipId) {
 }
 
 // MW 정전 체크 API 호출
-async function callMWPowerAPI(equipId, guksaName) {
+async function fetchMWPowerCheckAPI(equipId, guksaName) {
   try {
     const requestData = {
       equip_id: equipId,
@@ -308,19 +310,19 @@ function applyFailureVisualization() {
   clearFailureVisualization();
 
   // 1. 선로 링크 장애 시각화
-  applyLineFailureVisualization();
+  applyCableFailureVisualization();
 
   // 2. MW 페이딩 링크 시각화
-  applyMWFadingVisualization();
+  applyFadingVisualization();
 
   // 3. MW 정전 노드 시각화
-  applyMWPowerFailureVisualization();
+  applyPowerFailureVisualization();
 
   console.log('장애 시각화 적용 완료');
 }
 
 // 선로 링크 장애 시각화
-function applyLineFailureVisualization() {
+function applyCableFailureVisualization() {
   if (!failureAnalysisResults.lineFailures || failureAnalysisResults.lineFailures.length === 0) {
     return;
   }
@@ -346,7 +348,7 @@ function applyLineFailureVisualization() {
 }
 
 // MW 페이딩 링크 시각화
-function applyMWFadingVisualization() {
+function applyFadingVisualization() {
   if (!failureAnalysisResults.mwFadingLinks || failureAnalysisResults.mwFadingLinks.length === 0) {
     return;
   }
@@ -372,7 +374,7 @@ function applyMWFadingVisualization() {
 }
 
 // MW 정전 노드 시각화
-function applyMWPowerFailureVisualization() {
+function applyPowerFailureVisualization() {
   if (
     !failureAnalysisResults.mwPowerFailures ||
     failureAnalysisResults.mwPowerFailures.length === 0
@@ -470,18 +472,26 @@ function addFailureLabel(element, labelText, color, isLink) {
         const linkData = d3.select(this.parentNode).datum();
         if (!linkData.source || !linkData.target) return 0;
         const sourceX =
-          typeof linkData.source === 'object' ? linkData.source.x : equipmentMap[linkData.source].x;
+          typeof linkData.source === 'object'
+            ? linkData.source.x
+            : _equipmentMap[linkData.source].x;
         const targetX =
-          typeof linkData.target === 'object' ? linkData.target.x : equipmentMap[linkData.target].x;
+          typeof linkData.target === 'object'
+            ? linkData.target.x
+            : _equipmentMap[linkData.target].x;
         return (sourceX + targetX) / 2;
       })
       .attr('y', function () {
         const linkData = d3.select(this.parentNode).datum();
         if (!linkData.source || !linkData.target) return 0;
         const sourceY =
-          typeof linkData.source === 'object' ? linkData.source.y : equipmentMap[linkData.source].y;
+          typeof linkData.source === 'object'
+            ? linkData.source.y
+            : _equipmentMap[linkData.source].y;
         const targetY =
-          typeof linkData.target === 'object' ? linkData.target.y : equipmentMap[linkData.target].y;
+          typeof linkData.target === 'object'
+            ? linkData.target.y
+            : _equipmentMap[linkData.target].y;
         return (sourceY + targetY) / 2 + VISUAL_EFFECTS.LABEL_OFFSET_Y;
       });
   } else {
@@ -547,45 +557,41 @@ function printAnalysisSummary() {
   console.log(`MW 정전 장비: ${failureAnalysisResults.mwPowerFailures.length}개`);
 
   // 수정: 모든 분석 결과를 하나의 통합 메시지로 표시
-  if (typeof addChatMessage === 'function') {
-    const lineCount = failureAnalysisResults.lineFailures?.length || 0;
-    const fadingCount = failureAnalysisResults.mwFadingLinks?.length || 0;
-    const powerCount = failureAnalysisResults.mwPowerFailures?.length || 0;
-    const totalFailures = lineCount + fadingCount + powerCount;
+  const lineCount = failureAnalysisResults.lineFailures?.length || 0;
+  const fadingCount = failureAnalysisResults.mwFadingLinks?.length || 0;
+  const powerCount = failureAnalysisResults.mwPowerFailures?.length || 0;
+  const totalFailures = lineCount + fadingCount + powerCount;
 
-    // 통합된 하나의 메시지 생성
-    let unifiedMessage = '<strong>🔍 장애점 찾기 분석 결과</strong><br><br>';
+  // 통합된 하나의 메시지 생성
+  let unifiedMessage = '<strong>✅ 장애점 찾기 분석 결과</strong><br><br>';
 
-    unifiedMessage += `<strong>1. 선로 분야 장애:</strong> `;
-    unifiedMessage += lineCount > 0 ? `🔴 ${lineCount}개 발견됨<br>` : `🟢 발견되지 않음<br>`;
+  unifiedMessage += `<strong>1. 선로 분야 장애:</strong> `;
+  unifiedMessage += lineCount > 0 ? `🔴 ${lineCount}개 발견됨<br>` : `🟢 발견되지 않음<br>`;
 
-    unifiedMessage += `<strong>2. MW-MW 구간 페이딩:</strong> `;
-    unifiedMessage +=
-      fadingCount > 0 ? `🔴 ${fadingCount}개 페이딩 의심 링크 발견됨<br>` : `🟢 발견되지 않음<br>`;
+  unifiedMessage += `<strong>2. MW-MW 구간 페이딩:</strong> `;
+  unifiedMessage +=
+    fadingCount > 0 ? `🔴 ${fadingCount}개 페이딩 의심 링크 발견됨<br>` : `🟢 발견되지 않음<br>`;
 
-    unifiedMessage += `<strong>3. MW 장비 한전 정전 추정:</strong> `;
-    unifiedMessage +=
-      powerCount > 0
-        ? `🔴 ${powerCount}개 정전 의심 장비 발견됨<br><br>`
-        : `🟢 배터리 모드 장비 없음<br><br>`;
+  unifiedMessage += `<strong>3. MW 장비 한전 정전 추정:</strong> `;
+  unifiedMessage +=
+    powerCount > 0
+      ? `🔴 ${powerCount}개 정전 의심 장비 발견됨<br><br>`
+      : `🟢 배터리 모드 장비 없음<br><br>`;
 
-    if (totalFailures > 0) {
-      unifiedMessage += `<strong>📊 종합 결과:</strong> 총 ${totalFailures}개의 장애 패턴이 감지되었습니다.<br>`;
-      unifiedMessage += `💡 맵에서 해당 장비/링크가 강조 표시됩니다.`;
+  if (totalFailures > 0) {
+    unifiedMessage += `<strong>📊 종합 결과:</strong> 총 ${totalFailures}개의 장애 패턴이 감지되었습니다.<br>`;
+    unifiedMessage += `💡 맵에서 해당 장비/링크가 강조 표시됩니다.`;
 
-      // 상세 결과를 채팅창에 표시
-      setTimeout(() => {
-        if (typeof displayFailureAnalysisResultsToChat === 'function') {
-          displayFailureAnalysisResultsToChat();
-        }
-      }, 500);
-    } else {
-      unifiedMessage += `<strong>> 분석 완료:</strong> 모든 장비가 정상 상태입니다.`;
-    }
-
-    // 하나의 통합된 메시지로 표시
-    addChatMessage(unifiedMessage, 'summary');
+    // 상세 결과를 채팅창에 표시
+    setTimeout(() => {
+      displayFailureAnalysisResultsToChat();
+    }, 500);
+  } else {
+    unifiedMessage += `<strong>> 분석 완료:</strong> 모든 장비가 정상 상태입니다.`;
   }
+
+  // 하나의 통합된 메시지로 표시
+  addChatMessage(unifiedMessage, 'summary', false);
 
   // 상세 결과 출력
   if (failureAnalysisResults.lineFailures.length > 0) {
@@ -630,7 +636,7 @@ function toggleFailureTypeVisualization(failureType, show = true) {
   switch (failureType) {
     case FAILURE_TYPES.LINE_FAILURE:
       if (show) {
-        applyLineFailureVisualization();
+        applyCableFailureVisualization();
       } else {
         // 선로 장애 시각화만 제거
         d3.selectAll('.failure-blink-link')
@@ -645,7 +651,7 @@ function toggleFailureTypeVisualization(failureType, show = true) {
 
     case FAILURE_TYPES.MW_FADING:
       if (show) {
-        applyMWFadingVisualization();
+        applyFadingVisualization();
       } else {
         // MW 페이딩 시각화만 제거
         d3.selectAll('.failure-blink-link')
@@ -660,7 +666,7 @@ function toggleFailureTypeVisualization(failureType, show = true) {
 
     case FAILURE_TYPES.MW_POWER_FAILURE:
       if (show) {
-        applyMWPowerFailureVisualization();
+        applyPowerFailureVisualization();
       } else {
         // MW 정전 시각화만 제거
         d3.selectAll('.failure-blink-node')
@@ -690,7 +696,7 @@ function clearChatMessages() {
   chatArea.innerHTML = `
     <div class="chat-message system">
       <div class="message-content">
-        💡 장애점 찾기 버튼을 클릭하면 AI 분석 결과가 여기에 표시됩니다.
+        💡 장애점 찾기를 클릭하면 AI 분석 결과가 여기에 표시됩니다.
       </div>
       <div class="message-time">${new Date().toLocaleTimeString('ko-KR', {
         hour: '2-digit',
@@ -712,23 +718,25 @@ async function runFailureAnalysis() {
 
   if (!currentNodes || currentNodes.length === 0) {
     addChatMessage(
-      '❌ <strong>분석할 장비 데이터가 없습니다.</strong><br>먼저 장비를 선택해주세요.',
-      'error'
+      '📌 <strong>분석할 장비 데이터가 없습니다.</strong><br>먼저 장비를 선택해주세요.',
+      'error',
+      true
     );
     return;
   }
 
   if (!_totalAlarmDataList || _totalAlarmDataList.length === 0) {
     addChatMessage(
-      '❌ <strong>경보 데이터가 없습니다.</strong><br>실시간 경보 수집을 먼저 실행해주세요.',
-      'error'
+      '📌 <strong>경보 데이터가 없습니다.</strong><br>실시간 경보 수집을 먼저 실행해주세요.',
+      'error',
+      true
     );
     return;
   }
 
   try {
     // 분석 실행 메시지
-    addChatMessage('🔍 <strong>장애점 분석을 시작합니다...</strong>', 'analyzing');
+    addChatMessage('🔍 <strong>장애점 분석을 시작합니다...</strong>', 'analyzing', false);
 
     // 장애 패턴 분석 실행
     await analyzeFailurePatterns(currentNodes, currentLinks, _totalAlarmDataList);
@@ -736,7 +744,11 @@ async function runFailureAnalysis() {
     console.log('장애점 찾기 분석 완료');
   } catch (error) {
     console.error('장애점 찾기 분석 중 오류:', error);
-    addChatMessage(`❌ <strong>분석 중 오류가 발생했습니다:</strong> ${error.message}`, 'error');
+    addChatMessage(
+      `📌 <strong>분석 중 오류가 발생했습니다:</strong> ${error.message}`,
+      'error',
+      true
+    );
   }
 }
 

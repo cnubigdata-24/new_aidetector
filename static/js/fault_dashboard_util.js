@@ -1,4 +1,4 @@
-// 🔴 🟡 🟢 ✅ ⚡ 🔥 💡 ✨ 🎯 📊 ❌ ⏱️
+// 🚩 🔴 🟡 🟢 🔵 ✅ ⚡ 🔥 💡 ✨ 🎯 📊 ❌ ⏱️ 🧭 🗺️ 🔄 ⏳ 📌 🗂️ 🔍 💬 🗨️ ▶️ ⏹️
 
 // 노드 관련 상수
 const NODE_WIDTH = 250;
@@ -175,18 +175,6 @@ const DEFAULT_MAP_STYLES = `
   }
 
   /* 툴팁 스타일 */
-  .equip-map-tooltip {
-    position: absolute;
-    padding: 10px;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.3s;
-    z-index: 1000;
-  }
 
   /* 맵 컨트롤 패널 */
   .map-control-panel {
@@ -222,6 +210,17 @@ const DEFAULT_MAP_STYLES = `
     font-style: italic;
   }
 `;
+
+// HTML 특수문자 이스케이프 함수
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // 드래그 요소 위치 계산
 function getDragAfterElement(container, x, y) {
@@ -622,21 +621,6 @@ function updateFilteredAlarmTable() {
   console.log('경보 테이블 업데이트 완료');
 }
 
-// 경보 테이블 초기화
-function initAlarmTable() {
-  console.log('경보 테이블 초기화');
-
-  try {
-    // 기존 테이블 Resizer 해제
-    if (window.tableResizer) {
-      window.tableResizer.dispose();
-      delete window.tableResizer;
-    }
-  } catch (e) {
-    console.warn('테이블 Resizer 해제 오류:', e);
-  }
-}
-
 // 경보 테이블의 페이지 데이터를 안전하게 처리하는 유틸리티 함수
 function getPageDataSafely(dataArray, prefix = '') {
   // 데이터가 없는 경우 처리
@@ -893,13 +877,13 @@ function applyLinkVisualEffect(linkIds) {
         .append('text')
         .attr('class', 'root-cause-link-label')
         .attr('x', function () {
-          const source = typeof d.source === 'object' ? d.source : equipmentMap[d.source];
-          const target = typeof d.target === 'object' ? d.target : equipmentMap[d.target];
+          const source = typeof d.source === 'object' ? d.source : _equipmentMap[d.source];
+          const target = typeof d.target === 'object' ? d.target : _equipmentMap[d.target];
           return (source.x + target.x) / 2;
         })
         .attr('y', function () {
-          const source = typeof d.source === 'object' ? d.source : equipmentMap[d.source];
-          const target = typeof d.target === 'object' ? d.target : equipmentMap[d.target];
+          const source = typeof d.source === 'object' ? d.source : _equipmentMap[d.source];
+          const target = typeof d.target === 'object' ? d.target : _equipmentMap[d.target];
           return (source.y + target.y) / 2 - 15;
         })
         .attr('fill', '#FF0000')
@@ -1009,12 +993,19 @@ function clearRootCauseEffects() {
 }
 
 // 채팅 메시지 추가 함수
-function addChatMessage(content, type = 'system') {
+function addChatMessage(content, type = 'system', isAlarmMessage = false) {
   const chatArea = document.getElementById('chat-messages-area');
   if (!chatArea) return;
 
   const messageDiv = document.createElement('div');
-  messageDiv.className = `chat-message ${type}`;
+
+  // 경보 현황 메시지인지 경우 핑크색 백그라운드 alarm-status CSS 적용
+  let messageType = type;
+  if (isAlarmMessage) {
+    messageType = 'alarm-status';
+  }
+
+  messageDiv.className = `chat-message ${messageType}`;
 
   const currentTime = new Date().toLocaleTimeString('ko-KR', {
     hour: '2-digit',
@@ -1032,8 +1023,8 @@ function addChatMessage(content, type = 'system') {
 
 // 노드 이름 가져오기 헬퍼 함수
 function getNodeName(nodeId) {
-  if (typeof equipmentMap !== 'undefined' && equipmentMap[nodeId]) {
-    return equipmentMap[nodeId].equip_name || nodeId;
+  if (typeof _equipmentMap !== 'undefined' && _equipmentMap[nodeId]) {
+    return _equipmentMap[nodeId].equip_name || nodeId;
   }
   return nodeId;
 }
@@ -1067,73 +1058,67 @@ function initChatInput() {
     if (!message) return;
 
     // 사용자 메시지 추가
-    if (typeof addChatMessage === 'function') {
-      addChatMessage(`💬 ${message}`, 'user');
+    addChatMessage(`💬 ${message}`, 'user');
 
-      // 응답 메시지 (예시)
-      setTimeout(() => {
-        addChatMessage(
-          '🤖 죄송합니다. 현재는 장애점 찾기 기능만 지원됩니다. 장애점 찾기 버튼을 클릭해주세요.',
-          'system'
-        );
-      }, 500);
-    }
+    // 응답 메시지 (예시)
+    setTimeout(() => {
+      addChatMessage(
+        '죄송합니다. 현재는 장애점 찾기 기능만 지원됩니다. 장애점 찾기 버튼을 클릭해주세요.',
+        'system',
+        false
+      );
+    }, 500);
 
     // 입력창 초기화
     chatInput.value = '';
   }
-
-  //   if (isFirstTimeMessage && typeof addChatMessage === 'function') {
-  //     addChatMessage(
-  //       '💡 경보발생 장비 선택 후 장애점 찾기 버튼을 클릭하면 AI 분석 결과가 여기에 표시됩니다.',
-  //       'system'
-  //     );
-  //     isFirstTimeMessage = false;
-  //   }
 }
 
 // 장비 변경 시 채팅창 초기화 함수 수정 - 기본 메시지 개선
-function handleEquipmentChange(equipInfo) {
+function handleEquipChangeEvent(equipInfo) {
   console.log('장비 변경 감지:', equipInfo);
 
   // 채팅창 초기화
-  if (typeof clearChatMessages === 'function') {
-    clearChatMessages();
+  clearChatMessages();
 
-    // 장비 변경 시 안내 메시지 (경보 정보 포함)
-    if (typeof addChatMessage === 'function') {
-      const equipName = equipInfo?.equipName || equipInfo?.equip_name || '알 수 없는 장비';
-      const equipId = equipInfo?.equipId || equipInfo?.equip_id || '';
+  // 장비 변경 시 안내 메시지 (경보 정보 포함)
+  const equipName = equipInfo?.equipName || equipInfo?.equip_name || '알 수 없는 장비';
+  const equipId = equipInfo?.equipId || equipInfo?.equip_id || '';
 
-      let message = `🔄 <strong>선택된 장비의 최근 경보현황</strong><br>`;
-      message += `&nbsp&nbsp • 장비명: ${equipName}`;
-      if (equipId) {
-        message += `<br>&nbsp&nbsp • 장비ID: ${equipId}`;
+  let isAlarmMessage = false;
+  let message = `<strong>📌 선택된 장비의 최근 경보현황입니다.</strong><br>`;
 
-        // 해당 장비의 최근 경보 5개 추가
-        const equipAlarms = getRecentAlarmsForEquip(equipId, 5);
+  message += `&nbsp&nbsp • 분야: ${equipInfo.equipSector} (타입: ${equipInfo.equipType})`;
+  message += `<br>&nbsp&nbsp • 국사: ${equipInfo.guksaName}`;
+  message += `<br>&nbsp&nbsp • 장비명: ${equipName}`;
 
-        if (equipAlarms.length > 0) {
-          message += `<br>&nbsp&nbsp • 최근 경보: ${equipAlarms.length}개`;
+  if (equipId) {
+    message += `<br>&nbsp&nbsp • 장비ID: ${equipId}`;
 
-          equipAlarms.forEach((alarm, index) => {
-            const alarmTime = formatDateTimeForToolTip(alarm.occur_datetime) || '-';
-            const alarmMsg = alarm.alarm_message || '메시지 없음';
-            const truncatedMsg = alarmMsg.length > 50 ? alarmMsg.slice(0, 50) + '...' : alarmMsg;
-            // message += `<br> &nbsp&nbsp ${index + 1}. ${alarmTime}: ${truncatedMsg}`;
-            message += `<br> &nbsp&nbsp&nbsp&nbsp [${alarmTime}] ${truncatedMsg}`;
-          });
-        } else {
-          message += `<br>&nbsp&nbsp • 최근 경보: 없음`;
-        }
-      }
+    // 해당 장비의 최근 경보 5개 추가
+    const equipAlarms = getRecentAlarmsForEquip(equipId, 5);
 
-      addChatMessage(message, 'system');
+    if (equipAlarms.length > 0) {
+      isAlarmMessage = true;
+      message += `<br>&nbsp&nbsp • 최근 경보: ${equipAlarms.length}개`;
+
+      equipAlarms.forEach((alarm, index) => {
+        const alarmTime = formatDateTimeForToolTip(alarm.occur_datetime) || '-';
+        const alarmMsg = escapeHtml(alarm.alarm_message) || '메시지 없음';
+
+        const truncatedMsg = alarmMsg.length > 50 ? alarmMsg.slice(0, 50) + '...' : alarmMsg;
+        // message += `<br> &nbsp&nbsp ${index + 1}. ${alarmTime}: ${truncatedMsg}`;
+        message += `<br> &nbsp&nbsp&nbsp&nbsp [${alarmTime}] ${truncatedMsg}`;
+      });
+    } else {
+      message += `<br>&nbsp&nbsp • 최근 경보: 없음`;
     }
   }
+
+  addChatMessage(message, 'system', isAlarmMessage);
 }
 
-window.handleEquipmentChange = handleEquipmentChange;
+window.handleEquipChangeEvent = handleEquipChangeEvent;
 
 // 특정 장비의 최근 경보를 가져오는 함수
 function getRecentAlarmsForEquip(equipId, maxCount = 3) {

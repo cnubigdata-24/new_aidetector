@@ -2,7 +2,7 @@
  * 경보 대시보드 시스템: 주요 기능: 분야별 경보 표시, 데이터 필터링, 테이블 정렬, 국사/장비 기준 뷰 등
  */
 
-// 🔴 🟡 🟢 ✅ ⚡ 🔥 💡 ✨ 🎯 📊 ❌ ⏱️
+// 🚩 🔴 🟡 🟢 🔵 🔘 🔥 ⚠️ 🚨 🔔 ☑️ ✅ ✔️ ⚡ 🔥 💡 ✨ 🎯 📊 ❌ ⏱️ 🧭 🗺️ 🔄 ⏳ 📌 🗂️ 🔍 💬 🗨️ ▶️ ⏹️
 
 // 상수 및 전역 변수 정의
 const SECTORS = ['MW', '선로', '전송', 'IP', '무선', '교환'];
@@ -83,18 +83,16 @@ function initSectorRadioEvent() {
         const selectedSector = this.value;
         console.log(`Radio 버튼 변경: ${selectedSector} 분야`);
 
+        // 분야 변경 시 채팅창에 안내 메시지 추가
+        let previousSector = _selectedSector;
+        addChatMessage(
+          `✅ <strong>분야가 변경되었습니다.</strong> (${previousSector} → ${selectedSector})`,
+          'system',
+          false
+        );
+
         // 현재 필터링 분야 설정
         _selectedSector = selectedSector;
-
-        // ===== 새로 추가된 부분 =====
-        // 분야 변경 시 채팅창에 안내 메시지 (선택사항)
-        if (typeof addChatMessage === 'function') {
-          addChatMessage(
-            `🔄 <strong>분야가 변경되었습니다:</strong> ${selectedSector} 분야`,
-            'system'
-          );
-        }
-        // ===== 새로 추가된 부분 끝 =====
 
         // 장비 목록 업데이트
         fetchSideBarEquipListBySector(_selectedSector);
@@ -173,17 +171,26 @@ function setupTableRowClick() {
 
     // ===== 새로 추가된 부분 =====
     // 테이블 행 클릭 시 채팅창 초기화
-    if (typeof handleEquipmentChange === 'function') {
-      // 장비명 찾기
-      const equipNameCell = row.querySelector('.col-equip-name');
-      const equipName = equipNameCell ? equipNameCell.textContent.trim() : '';
+    // 장비명 찾기
+    const equipNameCell = row.querySelector('.col-equip-name');
+    const equipName = equipNameCell ? equipNameCell.textContent.trim() : '';
 
-      handleEquipmentChange({
-        equipName: equipName || '테이블에서 선택된 장비',
-        equipId: equipId,
-        guksaId: guksaId,
-      });
-    }
+    // 경보 데이터 객체 추출
+    const alarm = _totalAlarmDataList.find((d) => d.equip_id === equipId);
+
+    console.log(
+      `▶▶▶ handleEquipChangeEvent 분야: ${alarm.equipSector}, 유형 ${alarm.equipType}) 장비명: ${equipName} 장비ID: ${equipId} 국사ID: ${guksaId}`
+    );
+
+    handleEquipChangeEvent({
+      equipName: equipName || '테이블에서 선택된 장비',
+      equipId: equipId,
+      equipSector: alarm?.sector || '확인 X',
+      equipType: alarm?.equip_type || '확인 X',
+
+      guksaName: alarm?.guksa_name || '확인 X',
+      guksaId: guksaId,
+    });
     // ===== 새로 추가된 부분 끝 =====
 
     // 현재 상태 저장
@@ -260,7 +267,7 @@ function setToggleViewButtons() {
   }
 }
 
-// 장비/국사 기준 전환 함수
+// 장비/국사 Equip, Guksa View 전환 함수
 function switchView(viewType) {
   console.log(`${viewType} 기준 버튼 클릭, 현재 뷰:`, _selectedView);
 
@@ -363,33 +370,7 @@ async function fetchSideBarEquipListBySector(sector) {
     console.log('장비 목록 데이터:', data);
 
     // 새로운 필터 시스템에 데이터 설정 (기존 코드 대체)
-    if (typeof setAllEquipmentList === 'function') {
-      setAllEquipmentList(data || []);
-    } else {
-      // fallback: 기존 방식으로 처리
-      console.warn(
-        '[EquipFilter] setAllEquipmentList 함수를 찾을 수 없어 기존 방식으로 처리합니다.'
-      );
-
-      const equipSelect = document.getElementById('searchEquipName');
-      equipSelect.innerHTML = ''; // 기존 옵션 제거
-
-      if (data && data.length > 0) {
-        data.forEach((equip) => {
-          const option = document.createElement('option');
-          option.value = equip.equip_name;
-          option.textContent = equip.equip_name;
-          option.dataset.equipId = equip.equip_id;
-          equipSelect.appendChild(option);
-        });
-      } else {
-        // 장비가 없는 경우
-        const option = document.createElement('option');
-        option.value = '';
-        option.textContent = '해당 분야의 장비가 없습니다';
-        equipSelect.appendChild(option);
-      }
-    }
+    setAllEquipmentList(data || []);
   } catch (error) {
     console.error('장비 목록 가져오기 오류:', error);
     showErrorMessage('장비 목록을 가져오는 중 오류가 발생했습니다.');
@@ -400,10 +381,9 @@ function refreshPage() {
   location.reload();
 }
 
-// 경보 현황 alarm_dashboard API 호출 (항상 모든 분야 all로 호출)
-async function searchAlarms(isSectorFilterMode = false) {
+// 경보 현황 alarm_dashboard API 호출 (항상 모든 분야 all로 호출 => /api/alarm_dashboard)
+async function fetchAllAlarmsFromDB(isSectorFilterMode = false) {
   try {
-    // 로딩 메시지 표시
     showTableErrorMessage('⏱️ 데이터를 불러오는 중입니다...');
 
     // 검색 파라미터 가져오기, 항상 모든 분야 all로 호출
@@ -469,7 +449,7 @@ async function searchAlarms(isSectorFilterMode = false) {
     _selectedSector = getCurrentSectorFromUI();
 
     // 대시보드는 항상 모든 데이터로 업데이트
-    updateDashboardTop(_summaryAlarmData);
+    updateAlarmSummary(_summaryAlarmData);
 
     // 테이블은 현재 필터로 업데이트 - 지연시켜 실행
     setTimeout(() => {
@@ -480,8 +460,8 @@ async function searchAlarms(isSectorFilterMode = false) {
     _totalAlarmDataList = [];
     _summaryAlarmData = [];
 
-    showTableErrorMessage(`❌ 데이터를 가져오는 중 오류가 발생했습니다: ${error.message}`);
-    updateDashboardTop(_summaryAlarmData);
+    showTableErrorMessage(`데이터를 가져오는 중 오류가 발생했습니다: ${error.message}`);
+    updateAlarmSummary(_summaryAlarmData);
   }
 }
 
@@ -491,13 +471,21 @@ function getCurrentSectorFromUI() {
   return sectorRadio ? sectorRadio.value : '';
 }
 
-// 경보 테이블 업데이트 함수
+// 하단 경보 테이블 업데이트 함수
 function refreshAlarmTable() {
   console.log('> 경보 테이블 업데이트 시작...');
   console.log(`> Sector 분야: "${_selectedSector}"`);
 
   // 테이블 초기화
-  initAlarmTable();
+  try {
+    // 기존 테이블 Resizer 해제
+    if (window.tableResizer) {
+      window.tableResizer.dispose();
+      delete window.tableResizer;
+    }
+  } catch (e) {
+    console.warn('테이블 Resizer 해제 오류:', e);
+  }
 
   // 전역 경보 데이터 여부 체크
   if (!_totalAlarmDataList || _totalAlarmDataList.length === 0) {
@@ -517,7 +505,7 @@ function refreshAlarmTable() {
   // 필터링 결과 데이터 없을 경우 처리
   if (!filteredData || filteredData.length === 0) {
     console.log(`"${_selectedSector}" 분야의 데이터가 없습니다.`);
-    showTableErrorMessage(`❌"${_selectedSector}" 분야의 데이터가 없습니다.`);
+    showTableErrorMessage(`"${_selectedSector}" 분야의 데이터가 없습니다.`);
     DOM.pagination().empty();
 
     return;
@@ -530,8 +518,8 @@ function refreshAlarmTable() {
   const result = getPageDataSafely(filteredData, '경보 테이블');
 
   if (result.success) {
-    console.log('▶▶▶ addRowsToAlarmTable 호출 시작');
-    console.log('▶▶▶ addRowsToAlarmTable에 pageData 입력:', result.data);
+    console.log('▶▶ addRowsToAlarmTable 호출 시작');
+    console.log('▶▶ addRowsToAlarmTable에 pageData 입력:', result.data);
 
     // 테이블 내용 업데이트 - setTimeout으로 지연시켜 렌더링 이슈 방지
     setTimeout(() => {
@@ -549,7 +537,7 @@ function refreshAlarmTable() {
   );
 }
 
-// 테이블에 데이터 표시
+// 하단 경보 테이블에 실제 데이터 Row추가
 function addRowsToAlarmTable(alarmDataList) {
   console.log('addRowsToAlarmTable 함수 실행: 실제 경보 테이블에 데이터를 추가');
   const tBody = document.getElementById('alarmTableBody');
@@ -630,10 +618,8 @@ function addRowsToAlarmTable(alarmDataList) {
   });
 }
 
-/**
- * 대시보드 업데이트 함수
- */
-function updateDashboardTop() {
+// 상단 경보 요약 대시보드 업데이트
+function updateAlarmSummary() {
   // 분야별 데이터 집계
   const summary = {};
   SECTORS.forEach((sector) => {
@@ -690,7 +676,7 @@ function updateDashboardTop() {
   // 분야별 대시보드 업데이트
   updateDashboardSector(summary);
 }
-// 분야별 대시보드 업데이트
+// 상단 분야별 경보 대시보드 업데이트
 function updateDashboardSector(summary) {
   console.log('분야별 대시보드 업데이트 시작');
 
@@ -717,8 +703,7 @@ function updateDashboardSector(summary) {
     box.select('.equip-count').text(`${uniqueEquipmentCount}대`);
     box.select('.alarm-count').text(`${totalAlarms}개`);
 
-    // 유효 경보 텍스트 출력 - 퍼센트 표시 방식 수정
-    // 3자리 숫자일 경우 숫자와 % 사이 공백 제거
+    // 유효 경보 텍스트 출력
     const percentText = validPercentage === 100 ? '100%' : `${validPercentage}%`;
     const validText = `${validAlarms}개 (${percentText})`;
 
@@ -749,7 +734,7 @@ function updateDashboardSector(summary) {
   });
 }
 
-//맵 관련 통합 함수들
+// 맵 관련 통합 함수들
 // 장비 조회 api 호출 및 맵 표시 (통합 함수: /api/alarm_dashboard_equip, /api/get_equiplist)
 async function fetchEquipmentData(options = {}) {
   const {
@@ -774,14 +759,15 @@ async function fetchEquipmentData(options = {}) {
     let apiEndpoint = '';
 
     if (_selectedView === 'equip') {
+      // 장비 기준 뷰인 경우 추가 파라미터
       loadingMessage = '장비 연결 데이터 로딩 중...';
       apiEndpoint = '/api/alarm_dashboard_equip';
 
-      // 장비 기준 뷰인 경우 추가 파라미터
       apiParams.sectors = ['all']; // 장비 기준은 항상 'all'로 호출
       apiParams.equip_name = equipName;
       apiParams.equip_id = equipId;
     } else {
+      // 국사 기준 뷰 모드인 경우 (국사 id가 왜 없지?) ################################## To do list
       loadingMessage = '국사 장비 데이터 로딩 중...';
       apiEndpoint = '/api/get_equiplist';
     }
@@ -789,7 +775,7 @@ async function fetchEquipmentData(options = {}) {
     // 맵 컨테이너에 로딩 표시
     showMapLoadingMessage(loadingMessage);
 
-    // API 호출 수행
+    // API 호출
     const responseData = await callApi(apiEndpoint, apiParams);
     if (!responseData) {
       throw new Error('유효한 데이터를 받지 못했습니다.');
@@ -827,16 +813,18 @@ async function fetchEquipmentData(options = {}) {
         _selectedView === 'equip' ? formattedData.equipment_list : formattedData.equip_list;
 
       const message = generateMapCompletionMessage(equipList, formattedData);
-      addChatMessage(message, 'system');
+      addChatMessage(message, 'alarm', true);
     }, 500);
   } catch (error) {
     console.error(`장비 정보 조회 오류:`, error);
+
     showMapErrorMessage(`장비 정보 조회 오류: ${error.message}`);
     syncUIWithFilterState();
   }
 }
 
 // 맵 완성 메시지 생성 함수
+// 🚀 최종 최적화된 generateMapCompletionMessage 함수
 function generateMapCompletionMessage(equipList, mapData) {
   const equipCount = equipList ? equipList.length : 0;
 
@@ -849,31 +837,25 @@ function generateMapCompletionMessage(equipList, mapData) {
     });
   }
 
-  // 경보 발생 장비 계산 개선
+  // 경보 발생 장비 계산 (기존 로직 유지)
   let equipWithAlarms = 0;
   if (equipList && Array.isArray(equipList)) {
     equipWithAlarms = equipList.filter((equip) => {
-      // 노드에 경보 데이터가 있는지 확인
       if (equip.alarms && Array.isArray(equip.alarms) && equip.alarms.length > 0) {
         return true;
       }
-
-      // 전역 경보 데이터에서도 확인
       if (_totalAlarmDataList && Array.isArray(_totalAlarmDataList)) {
         const hasAlarmInGlobal = _totalAlarmDataList.some(
           (alarm) => alarm && alarm.equip_id === (equip.equip_id || equip.id)
         );
         return hasAlarmInGlobal;
       }
-
       return false;
     }).length;
   }
 
-  // 선로 정보 계산 개선
+  // 선로 정보 계산 (기존 로직 유지)
   const links = mapData.links || [];
-
-  // 경보가 있는 선로 링크 계산 (실제 경보 발생한 선로)
   let alarmCableLinks = 0;
   let totalCableLinks = 0;
   let alarmMwLinks = 0;
@@ -881,31 +863,26 @@ function generateMapCompletionMessage(equipList, mapData) {
 
   if (Array.isArray(links)) {
     links.forEach((link) => {
-      // 링크의 source/target ID 추출 - 다양한 형태 지원
       const sourceId =
         link.equip_id || (typeof link.source === 'object' ? link.source.id : link.source);
       const targetId =
         link.link_equip_id || (typeof link.target === 'object' ? link.target.id : link.target);
 
-      // 분야 정보 가져오기 - 여러 소스에서 확인
       let sourceField = link.sourceField;
       let targetField = link.targetField;
 
-      // sourceField가 없으면 장비 맵에서 조회
       if (!sourceField && sourceId) {
         sourceField =
           equipFieldMap[sourceId] ||
           _totalAlarmDataList?.find((alarm) => alarm.equip_id === sourceId)?.sector;
       }
 
-      // targetField가 없으면 장비 맵에서 조회
       if (!targetField && targetId) {
         targetField =
           equipFieldMap[targetId] ||
           _totalAlarmDataList?.find((alarm) => alarm.equip_id === targetId)?.sector;
       }
 
-      // 선로 링크 체크 - 분야가 '선로'이거나 케이블 번호가 있으면 선로로 판단
       const isCableLink =
         sourceField === '선로' ||
         targetField === '선로' ||
@@ -913,8 +890,6 @@ function generateMapCompletionMessage(equipList, mapData) {
 
       if (isCableLink) {
         totalCableLinks++;
-
-        // 해당 링크에 경보가 있는지 확인
         if (_totalAlarmDataList && Array.isArray(_totalAlarmDataList)) {
           const hasAlarm = _totalAlarmDataList.some(
             (alarm) => alarm && (alarm.equip_id === sourceId || alarm.equip_id === targetId)
@@ -925,113 +900,54 @@ function generateMapCompletionMessage(equipList, mapData) {
         }
       }
 
-      // MW 구간 체크
       if (sourceField === 'MW' && targetField === 'MW') {
         totalMwLinks++;
-
-        // MW 페이딩 체크는 별도 분석에서 진행되므로 여기서는 0으로 표시
-        // 실제 페이딩은 장애점 찾기 분석에서 확인됨
       }
     });
   }
 
-  // 장애 의심 상위 장비 찾기 (경보가 많은 순) - 로직 개선
+  // 🚀 완전 최적화된 장애 의심 상위 장비 찾기
   const suspiciousEquips = [];
-  // 🔥 수정: window.currentRootCauseResults 우선 확인
+
   if (
     window.currentRootCauseResults &&
     window.currentRootCauseResults.nodeNames &&
     window.currentRootCauseResults.nodeNames.length > 0
   ) {
+    // ✅ 이미 분석된 결과를 다시 직접 사용
     suspiciousEquips.push(...window.currentRootCauseResults.nodeNames);
-    console.log('전역 근본 원인 결과 사용:', suspiciousEquips);
-  } else if (equipList && Array.isArray(equipList)) {
+    console.log('전역변수 장애의심 상위 장비 결과 사용:', suspiciousEquips);
+  } else {
+    console.log('전역변수 장애의심 상위 장비 결과가 없어 fallback 로직 사용');
+
+    // 🔥 단순화된 fallback: 경보가 있는 장비 중 연결이 가장 많은 1개 => 상위장비 경보가 아니잖아  ################################## To do list
     try {
-      // 🔥 맵에서 사용하는 것과 동일한 로직으로 근본 원인 노드 찾기
-
-      // 1. 노드 데이터 준비 (맵과 동일한 형태)
-      const nodesData = equipList.map((equip) => {
-        const nodeId = equip.equip_id || equip.id;
-
-        // 전역 경보 데이터에서 해당 장비의 경보 찾기
-        let nodeAlarms = [];
+      const equipWithAlarms = equipList.filter((equip) => {
+        if (equip.alarms && Array.isArray(equip.alarms) && equip.alarms.length > 0) return true;
         if (_totalAlarmDataList && Array.isArray(_totalAlarmDataList)) {
-          nodeAlarms = _totalAlarmDataList.filter((alarm) => alarm && alarm.equip_id === nodeId);
+          return _totalAlarmDataList.some(
+            (alarm) => alarm && alarm.equip_id === (equip.equip_id || equip.id)
+          );
         }
-
-        return {
-          id: nodeId,
-          equip_id: nodeId,
-          equip_name: equip.equip_name || '장비' + nodeId,
-          equip_type: equip.equip_type || '타입 미상',
-          equip_field: equip.equip_field || '분야 미상',
-          guksa_name: equip.guksa_name || '정보 없음',
-          up_down: equip.up_down || 'none',
-          connections: [],
-          level: -1,
-          alarms: nodeAlarms,
-        };
+        return false;
       });
 
-      // 2. 장비 맵 생성 (맵과 동일)
-      const tempEquipmentMap = {};
-      nodesData.forEach((node) => {
-        tempEquipmentMap[node.id] = node;
-      });
+      if (equipWithAlarms.length > 0) {
+        // ✅ 전역 equipmentMap에서 연결 정보 확인
+        const topEquip = equipWithAlarms.sort((a, b) => {
+          const nodeA = equipmentMap[a.equip_id || a.id];
+          const nodeB = equipmentMap[b.equip_id || b.id];
+          const connectionsA = nodeA ? nodeA.connections.length : 0;
+          const connectionsB = nodeB ? nodeB.connections.length : 0;
+          return connectionsB - connectionsA;
+        })[0];
 
-      // 3. 링크 데이터에서 연결 관계 구축 (맵과 동일)
-      const linksData = mapData.links || [];
-      linksData.forEach((link) => {
-        const sourceId = link.equip_id || link.source;
-        const targetId = link.link_equip_id || link.target;
-
-        if (tempEquipmentMap[sourceId] && tempEquipmentMap[targetId]) {
-          if (!tempEquipmentMap[sourceId].connections.includes(targetId)) {
-            tempEquipmentMap[sourceId].connections.push(targetId);
-          }
-          if (!tempEquipmentMap[targetId].connections.includes(sourceId)) {
-            tempEquipmentMap[targetId].connections.push(sourceId);
-          }
-        }
-      });
-
-      // 4. 네트워크 토폴로지 분석 (맵과 동일)
-      const { centralNodeId, levels } = analyzeNetworkTopology(nodesData, tempEquipmentMap);
-
-      // 5. 근본 원인 노드 찾기 (맵과 동일한 함수 사용)
-      if (
-        typeof findRootCauseNodes === 'function' &&
-        centralNodeId &&
-        Object.keys(levels).length > 0
-      ) {
-        const rootCauses = findRootCauseNodes(nodesData, linksData, levels, centralNodeId);
-        const rootCauseNodeIds = rootCauses.nodes || [];
-
-        console.log('채팅창에서 찾은 근본 원인 노드:', rootCauseNodeIds);
-
-        // 6. 근본 원인 노드들의 이름 가져오기
-        rootCauseNodeIds.forEach((nodeId) => {
-          const node = tempEquipmentMap[nodeId];
-          if (node) {
-            suspiciousEquips.push(node.equip_name || node.equip_id || '알 수 없음');
-          }
-        });
-      } else {
-        console.log('근본 원인 분석 함수를 사용할 수 없어 fallback 로직 사용');
-
-        // Fallback: 경보가 있는 장비 중 연결이 가장 많은 1개
-        const equipWithAlarms = nodesData.filter((node) => node.alarms && node.alarms.length > 0);
-        if (equipWithAlarms.length > 0) {
-          const topEquip = equipWithAlarms.sort(
-            (a, b) => b.connections.length - a.connections.length
-          )[0];
-          suspiciousEquips.push(topEquip.equip_name || topEquip.equip_id || '알 수 없음');
-        }
+        suspiciousEquips.push(topEquip.equip_name || topEquip.equip_id || '알 수 없음');
       }
     } catch (error) {
       console.error('장애 의심 장비 분석 중 오류:', error);
 
-      // 간단한 fallback
+      // 최종 간단한 fallback
       const equipWithAlarms = equipList.filter((equip) => {
         if (equip.alarms && Array.isArray(equip.alarms) && equip.alarms.length > 0) return true;
         if (_totalAlarmDataList && Array.isArray(_totalAlarmDataList)) {
@@ -1050,26 +966,26 @@ function generateMapCompletionMessage(equipList, mapData) {
     }
   }
 
-  // 메시지 생성 - 개선된 형식
-  let message = `🗺️ <strong>NW 토폴로지 맵이 생성되었습니다</strong><br>`;
-  message += `&nbsp;&nbsp;• 경보 장비: 경보 ${equipWithAlarms}대 (전체 ${equipCount}대)<br>`;
-  message += `&nbsp;&nbsp;• 경보 선로: 광케이블 ${alarmCableLinks}건 (전체 ${totalCableLinks}건)<br>`;
-  message += `&nbsp;&nbsp;• 페이딩 MW: 페이딩 0건 (전체 ${totalMwLinks}건)<br>`;
+  // 메시지 생성 (기존과 동일)
+  let message = `<strong>📌 NW 토폴로지와 상위장비 장애 정보가 생성되었습니다.</strong><br>`;
+  message += `&nbsp;&nbsp;• 경보 장비: ${equipWithAlarms}대 경보 발생 (전체 ${equipCount}대)<br>`;
+  message += `&nbsp;&nbsp;• 선로 장애: Dr.Cable 장애 ${alarmCableLinks}건 발생 (전체 ${totalCableLinks}건)<br>`;
+  message += `&nbsp;&nbsp;• 페이딩 MW: 페이딩 0건 추정 (전체 ${totalMwLinks}건)<br>`;
 
   if (suspiciousEquips.length > 0) {
-    message += `&nbsp;&nbsp;• 장애 의심 상위 장비 (${
+    message += `<span style="color: red;">&nbsp;&nbsp;• 장애 의심 상위 장비 (${
       suspiciousEquips.length
-    }대)<br>&nbsp;&nbsp;&nbsp;&nbsp; ${suspiciousEquips.join(', ')}<br>`;
+    }대)<br>&nbsp;&nbsp;&nbsp;&nbsp; ${suspiciousEquips.join(', ')}</span><br>`;
   } else {
-    message += `&nbsp;&nbsp;• 장애 의심 상위 장비(0대): 없음<br>`;
+    message += `&nbsp;&nbsp;• 장애 의심 상위 장비 (0대): 없음<br>`;
   }
 
-  message += `<br>💡 장애점 찾기 버튼을 클릭하여 분석을 시작하세요.`;
+  message += `<br>💡 <a href="#" onclick="handleFaultPointClick()">장애점 찾기</a>를 클릭하여 분석을 시작하세요.`;
 
   return message;
 }
 
-// UI를 필터 상태와 동기화하는 함수
+// UI를 필터 상태와 동기화
 function syncUIWithFilterState() {
   // 라디오 버튼 동기화
   if (_selectedSector) {
@@ -1162,35 +1078,15 @@ function createMapTotal(responseData, selectedView = 'equip') {
   let mapFunction;
 
   if (selectedView === 'equip') {
-    mapFunction = window.createEquipTopologyMap;
-  } else {
-    mapFunction = window.window.createGuksaTopologyMap;
-  }
-
-  if (typeof mapFunction === 'function') {
-    // 맵 함수 존재 확인
+    // 맵 함수
     try {
-      mapFunction(responseData, _totalAlarmDataList);
+      createEquipTopologyMap(responseData, _totalAlarmDataList);
     } catch (error) {
       console.error('맵 생성 오류:', error);
       showMapErrorMessage(`맵 생성 오류: ${error.message}`);
     }
   } else {
-    // 함수가 없는 경우 오류 메시지 표시
-    let functionName;
-    let errorMsg;
-
-    if (selectedView === 'equip') {
-      functionName = 'createEquipTopologyMap';
-      errorMsg = '장비 네트워크 맵을 표시할 수 없습니다. 관련 스크립트를 확인하세요.';
-    } else {
-      functionName = 'createGuksaTopologyMap';
-      errorMsg = '국사 장비 맵을 표시할 수 없습니다. 관련 스크립트를 확인하세요.';
-    }
-
-    console.error(`${functionName} 함수를 찾을 수 없습니다.`);
-
-    showMapErrorMessage(errorMsg);
+    console.error('selectedView 모드가 equip 모드가 아님');
   }
 }
 
@@ -1267,9 +1163,11 @@ function equipChangeEventHandler() {
       return;
     }
 
+    // ✅ equipId로부터 경보 데이터 객체 추출
+    const alarm = _totalAlarmDataList.find((d) => d.equip_id === equipId);
+
     // ✅ equipId로부터 guksaId 추출
     if (!guksaId && equipId) {
-      const alarm = _totalAlarmDataList.find((d) => d.equip_id === equipId);
       if (alarm) {
         guksaId = alarm.guksa_id || '';
         console.log(`equipId ${equipId}에 해당하는 국사ID 추출: ${guksaId}`);
@@ -1281,11 +1179,21 @@ function equipChangeEventHandler() {
     console.log(`선택된 장비ID: ${equipId}`);
     console.log(`선택된 국사ID: ${guksaId}`);
 
+    console.log(
+      `▶▶▶ handleEquipChangeEvent 분야: ${JSON.stringify(
+        alarm
+      )}, 장비명: ${equipName} 장비ID: ${equipId} 국사ID: ${guksaId}`
+    );
+
     // ===== 새로 추가된 부분 =====
     // 장비 변경 시 채팅창 초기화
-    handleEquipmentChange({
+    handleEquipChangeEvent({
       equipName: equipName,
       equipId: equipId,
+      equipSector: alarm?.sector || '확인 X',
+      equipType: alarm?.equip_type || '확인 X',
+
+      guksaName: alarm?.guksa_name || '확인 X',
       guksaId: guksaId,
     });
     // ===== 새로 추가된 부분 끝 =====
@@ -1323,7 +1231,7 @@ function guksaChangeEventHandler() {
       console.log('국사 선택 변경:', this.value);
 
       // 국사 변경 시 경보 데이터 다시 가져오기
-      searchAlarms();
+      fetchAllAlarmsFromDB();
 
       // 분야별 장비 목록도 업데이트 (선택된 국사와 분야에 맞게)
       if (_selectedSector) {
@@ -1360,16 +1268,12 @@ function initAll() {
 
   // 기본 검색 수행 - 모든 분야 데이터 가져오기
   console.log('기본 검색 수행 시작 - 모든 분야');
-  searchAlarms();
+  fetchAllAlarmsFromDB();
 
   // ===== 새로 추가된 부분 =====
   // 장애점 찾기 버튼 이벤트 초기화
   setTimeout(() => {
-    if (typeof initFaultPointButton === 'function') {
-      initFaultPointButton();
-    } else {
-      console.warn('initFaultPointButton 함수를 찾을 수 없습니다.');
-    }
+    initFaultPointButton();
   }, 1000);
   // ===== 새로 추가된 부분 끝 =====
 

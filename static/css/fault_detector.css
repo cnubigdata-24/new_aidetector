@@ -57,8 +57,8 @@ label {
 
 /* 사이드바: 드래그 가능하게 수정 */
 .sidebar {
-  width: 250px;
-  min-width: 8px;
+  width: 240px;
+  min-width: 3px;
   /* max-width: 400px; */
   background-color: #eeeeee;
   overflow-y: auto;
@@ -66,6 +66,9 @@ label {
   margin-top: 60px;
   box-sizing: border-box;
   transition: width 0.2s ease;
+
+  scrollbar-width: thin;
+  scrollbar-color: #ccc #f1f1f1;
 }
 
 /* 드래그 핸들 */
@@ -191,6 +194,9 @@ label {
 
   width: 100%;
   /* max-width: calc(100% - 60px); */
+
+  scrollbar-width: thin;
+  scrollbar-color: #ccc #f1f1f1;
 }
 
 /* 메시지 스타일 */

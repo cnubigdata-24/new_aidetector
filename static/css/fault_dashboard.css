@@ -51,6 +51,9 @@ html {
   padding: 0 !important;
   width: 100%;
   max-width: 100%;
+
+  scrollbar-width: thin;
+  scrollbar-color: #ccc #f1f1f1;
 }
 
 /* 하단 영역 */
@@ -66,6 +69,9 @@ html {
   padding: 3px 3px 0 3px;
   overflow-y: auto !important;
   overflow-x: hidden !important;
+
+  scrollbar-width: thin;
+  scrollbar-color: #ccc #f1f1f1;
 }
 
 /* 대시보드 레이아웃 */
@@ -240,7 +246,7 @@ html {
 
 /* 전체 현황 요약 스타일 */
 .dashboard-summary {
-  padding: 5px 5px;
+  padding: 5px 10px;
   margin-bottom: 0px !important;
   background-color: #f5f5f5;
   border: 0px solid #ddd;
@@ -386,11 +392,12 @@ html {
 /* 경보발생 장비 선택 리스트 */
 .equip-select {
   width: 250px;
-  min-height: 300px;
+  min-height: 280px;
   font-size: 13px;
   border: 1px solid #ccc;
   border-radius: 8px;
   padding: 8px;
+  margin-top: 10px;
   box-sizing: border-box;
   background-color: #fff;
   display: block;
@@ -578,6 +585,9 @@ select {
   overflow-y: visible !important;
   overflow-x: hidden !important;
   max-height: none !important;
+
+  scrollbar-width: thin;
+  scrollbar-color: #ccc #f1f1f1;
 }
 
 .alarm-table tr {
@@ -900,9 +910,9 @@ select {
 }
 
 .right-chat-panel {
-  width: 400px;
+  width: 410px;
   min-width: 300px;
-  max-width: 500px;
+  max-width: 600px;
   display: flex;
   flex-direction: column;
   background-color: #f9f9f9;
@@ -949,7 +959,7 @@ select {
   padding: 5px;
 }
 
-/* 기본 채팅 메시지 스타일 */
+/* 대시보드 우측 채팅창 채팅 메시지 스타일 */
 .chat-message {
   margin-bottom: 10px;
   padding: 8px 12px;
@@ -959,10 +969,19 @@ select {
   font-size: 13px;
 }
 
-/* 시스템 메시지 (기본) */
+/* 채팅창 기본 시스템 메시지 */
 .chat-message.system {
   background-color: #eefcfd;
 }
+
+/* 채팅창 경보 현황 메시지 */
+.chat-message.alarm-status {
+  background-color: #fff4f4;
+}
+
+/* .chat-message.alarm-status .message-content {
+  color: #c62828; 
+} */
 
 /* 사용자 메시지 */
 .chat-message.user {
@@ -1066,6 +1085,7 @@ select {
   overflow-y: auto; /* 수직 스크롤바 추가 */
   padding: 10px;
   background-color: #ffffff;
+
   scrollbar-width: thin;
   scrollbar-color: #ccc #f1f1f1;
 }
@@ -1192,6 +1212,9 @@ select {
   transition: opacity 0.2s;
   overflow-y: auto;
   max-height: 300px;
+
+  scrollbar-width: thin;
+  scrollbar-color: #ccc #f1f1f1;
 }
 
 .map-tooltip ul {
@@ -1269,14 +1292,38 @@ select {
   font-size: 12px;
   z-index: 100;
   min-width: 180px;
-  max-width: 350px;
+  max-width: 350px; /* JavaScript 중복 제거됨 */
   max-height: 300px;
   overflow-y: auto;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
   opacity: 0;
   transition: opacity 0.2s;
+  scrollbar-width: thin;
+  scrollbar-color: #ccc #f1f1f1;
 }
 
+/* 툴팁 타이틀 (장비명) */
+.equip-map-tooltip .tooltip-title {
+  font-weight: bold;
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 5px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 3px;
+}
+
+/* 툴팁 정보 행들 */
+.equip-map-tooltip .tooltip-info {
+  margin-top: 3px;
+}
+
+/* 툴팁 레이블 (유형:, 분야:, 국사:, ID:) */
+.equip-map-tooltip .tooltip-label {
+  font-weight: bold;
+  color: #555;
+}
+
+/* 툴팁 리스트 스타일 */
 .equip-map-tooltip ul {
   margin: 3px 0;
   padding-left: 15px;
@@ -1427,7 +1474,7 @@ select {
   border-radius: 4px;
   cursor: pointer;
 
-  font-size: 15px;
+  font-size: 14px;
   color: #ffffff;
   font-weight: bold;
 
@@ -1474,4 +1521,21 @@ select {
   cursor: pointer;
   margin-right: 10px;
   margin-bottom: 0;
+}
+
+/* 좌상단 메인 타이틀: AI Detector 타이틀 */
+.aidetector-title {
+  height: 38px;
+  background-color: #e0e0e0;
+  color: rgb(0, 0, 0);
+  font-size: 17px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: -15px -15px 10px -15px; /* 좌우상 여백 제거, 아래만 10px */
+  padding: 0;
+  box-sizing: border-box;
 }

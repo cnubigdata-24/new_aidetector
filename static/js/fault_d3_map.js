@@ -426,6 +426,8 @@ function createTooltip() {
     .style('z-index', 10)
     .style('max-width', '350px')
     .style('overflow-y', 'auto')
+    .style('scrollbar-width', 'thin')
+    .style('scrollbar-color', '#ccc #f1f1f1')
     .style('max-height', '300px');
 }
 

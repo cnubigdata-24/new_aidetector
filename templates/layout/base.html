@@ -1,159 +1,188 @@
 <!DOCTYPE html>
 <html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link type="text/css" href="/static/css/bootstrap.min.css" rel="stylesheet">
-  <!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"> -->
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link type="text/css" href="/static/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"> -->
 
-<style>
-    @font-face { font-family: 'NanumGothic';
+    <style>
+      @font-face {
+        font-family: 'NanumGothic';
         src: url('/static/fonts/NanumGothic.eot');
         src: url('/static/fonts/NanumGothic.eot') format('embedded-opentype'),
-        url('/static/fonts/NanumGothic.woff') format('woff');
-
-
-    }
-    body {
-      background-color: #121212;
-      color: #f1f1f1;
-      font-size: 0.8rem;
-
-      font-family: 'NanumGothic', 'serif';
-
-    }
-    .sidebar {
-      background-color: #1e1e1e;
-      padding: 1rem;
-      height: 100vh;
-      overflow-y: auto;
-    }
-    .navbar-custom {
-      background-color: #000;
-      color: #fff;
-    }
-    .navbar-custom a {
-      color: #fff;
-      text-decoration: none;
-      margin-right: 1rem;
-    }
-    .navbar-custom .user-info {
-      margin-left: auto;
-    }
-    .list-group-item {
-      background-color: #1e1e1e;
-      color: #f1f1f1;
-      border: 1px solid #333;
-    }
-    .list-group-item:hover {
-      background-color: #333;
-    }
-    #alarm-table-container {
-      background-color: #1e1e1e;
-      padding: 1rem;
-      border-radius: 8px;
-      margin-top: 1rem;
-    }
-    #alarm-table-container h5 {
-      color: #fff;
-    }
-    #alarm-table {
-      color: #fff;
-    }
-  </style>
-</head>
-<body>
-  <!-- 네비게이션 바 -->
-  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom px-4">
-    <a href="/" class="navbar-brand fw-bold mb-0 text-primary">AI Detector</a>
-
-
-    <div class="collapse navbar-collapse">
-      <ul class="navbar-nav me-auto">
-        <li class="nav-item"><a href="/alarm" id="alarm" class="nav-link {% if is_selected == 'alarm' %}selected{% endif %}">🚨 경보 현황</a></li>
-        <li class="nav-item"><a href="#" class="nav-link {% if is_selected == 'chat' %}selected{% endif %}" onclick="notyet()">🤖 장애사례 AI 챗봇</a></li>
-        <li class="nav-item"><a href="/cable" class="nav-link {% if is_selected == 'cable' %}selected{% endif %}">🚧선로 피해 현황</a></li>
-        <!-- <li class="nav-item"><a href="/chatbot" class="nav-link">📚선로/정전/페이딩 조회</a></li> -->
-        <div  id="">
-          {% if url == 'index' %}
-          <button type="button" class="btn btn-danger" onclick="popupDetectorWindow(event)">🔍장애점 찾기</button>
-          {% endif %}
-        </div>
-      </ul>
-      <div class="user-info d-flex align-items-center">
-        <span class="me-3">사용자: admin</span>
-        <a href="/logout" class="btn btn-outline-light btn-sm">로그아웃</a>
-      </div>
-    </div>
-  </nav>
-
-  <!-- 메인 컨테이너 -->
-  <div class="container-fluid">
-    <div class="row">
-
-      <!-- 좌측 사이드바 -->
-      <div class="col-md-2 sidebar">
-        {% if url == 'index' %}
-        <h6 class="fw-bold mb-2"> 도서국사 현황 </h6>
-
-        <form class="input-group mb-3" id="search-form">
-          <input type="text" class="form-control bg-dark text-light" placeholder="국사명 입력" id="search-input">
-          <input type="text" class="form-control bg-dark text-light" placeholder="국사명 입력" id="selected_guksa" hidden>
-          <button class="btn btn-primary" type="submit">Search</button>
-        </form>
-
-        <div style="max-height: 80vh; overflow-y: auto;">
-          <ul class="list-group" id="kuksa-list">
-            {% for guksa_object, min_id in guksas %}
-            <li class="list-group-item" data-name="{{ guksa_object.guksa }}" data-id="{{ guksa_object.guksa_id }}">{{ guksa_object.guksa }}</li>
-            {% endfor %}
-          </ul>
-        </div>
-        {% endif %}
- 
-        <hr class="text-light">
-
-      </div>
-
-      <!-- 우측 본문 -->
-      <div class="col-md-10 pt-3">
-        {% block content %}{% endblock %}
-
-
-
-      </div>
-    </div>
-  </div>
-
-  <script>
-
-    let selected_guksa_id = '';
-
-    function notyet(){
-      alert("준비 중 입니다.")
-    }
-    function popupDetectorWindow(event) {
-      event.preventDefault();
-      selected_guksa_id = document.getElementById("selected_guksa").textContent
-      if (!selected_guksa_id) {
-        alert('장애점을 분석할 대상 국사를 먼저 선택해 주세요.');
-        return;
+          url('/static/fonts/NanumGothic.woff') format('woff');
       }
+      body {
+        background-color: #121212;
+        color: #f1f1f1;
+        font-size: 0.8rem;
 
-      const popupWidth = screen.availWidth;
-      const popupHeight = screen.availHeight;
-      const left = 0;
-      const top = 0;
+        font-family: 'NanumGothic', 'serif';
+      }
+      .sidebar {
+        background-color: #1e1e1e;
+        padding: 1rem;
+        height: 100vh;
+        overflow-y: auto;
 
-      window.open(
-        `/fault-detector?guksa_id=${selected_guksa_id}`,
-        'FaultDetectorPopup',
-        `width=${popupWidth},height=${popupHeight},top=${top},left=${left},resizable=yes,scrollbars=yes`
-      );
-    }
-  </script>
+        scrollbar-width: thin;
+        scrollbar-color: #ccc #f1f1f1;
+      }
+      .navbar-custom {
+        background-color: #000;
+        color: #fff;
+      }
+      .navbar-custom a {
+        color: #fff;
+        text-decoration: none;
+        margin-right: 1rem;
+      }
+      .navbar-custom .user-info {
+        margin-left: auto;
+      }
+      .list-group-item {
+        background-color: #1e1e1e;
+        color: #f1f1f1;
+        border: 1px solid #333;
+      }
+      .list-group-item:hover {
+        background-color: #333;
+      }
+      #alarm-table-container {
+        background-color: #1e1e1e;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+      }
+      #alarm-table-container h5 {
+        color: #fff;
+      }
+      #alarm-table {
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 네비게이션 바 -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom px-4">
+      <a href="/" class="navbar-brand fw-bold mb-0 text-primary">AI Detector</a>
 
-  <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script> -->
-  <script src="/static/js/bootstrap.bundle.min.js"></script>
-</body>
+      <div class="collapse navbar-collapse">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a
+              href="/alarm"
+              id="alarm"
+              class="nav-link {% if is_selected == 'alarm' %}selected{% endif %}"
+              >🚨 경보 현황</a
+            >
+          </li>
+          <li class="nav-item">
+            <a
+              href="#"
+              class="nav-link {% if is_selected == 'chat' %}selected{% endif %}"
+              onclick="notyet()"
+              >🤖 장애사례 AI 챗봇</a
+            >
+          </li>
+          <li class="nav-item">
+            <a href="/cable" class="nav-link {% if is_selected == 'cable' %}selected{% endif %}"
+              >🚧선로 피해 현황</a
+            >
+          </li>
+          <!-- <li class="nav-item"><a href="/chatbot" class="nav-link">📚선로/정전/페이딩 조회</a></li> -->
+          <div id="">
+            {% if url == 'index' %}
+            <button type="button" class="btn btn-danger" onclick="popupDetectorWindow(event)">
+              🔍장애점 찾기
+            </button>
+            {% endif %}
+          </div>
+        </ul>
+        <div class="user-info d-flex align-items-center">
+          <span class="me-3">사용자: admin</span>
+          <a href="/logout" class="btn btn-outline-light btn-sm">로그아웃</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- 메인 컨테이너 -->
+    <div class="container-fluid">
+      <div class="row">
+        <!-- 좌측 사이드바 -->
+        <div class="col-md-2 sidebar">
+          {% if url == 'index' %}
+          <h6 class="fw-bold mb-2">도서국사 현황</h6>
+
+          <form class="input-group mb-3" id="search-form">
+            <input
+              type="text"
+              class="form-control bg-dark text-light"
+              placeholder="국사명 입력"
+              id="search-input"
+            />
+            <input
+              type="text"
+              class="form-control bg-dark text-light"
+              placeholder="국사명 입력"
+              id="selected_guksa"
+              hidden
+            />
+            <button class="btn btn-primary" type="submit">Search</button>
+          </form>
+
+          <div style="max-height: 80vh; overflow-y: auto">
+            <ul class="list-group" id="kuksa-list">
+              {% for guksa_object, min_id in guksas %}
+              <li
+                class="list-group-item"
+                data-name="{{ guksa_object.guksa }}"
+                data-id="{{ guksa_object.guksa_id }}"
+              >
+                {{ guksa_object.guksa }}
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+
+          <hr class="text-light" />
+        </div>
+
+        <!-- 우측 본문 -->
+        <div class="col-md-10 pt-3">{% block content %}{% endblock %}</div>
+      </div>
+    </div>
+
+    <script>
+      let selected_guksa_id = '';
+
+      function notyet() {
+        alert('준비 중 입니다.');
+      }
+      function popupDetectorWindow(event) {
+        event.preventDefault();
+        selected_guksa_id = document.getElementById('selected_guksa').textContent;
+        if (!selected_guksa_id) {
+          alert('장애점을 분석할 대상 국사를 먼저 선택해 주세요.');
+          return;
+        }
+
+        const popupWidth = screen.availWidth;
+        const popupHeight = screen.availHeight;
+        const left = 0;
+        const top = 0;
+
+        window.open(
+          `/fault-detector?guksa_id=${selected_guksa_id}`,
+          'FaultDetectorPopup',
+          `width=${popupWidth},height=${popupHeight},top=${top},left=${left},resizable=yes,scrollbars=yes`
+        );
+      }
+    </script>
+
+    <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script> -->
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+  </body>
 </html>

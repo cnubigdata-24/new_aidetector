@@ -1,6 +1,6 @@
 /**
- * 테이블 컬럼 리사이저 - 바닐라 자바스크립트 구현
- * 테이블 헤더 리사이즈 핸들 추가, 드래그 컬럼 너비 조정, 컬럼 필터 기능
+ * 하단 경보 테이블 컬럼 리사이저 - 바닐라 자바스크립트 구현
+ * 하단 경보 테이블 헤더 리사이즈 핸들 추가, 드래그 컬럼 너비 조정, 컬럼 필터 기능
  */
 document.addEventListener('DOMContentLoaded', function () {
   console.log('[TableResizer] DOM 로드 완료, 테이블 리사이저 초기화 시작');
@@ -8,28 +8,20 @@ document.addEventListener('DOMContentLoaded', function () {
   // 로딩 약간 지연시켜 다른 스크립트가 먼저 로드되도록
   setTimeout(() => {
     // 경보 테이블 요소 가져오기
-    const table = document.getElementById('alarmTable');
-    if (!table) {
-      console.error('[TableResizer] 테이블(#alarmTable)을 찾을 수 없습니다.');
-      return;
-    }
+    const alarmTable = document.getElementById('alarmTable');
 
-    console.log('[TableResizer] 테이블 요소 발견:', table);
-    initializeTableResizer(table);
+    initAlarmTableResizer(alarmTable);
 
     // 테이블 상단에 검색 필터 영역 추가
-    addTableSearchFilters(table);
+    addTableSearchFilters(alarmTable);
 
     // 테이블 데이터 로드 후 유효 경보 행에 클래스 추가하는 함수 호출
     setupValidAlarmHighlighting();
   }, 500); // 500ms 지연
 });
 
-/**
- * 테이블에 리사이즈 기능 초기화
- * @param {HTMLElement} table - 대상 테이블 요소
- */
-function initializeTableResizer(table) {
+// 테이블에 리사이즈 기능 초기화
+function initAlarmTableResizer(table) {
   // 테이블 준비
   prepareTable(table);
 
@@ -40,10 +32,7 @@ function initializeTableResizer(table) {
   console.log('[TableResizer] 테이블 리사이저 초기화 완료');
 }
 
-/**
- * 테이블 준비 - 초기 설정
- * @param {HTMLElement} table - 대상 테이블 요소
- */
+// 테이블 준비 - 초기 설정
 function prepareTable(table) {
   console.log('[TableResizer] 테이블 준비 시작');
 
@@ -89,10 +78,7 @@ function prepareTable(table) {
   console.log('[TableResizer] 테이블 준비 완료');
 }
 
-/**
- * 각 컬럼에 리사이즈 핸들 추가
- * @param {HTMLElement} table - 대상 테이블 요소
- */
+// 각 컬럼에 리사이즈 핸들 추가
 function addResizeHandles(table) {
   const headerCells = table.querySelectorAll('thead th');
   const cols = table.querySelectorAll('colgroup col');
@@ -191,10 +177,7 @@ function addResizeHandles(table) {
   console.log('[TableResizer] 리사이즈 핸들 추가 완료');
 }
 
-/**
- * 테이블 상단에 컬럼 선택 필터 추가
- * @param {HTMLElement} table - 대상 테이블 요소
- */
+// 테이블 상단에 컬럼 선택 필터 추가
 function addTableSearchFilters(table) {
   console.log('[TableSearch] 테이블 검색 필터 추가 시작');
 
@@ -295,9 +278,7 @@ function addTableSearchFilters(table) {
   console.log('[TableSearch] 테이블 검색 필터 추가 완료');
 }
 
-/**
- * 테이블 필터 적용 함수
- */
+// 테이블 필터 적용 함수
 function applyTableFilter() {
   // 선택된 컬럼과 검색 값 가져오기
   const columnSelect = document.getElementById('filter-column-select');
@@ -407,13 +388,8 @@ function applyTableFilter() {
     // 필터링된 데이터로 테이블 갱신
     window.currentSortedData = filteredData;
 
-    // updateAlarmTable 함수가 있으면 호출
-    if (typeof updateAlarmTable === 'function') {
-      updateAlarmTable(filteredData);
-    } else {
-      // updateAlarmTable 함수가 없으면 직접 테이블 업데이트
-      updateTableWithFilteredData(filteredData);
-    }
+    // updateAlarmTable 함수 호출
+    updateAlarmTable(filteredData);
   } else {
     // 결과가 없는 경우 메시지 표시
     const tbody = table.querySelector('tbody');
@@ -424,10 +400,7 @@ function applyTableFilter() {
   }
 }
 
-/**
- * 필터링된 데이터로 테이블 업데이트 (updateAlarmTable 함수가 없을 경우)
- * @param {Array} data - 필터링된 데이터 배열
- */
+// 필터링된 데이터로 테이블 업데이트 (updateAlarmTable 함수가 없을 경우)
 function updateTableWithFilteredData(data) {
   const tbody = document.getElementById('alarmTableBody');
   if (!tbody) return;
@@ -498,9 +471,7 @@ function updateTableWithFilteredData(data) {
   updatePagination(data.length, rowsPerPage, currentPage);
 }
 
-/**
- * 간단한 페이지네이션 업데이트
- */
+// 간단한 페이지네이션 업데이트
 function updatePagination(totalItems, rowsPerPage, currentPage) {
   const pagination = document.getElementById('pagination');
   if (!pagination) return;
@@ -534,9 +505,7 @@ function updatePagination(totalItems, rowsPerPage, currentPage) {
   }
 }
 
-/**
- * 테이블 필터 초기화 함수
- */
+// 테이블 필터 초기화 함수
 function resetTableFilter() {
   // 필터 입력 필드 초기화
   const columnSelect = document.getElementById('filter-column-select');
@@ -545,20 +514,11 @@ function resetTableFilter() {
   if (columnSelect) columnSelect.value = '';
   if (filterInput) filterInput.value = '';
 
-  // 원래 데이터로 테이블 갱신
-  if (typeof searchAlarms === 'function') {
-    searchAlarms();
-  } else {
-    console.error('[TableSearch] searchAlarms 함수를 찾을 수 없습니다.');
-    alert('테이블 갱신 함수를 찾을 수 없습니다.');
-  }
+  // 하단 경보 테이블 원래 데이터로 갱신 (필터 리셋)
+  searchAlarms();
 }
 
-/**
- * 컬럼 인덱스를 필드 이름으로 변환
- * @param {number} index - 컬럼 인덱스
- * @returns {string} 필드 이름
- */
+// 컬럼 인덱스를 필드 이름으로 변환
 function getColumnFieldByIndex(index) {
   // 컬럼 필드 매핑
   const columnFields = [
@@ -575,9 +535,7 @@ function getColumnFieldByIndex(index) {
   return columnFields[index] || null;
 }
 
-/**
- * 유효 경보 행에 클래스 추가 함수
- */
+// 유효 경보 행에 클래스 추가 함수
 function setupValidAlarmHighlighting() {
   console.log('[TableSearch] 유효 경보 행 하이라이팅 설정');
 
@@ -604,7 +562,7 @@ function setupValidAlarmHighlighting() {
   }, 300);
 }
 
-// 테이블 데이터가 업데이트될 때마다 유효 경보 행에 클래스 추가
+// 경보 테이블 데이터가 업데이트될 때마다 유효 경보 행에 클래스 추가
 // 기존 updateAlarmTable 함수가 호출된 후 실행되어야 함
 if (
   typeof window.originalUpdateAlarmTable === 'undefined' &&
@@ -616,15 +574,12 @@ if (
     // 원래 함수 호출
     window.originalUpdateAlarmTable(data);
 
-    // 더 이상 여기서 setupValidAlarmHighlighting()을 호출하지 않음
-    // 이미 원본 함수에서 처리됨
+    // setupValidAlarmHighlighting()을 호출하지 않음, 이미 원본 함수에서 처리됨
   };
 }
 
-/**
- * 유효 경보 행에 클래스 추가 함수
- * fault_dashboard.js의 updateAlarmTableContent 함수를 훅하여 사용하는 방식으로 변경
- */
+// 경보 테이블 유효 경보 행에 클래스 추가 함수
+// fault_dashboard.js의 updateAlarmTableContent 함수를 훅하여 사용하는 방식으로 변경
 function patchAlarmTableContentFunction() {
   // 원본 함수가 있는지 확인
   if (

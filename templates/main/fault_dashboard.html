@@ -16,6 +16,11 @@
     <!-- jQuery -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <!-- simplePagination.js -->
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,500;1,500&display=swap"
+      rel="stylesheet"
+    />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/simplePagination.js/1.6/simplePagination.css"
@@ -28,6 +33,8 @@
     <div class="container">
       <div class="left-sidebar">
         <div>
+          <div class="aidetector-title">AI Detector</div>
+
           <div style="display: flex; justify-content: space-between; align-items: center">
             <span class="default-title">대상 국사 </span>
             <span style="cursor: pointer; font-size: 10pt" onclick="refreshPage()">Refresh ⟳</span>
@@ -87,8 +94,6 @@
           </div>
         </div>
 
-        <br />
-
         <button id="fault-point-btn" class="fault-view-btn">장애점 찾기</button>
       </div>
 
@@ -143,9 +148,9 @@
             <div class="chat-messages-container" id="chat-messages-area">
               <div class="chat-message system">
                 <div class="message-content">
-                  💡 장애점 찾기 버튼을 클릭하면 AI 분석 결과가 여기에 표시됩니다.
+                  💡 장애점 찾기를 클릭하면 AI 분석 결과가 여기에 표시됩니다.
                 </div>
-                <div class="message-time">10:36</div>
+                <div class="message-time">00:00</div>
               </div>
             </div>
             <div class="chat-input-container">
