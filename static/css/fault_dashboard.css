@@ -1381,6 +1381,8 @@ select {
 
 /* SVG 스타일 */
 #map-container svg {
+  width: 100%;
+  height: 100%;
   display: block;
   margin: 0 auto;
   cursor: move;

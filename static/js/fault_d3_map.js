@@ -234,10 +234,10 @@ function setupSVG(mapContainer) {
   const svg = d3
     .select('#map-container')
     .append('svg')
-    .attr('width', width)
-    .attr('height', height)
-    .attr('viewBox', [0, 0, width, height])
-    .attr('style', 'max-width: 100%; height: auto;');
+    .attr('viewBox', `0 0 ${width} ${height}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet')
+    .style('width', '100%')
+    .style('height', '100%');
 
   // 줌 동작을 위한 컨테이너 그룹
   const container = svg.append('g');
