@@ -6,7 +6,7 @@
 
 // 상수 및 전역 변수 정의
 const SECTORS = ['MW', '선로', '전송', 'IP', '무선', '교환'];
-const ALARM_TABLE_PAGE_SIZE = 7;
+const ALARM_TABLE_PAGE_SIZE = 5;
 const TABLE_COLUMNS = [
   'guksa_id',
   'sector',
@@ -147,7 +147,7 @@ function initDashboardClickEvents() {
   });
 }
 
-// 테이블 row 클릭 이벤트 설정 함수
+// 경보 테이블 row 클릭 이벤트 설정 함수
 function setupTableRowClick() {
   const tBody = document.getElementById('alarmTableBody');
 
@@ -179,40 +179,32 @@ function setupTableRowClick() {
     const alarm = _totalAlarmDataList.find((d) => d.equip_id === equipId);
 
     console.log(
-      `▶▶▶ handleEquipChangeEvent 분야: ${alarm.equipSector}, 유형 ${alarm.equipType}) 장비명: ${equipName} 장비ID: ${equipId} 국사ID: ${guksaId}`
+      `▶▶▶ handleEquipChangeEvent 분야: _selectedView => ${_selectedView}, equipSector =>${alarm.equipSector}, 유형 ${alarm.equipType}) 장비명: ${equipName} 장비ID: ${equipId} 국사ID: ${guksaId}`
     );
 
-    handleEquipChangeEvent({
-      equipName: equipName || '테이블에서 선택된 장비',
-      equipId: equipId,
-      equipSector: alarm?.sector || '확인 X',
-      equipType: alarm?.equip_type || '확인 X',
+    if (_selectedView === 'equip') {
+      handleEquipChangeEvent({
+        equipName: equipName || '테이블에서 선택된 장비',
+        equipId: equipId,
+        equipSector: alarm?.sector || '확인 X',
+        equipType: alarm?.equip_type || '확인 X',
 
-      guksaName: alarm?.guksa_name || '확인 X',
-      guksaId: guksaId,
-    });
-    // ===== 새로 추가된 부분 끝 =====
-
-    // 현재 상태 저장
-    //     window.globalState = {
-    //       totalAlarmDataList: [..._totalAlarmDataList],
-    //       selectedSector: _selectedSector,
-    //       currentPage: _currentPage,
-    //     };
-
-    console.log('전역 상태 저장 완료');
+        guksaName: alarm?.guksa_name || '확인 X',
+        guksaId: guksaId,
+      });
+    }
 
     // 통합 함수 호출 - 현재 뷰에 따라 다른 모드로 실행
 
-    if (_selectedView === 'guksa') {
+    if (_selectedView === 'equip') {
       fetchEquipmentData({
         guksaId: guksaId,
+        equipId: equipId,
         viewType: _selectedView,
       });
     } else {
       fetchEquipmentData({
         guksaId: guksaId,
-        equipId: equipId,
         viewType: _selectedView,
       });
     }
@@ -295,6 +287,8 @@ function switchView(viewType) {
     } else {
       equipViewBtn.classList.remove('active');
       guksaViewBtn.classList.add('active');
+
+      window.clearChatMessages();
     }
 
     console.log('버튼 상태 변경 후:', {
@@ -808,13 +802,20 @@ async function fetchEquipmentData(options = {}) {
 
     // ===== 새로 추가된 부분 =====
     // 맵 로딩 완료 시 채팅창에 안내 메시지 추가
-    setTimeout(() => {
-      const equipList =
-        _selectedView === 'equip' ? formattedData.equipment_list : formattedData.equip_list;
 
-      const message = generateMapCompletionMessage(equipList, formattedData);
-      addChatMessage(message, 'alarm', true);
-    }, 500);
+    let tempEquipList = [];
+
+    if (_selectedView === 'equip') {
+      tempEquipList = formattedData.equipment_list;
+
+      setTimeout(() => {
+        const message = generateMapCompletionMessage(tempEquipList, formattedData);
+        addChatMessage(message, 'alarm', true);
+      }, 200);
+    } else {
+      // 국사인 경우 generateMapCompletionMessage 이 함수 호출이 필요한가? ########## To do list
+      //tempEquipList = formattedData.equip_list;
+    }
   } catch (error) {
     console.error(`장비 정보 조회 오류:`, error);
 
@@ -824,8 +825,9 @@ async function fetchEquipmentData(options = {}) {
 }
 
 // 맵 완성 메시지 생성 함수
-// 🚀 최종 최적화된 generateMapCompletionMessage 함수
 function generateMapCompletionMessage(equipList, mapData) {
+  if (_selectedView !== 'equip') return;
+
   const equipCount = equipList ? equipList.length : 0;
 
   // 장비 분야 정보를 빠르게 조회하기 위한 맵 생성
@@ -854,7 +856,7 @@ function generateMapCompletionMessage(equipList, mapData) {
     }).length;
   }
 
-  // 선로 정보 계산 (기존 로직 유지)
+  // 선로 정보 계산
   const links = mapData.links || [];
   let alarmCableLinks = 0;
   let totalCableLinks = 0;
@@ -906,7 +908,7 @@ function generateMapCompletionMessage(equipList, mapData) {
     });
   }
 
-  // 🚀 완전 최적화된 장애 의심 상위 장비 찾기
+  // 🚀 장비 기준 뷰인 경우 => 우측 채팅창에 장애 의심 상위 장비 찾기
   const suspiciousEquips = [];
 
   if (
@@ -918,52 +920,7 @@ function generateMapCompletionMessage(equipList, mapData) {
     suspiciousEquips.push(...window.currentRootCauseResults.nodeNames);
     console.log('전역변수 장애의심 상위 장비 결과 사용:', suspiciousEquips);
   } else {
-    console.log('전역변수 장애의심 상위 장비 결과가 없어 fallback 로직 사용');
-
-    // 🔥 단순화된 fallback: 경보가 있는 장비 중 연결이 가장 많은 1개 => 상위장비 경보가 아니잖아  ################################## To do list
-    try {
-      const equipWithAlarms = equipList.filter((equip) => {
-        if (equip.alarms && Array.isArray(equip.alarms) && equip.alarms.length > 0) return true;
-        if (_totalAlarmDataList && Array.isArray(_totalAlarmDataList)) {
-          return _totalAlarmDataList.some(
-            (alarm) => alarm && alarm.equip_id === (equip.equip_id || equip.id)
-          );
-        }
-        return false;
-      });
-
-      if (equipWithAlarms.length > 0) {
-        // ✅ 전역 equipmentMap에서 연결 정보 확인
-        const topEquip = equipWithAlarms.sort((a, b) => {
-          const nodeA = equipmentMap[a.equip_id || a.id];
-          const nodeB = equipmentMap[b.equip_id || b.id];
-          const connectionsA = nodeA ? nodeA.connections.length : 0;
-          const connectionsB = nodeB ? nodeB.connections.length : 0;
-          return connectionsB - connectionsA;
-        })[0];
-
-        suspiciousEquips.push(topEquip.equip_name || topEquip.equip_id || '알 수 없음');
-      }
-    } catch (error) {
-      console.error('장애 의심 장비 분석 중 오류:', error);
-
-      // 최종 간단한 fallback
-      const equipWithAlarms = equipList.filter((equip) => {
-        if (equip.alarms && Array.isArray(equip.alarms) && equip.alarms.length > 0) return true;
-        if (_totalAlarmDataList && Array.isArray(_totalAlarmDataList)) {
-          return _totalAlarmDataList.some(
-            (alarm) => alarm && alarm.equip_id === (equip.equip_id || equip.id)
-          );
-        }
-        return false;
-      });
-
-      if (equipWithAlarms.length > 0) {
-        suspiciousEquips.push(
-          equipWithAlarms[0].equip_name || equipWithAlarms[0].equip_id || '알 수 없음'
-        );
-      }
-    }
+    console.log('전역변수 장애의심 상위 장비 결과가 없어 fallback 로직 사용할 필요가 없음');
   }
 
   // 메시지 생성 (기존과 동일)
@@ -1073,20 +1030,40 @@ function formatEquipmentData(responseData, guksaId = '', selectedView = 'equip')
   return result;
 }
 
-// 맵 생성 통합 함수 (createEquipmentNetworkMap, createNetworkMap)
+// 맵 생성 통합 함수 (createEquipTopologyMap, createGuksaTopologyMap)
 function createMapTotal(responseData, selectedView = 'equip') {
   let mapFunction;
 
   if (selectedView === 'equip') {
-    // 맵 함수
+    mapFunction = window.createEquipTopologyMap;
+  } else {
+    mapFunction = window.window.createGuksaTopologyMap;
+  }
+
+  if (typeof mapFunction === 'function') {
+    // 맵 함수 존재 확인
     try {
-      createEquipTopologyMap(responseData, _totalAlarmDataList);
+      mapFunction(responseData, _totalAlarmDataList);
     } catch (error) {
       console.error('맵 생성 오류:', error);
       showMapErrorMessage(`맵 생성 오류: ${error.message}`);
     }
   } else {
-    console.error('selectedView 모드가 equip 모드가 아님');
+    // 함수가 없는 경우 오류 메시지 표시
+    let functionName;
+    let errorMsg;
+
+    if (selectedView === 'equip') {
+      functionName = 'createEquipTopologyMap';
+      errorMsg = '장비 네트워크 맵을 표시할 수 없습니다. 관련 스크립트를 확인하세요.';
+    } else {
+      functionName = 'createGuksaTopologyMap';
+      errorMsg = '국사 장비 맵을 표시할 수 없습니다. 관련 스크립트를 확인하세요.';
+    }
+
+    console.error(`${functionName} 함수를 찾을 수 없습니다.`);
+
+    showMapErrorMessage(errorMsg);
   }
 }
 
@@ -1185,25 +1162,18 @@ function equipChangeEventHandler() {
       )}, 장비명: ${equipName} 장비ID: ${equipId} 국사ID: ${guksaId}`
     );
 
-    // ===== 새로 추가된 부분 =====
-    // 장비 변경 시 채팅창 초기화
-    handleEquipChangeEvent({
-      equipName: equipName,
-      equipId: equipId,
-      equipSector: alarm?.sector || '확인 X',
-      equipType: alarm?.equip_type || '확인 X',
+    // 장비 변경 시 우측 채팅창 초기화
+    if (_selectedView === 'equip') {
+      handleEquipChangeEvent({
+        equipName: equipName,
+        equipId: equipId,
+        equipSector: alarm?.sector || '확인 X',
+        equipType: alarm?.equip_type || '확인 X',
 
-      guksaName: alarm?.guksa_name || '확인 X',
-      guksaId: guksaId,
-    });
-    // ===== 새로 추가된 부분 끝 =====
-
-    //     // 현재 상태 저장
-    //     window.globalState = {
-    //       totalAlarmDataList: [..._totalAlarmDataList],
-    //       selectedSector: _selectedSector,
-    //       currentPage: _currentPage,
-    //     };
+        guksaName: alarm?.guksa_name || '확인 X',
+        guksaId: guksaId,
+      });
+    }
 
     // API 호출하여 맵 그리기 - 장비 ID가 있으면 국사 ID가 없어도 API에서 처리 가능
     if (_selectedView === 'equip') {
@@ -1301,10 +1271,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 모든 초기화 함수 호출
   initAll();
-
-  // ===== 새로 추가된 부분 =====
-  // 채팅 입력 기능 초기화
-  setTimeout(() => {
-    initChatInput();
-  }, 1000);
 });

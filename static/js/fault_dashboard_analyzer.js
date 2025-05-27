@@ -707,6 +707,7 @@ function clearChatMessages() {
 
   console.log('채팅창이 초기화되었습니다.');
 }
+window.clearChatMessages = clearChatMessages;
 
 // 장애점 찾기 버튼 클릭 시 분석 실행 함수
 async function runFailureAnalysis() {

@@ -508,13 +508,6 @@ function createEquipTopologyMap(data, alarmDataList) {
       if (d.sourceField === 'MW' && d.targetField === 'MW') {
         return 'black';
       }
-      // 여러 링크 중 하나면 약간씩 다른 빨간색 계열 사용
-      else if (d.isMultiLink) {
-        // 링크 인덱스에 따라 약간씩 다른 색상
-        const baseColor = LINK_MULTI_BASE_COLOR; // 기본 빨간색 R값
-        const variation = d.linkIndex * LINK_MULTI_VARIATION; // 링크마다 색상 변화
-        return `rgb(${Math.max(baseColor - variation, 150)}, 0, 0)`;
-      }
       // 기본 링크는 빨간색
       else {
         return LINK_COLOR;
@@ -1164,6 +1157,13 @@ function initFaultPointButton() {
 // 장애점 찾기 버튼 클릭 핸들러
 async function handleFaultPointClick() {
   console.log('장애점 찾기 버튼 클릭...');
+
+  if (_selectedView !== 'equip') {
+    console.log('현재 뷰 모드가 equip 장비 모드가 아님...');
+
+    return;
+  }
+
   const faultPointBtn = document.getElementById('fault-point-btn');
 
   try {

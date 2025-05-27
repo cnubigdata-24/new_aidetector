@@ -60,27 +60,15 @@ const LINK_MULTI_VARIATION = 25; // 링크마다 색상 변화 값
 const FIRST_CENTRAL_NODE_BORDER_COLOR = '#000000';
 
 const DEFAULT_MAP_STYLES = `
-  /* 노드 스타일 */
-  .equip-node {
-    cursor: pointer;
-    /* transition 속성은 D3 transition에서 처리하므로 제거 */
-  }
-
+  /* 동적 스타일만 유지 */
   .equip-node rect {
     width: ${NODE_WIDTH}px;
     height: ${NODE_HEIGHT}px;
     rx: ${NODE_CORNER_RADIUS};
     ry: ${NODE_CORNER_RADIUS};
-    fill-opacity: 1;
     stroke-width: ${NODE_STROKE_WIDTH};
   }
 
-  /* 호버 효과 - 밝기만 변경 */
-  .equip-node:hover rect {
-    filter: brightness(1.05);
-  }
-
-  /* 링크 스타일 */
   .equip-link {
     stroke-width: ${LINK_STROKE_WIDTH};
     stroke-opacity: ${LINK_OPACITY};
@@ -91,124 +79,31 @@ const DEFAULT_MAP_STYLES = `
     stroke-opacity: ${LINK_HOVER_OPACITY};
   }
 
-  /* 링크 라벨 스타일 */
-  .link-label-bg {
-    fill: white;
-    fill-opacity: 0.9;
-    rx: 6;
-    ry: 6;
-    stroke: #ddd;
-    stroke-width: 0.5;
-  }
-
-  .link-label {
-    text-anchor: middle;
-    font-weight: bold;
-    font-size: 15px;
-    fill: #333;
-    cursor: pointer; 
-    pointer-events: auto; /* 마우스 이벤트 활성화 */    
-  }
-
-  /* 맵 제목 스타일 */
-  .map-title {
-    position: absolute;
-    top: 3px;
-    left: 0px;
-    font-size: 14px;
-    font-weight: bold;
-    color: #333;
-    z-index: 20;
-    background-color: rgba(249, 249, 249, 0.8);
-    padding: 5px 10px;
-    border-radius: 4px;
-  }
-
-  /* 분야별 노드 색상 - 색상 개선 */
+  /* 분야별 노드 색상 */
   .node-MW rect {
     fill: ${FIELD_COLORS.MW};
-    box-shadow: 0 4px 8px rgba(255, 140, 0, 0.3);
   }
 
   .node-IP rect {
     fill: ${FIELD_COLORS.IP};
-    box-shadow: 0 4px 8px rgba(44, 160, 44, 0.3);
   }
 
   .node-교환 rect {
     fill: ${FIELD_COLORS.교환};
-    box-shadow: 0 4px 8px rgba(35, 21, 230, 0.3);
   }
 
   .node-전송 rect {
     fill: ${FIELD_COLORS.전송};
-    box-shadow: 0 4px 8px rgba(148, 103, 189, 0.3);
   }
 
   .node-선로 rect {
     fill: ${FIELD_COLORS.선로};
-    box-shadow: 0 4px 8px rgba(140, 86, 75, 0.3);
   }
 
   .node-무선 rect {
     fill: ${FIELD_COLORS.무선};
-    box-shadow: 0 4px 8px rgba(35, 122, 8, 0.3);
   }
-
-  /* 중앙 노드(도초 MSPP) 스타일 - 노란색으로 강조 */
-  .center-node rect {
-    fill: #ffcc00;
-    stroke: #ff8800;
-    stroke-width: 3;
-  }
-
-  /* 근본 원인 노드 스타일 */
-  /*
-  .root-cause-node {
-    filter: drop-shadow(0 0 8px rgba(255, 85, 51, 0.7)) !important;
-  }
-  */
-  .root-cause-label {
-    font-size: 14px;
-    font-weight: bold;
-    pointer-events: none; /* 마우스 이벤트 무시 */
-  }
-
-  /* 툴팁 스타일 */
-
-  /* 맵 컨트롤 패널 */
-  .map-control-panel {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 5px;
-    z-index: 1000;
-  }
-
-  .fit-map-btn {
-    margin: 0px;
-    padding: 0px 0px;
-    cursor: pointer;
-    border-radius: 4px;
-    border: 0px solid #ccc;
-    background:rgb(255, 255, 255);
-  }
-
-  .fit-map-btn:hover {
-    background:rgb(252, 252, 252);
-  }
-
-  .no-data-message {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    color: #888;
-    font-style: italic;
-  }
+  
 `;
 
 // HTML 특수문자 이스케이프 함수
@@ -404,7 +299,7 @@ function adjustTableHeight(totalPages) {
 
   if (totalPages > 1) {
     // 페이지네이션이 필요한 경우, 테이블 컨테이너 높이 조정
-    tableContainer.style.height = 'calc(100% - 40px)';
+    tableContainer.style.height = 'calc(100% - 50px)';
   } else {
     // 페이지네이션이 필요 없는 경우
     tableContainer.style.height = '100%';
@@ -464,11 +359,6 @@ function setSidebarState() {
   if (leftSidebar && toggleBtn) {
     // 초기 클래스 설정
     toggleBtn.innerHTML = '◀';
-
-    // 초기 너비가 설정되어 있지 않으면 기본값 설정
-    if (!leftSidebar.style.width) {
-      leftSidebar.style.width = '260px';
-    }
   }
 }
 // 좌측 사이드바 Resizing
@@ -478,7 +368,7 @@ function initSidebarResize() {
   const toggleBtn = document.getElementById('toggle-btn');
 
   let isResizing = false;
-  let originalWidth = leftSidebar.offsetWidth || 250; // 초기 너비 저장
+  let originalWidth = leftSidebar.offsetWidth; // 초기 너비 저장
   let originalPadding = window.getComputedStyle(leftSidebar).getPropertyValue('padding-left'); // 초기 패딩 저장
 
   // 드래그 핸들 이벤트 리스너
@@ -636,7 +526,7 @@ function getPageDataSafely(dataArray, prefix = '') {
     _currentPage = 1;
   }
 
-  // 페이지 데이터 계산
+  // 경보 테이블 페이지 데이터 계산
   const start = (_currentPage - 1) * ALARM_TABLE_PAGE_SIZE;
   const end = start + ALARM_TABLE_PAGE_SIZE;
 
@@ -658,7 +548,7 @@ function getPageDataSafely(dataArray, prefix = '') {
     }
   }
 
-  // 정상적인 페이지 데이터 반환
+  // 경보 테이블 정상적인 페이지 데이터 반환
   const pageData = dataArray.slice(start, end);
   console.log(`${prefix} 페이지 계산: 시작=${start}, 끝=${end}, 데이터 길이=${pageData.length}`);
 
@@ -670,7 +560,7 @@ function getPageDataSafely(dataArray, prefix = '') {
   return { success: true, data: pageData };
 }
 
-// 현재 페이지에 맞춰 경보 테이블 표시
+// 현재 경보 테이블 페이지에 맞춰 경보 테이블 표시
 function updateCurrentPageData() {
   console.log('updateCurrentPageData 함수 실행');
 
@@ -711,6 +601,7 @@ function updateCurrentPageData() {
   }
 }
 
+// 좌측 사이드바 경보발생 장비 필터 설정
 function initEquipmentFilter() {
   console.log('[EquipFilter] 장비 검색 필터 초기화');
 
@@ -731,7 +622,7 @@ function initEquipmentFilter() {
 
   // 입력 필드에서 엔터키 이벤트
   filterInput.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' || e.keyCode === 13) {
+    if (e.key === 'Enter') {
       e.preventDefault();
       applyEquipmentFilter();
     }
@@ -741,7 +632,7 @@ function initEquipmentFilter() {
 }
 
 /**
- * 장비 필터 적용
+ * 좌측 사이드바 경보발생 장비 필터 적용
  */
 function applyEquipmentFilter() {
   const filterInput = document.getElementById('equipFilterInput');
@@ -771,7 +662,7 @@ function applyEquipmentFilter() {
 }
 
 /**
- * 장비 필터 초기화
+ * 좌측 사이드바 경보발생 장비 필터 초기화
  */
 function resetEquipmentFilter() {
   const filterInput = document.getElementById('equipFilterInput');
@@ -794,11 +685,6 @@ function resetEquipmentFilter() {
  */
 function updateEquipmentSelectBox(equipmentList) {
   const selectElement = document.getElementById('searchEquipName');
-
-  if (!selectElement) {
-    console.error('[EquipFilter] searchEquipName 요소를 찾을 수 없습니다.');
-    return;
-  }
 
   // 기존 옵션 제거
   selectElement.innerHTML = '';
@@ -1031,48 +917,6 @@ function getNodeName(nodeId) {
 
 // 채팅창 상단에 최초 한번만 표시되는 기본 안내 메시지 추가 (페이지 로드 시)
 let isFirstTimeMessage = true;
-
-// 채팅 입력 기능 (기존 HTML의 채팅 입력창 활용)
-function initChatInput() {
-  const chatInput = document.getElementById('chat-input');
-  const chatSendBtn = document.getElementById('chat-send-btn');
-
-  if (!chatInput || !chatSendBtn) {
-    console.warn('채팅 입력 요소를 찾을 수 없습니다.');
-    return;
-  }
-
-  // 엔터키 이벤트
-  chatInput.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendChatMessage();
-    }
-  });
-
-  // 전송 버튼 이벤트
-  chatSendBtn.addEventListener('click', sendChatMessage);
-
-  function sendChatMessage() {
-    const message = chatInput.value.trim();
-    if (!message) return;
-
-    // 사용자 메시지 추가
-    addChatMessage(`💬 ${message}`, 'user');
-
-    // 응답 메시지 (예시)
-    setTimeout(() => {
-      addChatMessage(
-        '죄송합니다. 현재는 장애점 찾기 기능만 지원됩니다. 장애점 찾기 버튼을 클릭해주세요.',
-        'system',
-        false
-      );
-    }, 500);
-
-    // 입력창 초기화
-    chatInput.value = '';
-  }
-}
 
 // 장비 변경 시 채팅창 초기화 함수 수정 - 기본 메시지 개선
 function handleEquipChangeEvent(equipInfo) {

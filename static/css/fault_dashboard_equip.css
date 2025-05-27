@@ -1,18 +1,12 @@
-/* 노드 스타일 */
+/* equip View 장비 뷰 모드 맵의 노드 스타일 */
 .equip-node {
   cursor: pointer;
 }
 
 .equip-node rect {
-  width: 300px;
-  height: 50px;
-  rx: 20;
-  ry: 20;
   fill-opacity: 1;
-  stroke-width: 2;
 }
 
-/* hover 효과에서 transform 제거하고 테두리만 변경 */
 .equip-node:hover rect {
   stroke-width: 3;
   filter: brightness(1.05);
@@ -20,8 +14,7 @@
 
 /* 링크 스타일 */
 .equip-link {
-  stroke-width: 3;
-  stroke-opacity: 0.7;
+  stroke: #999; /* 기본 링크 색상 */
 }
 
 .equip-link:hover {
@@ -44,55 +37,62 @@
   font-weight: bold;
   font-size: 15px;
   fill: #333;
+  cursor: pointer;
+  pointer-events: auto;
 }
 
 /* 맵 제목 스타일 */
 .map-title {
   position: absolute;
-  top: 5px;
-  left: 10px;
+  top: 5px; /* CSS값 우선 (더 일관된 값) */
+  left: 10px; /* CSS값 우선 */
   font-size: 14px;
   font-weight: bold;
   color: #333;
   z-index: 20;
-  background-color: rgba(255, 255, 255);
+  background-color: rgba(255, 255, 255, 0.9); /* 투명도 통합 */
   padding: 5px 10px;
   border-radius: 4px;
   border: 0px solid #eee;
 }
 
-/* 분야별 노드 색상 - 색상 개선 */
+/* 분야별 노드 색상 - 공통 속성을 CSS로 */
+.node-MW rect,
+.node-IP rect,
+.node-교환 rect,
+.node-전송 rect,
+.node-선로 rect,
+.node-무선 rect {
+  /* fill 색상은 JS에서 동적 설정 */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* 통합된 그림자 효과 */
+}
+
+/* 개별 분야별 그림자 색상 */
 .node-MW rect {
-  fill: #ff8c00;
   box-shadow: 0 4px 8px rgba(255, 140, 0, 0.3);
 }
 
 .node-IP rect {
-  fill: #2ca02c;
   box-shadow: 0 4px 8px rgba(44, 160, 44, 0.3);
 }
 
 .node-교환 rect {
-  fill: #279fd6;
-  box-shadow: 0 4px 8px rgba(35, 21, 230, 0.3);
+  box-shadow: 0 4px 8px rgba(39, 159, 214, 0.3); /* CSS값 우선 */
 }
 
 .node-전송 rect {
-  fill: #9467bd;
   box-shadow: 0 4px 8px rgba(148, 103, 189, 0.3);
 }
 
 .node-선로 rect {
-  fill: #8c564b;
   box-shadow: 0 4px 8px rgba(140, 86, 75, 0.3);
 }
 
 .node-무선 rect {
-  fill: #51f13c;
-  box-shadow: 0 4px 8px rgba(35, 122, 8, 0.3);
+  box-shadow: 0 4px 8px rgba(81, 241, 60, 0.3); /* CSS값 우선 */
 }
 
-/* 중앙 노드(도초 MSPP) 스타일 - 노란색으로 강조 */
+/* 중앙 노드 스타일 - 노란색으로 강조 */
 .center-node rect {
   fill: #ffcc00;
   stroke: #ff8800;
@@ -113,4 +113,45 @@
   font-weight: bold;
   font-size: 14px;
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+/* 근본 원인 노드 스타일 */
+.root-cause-label {
+  font-size: 14px;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+/* 맵 컨트롤 패널 */
+.map-control-panel {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 5px;
+  z-index: 1000;
+}
+
+.fit-map-btn {
+  margin: 0px;
+  padding: 0px 0px;
+  cursor: pointer;
+  border-radius: 4px;
+  border: 0px solid #ccc;
+  background: rgb(255, 255, 255);
+}
+
+.fit-map-btn:hover {
+  background: rgb(252, 252, 252);
+}
+
+.no-data-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: #888;
+  font-style: italic;
 }

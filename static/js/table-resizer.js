@@ -32,7 +32,7 @@ function initAlarmTableResizer(table) {
   console.log('[TableResizer] 테이블 리사이저 초기화 완료');
 }
 
-// 테이블 준비 - 초기 설정
+// 테이블 준비 - 초기 설정, 동적 DOM 구조 추가
 function prepareTable(table) {
   console.log('[TableResizer] 테이블 준비 시작');
 
@@ -78,7 +78,7 @@ function prepareTable(table) {
   console.log('[TableResizer] 테이블 준비 완료');
 }
 
-// 각 컬럼에 리사이즈 핸들 추가
+// 각 컬럼에 리사이즈 핸들 추가 ############## To do list 경보 테이블 컬럼 크기 변경시 마우스 이동해버림
 function addResizeHandles(table) {
   const headerCells = table.querySelectorAll('thead th');
   const cols = table.querySelectorAll('colgroup col');
@@ -177,7 +177,7 @@ function addResizeHandles(table) {
   console.log('[TableResizer] 리사이즈 핸들 추가 완료');
 }
 
-// 테이블 상단에 컬럼 선택 필터 추가
+// 테이블 상단에 컬럼 선택 필터 관련 동적 DOM 구조 추가, 필터와 리셋 이벤트 추가
 function addTableSearchFilters(table) {
   console.log('[TableSearch] 테이블 검색 필터 추가 시작');
 
@@ -202,11 +202,11 @@ function addTableSearchFilters(table) {
   const filterForm = document.createElement('div');
   filterForm.className = 'filter-form';
 
-  // 컬럼 선택 레이블
-  const labelColumn = document.createElement('span');
-  labelColumn.className = 'filter-label';
-  labelColumn.textContent = '대상 컬럼';
-  filterForm.appendChild(labelColumn);
+  // 경보 테이블 서브 제목
+  const alarmTableSubTitle = document.createElement('span');
+  alarmTableSubTitle.className = 'filter-label';
+  alarmTableSubTitle.textContent = '경보목록 검색';
+  filterForm.appendChild(alarmTableSubTitle);
 
   // 컬럼 선택 드롭다운
   const columnSelect = document.createElement('select');
@@ -248,7 +248,7 @@ function addTableSearchFilters(table) {
 
   // 엔터키 이벤트 추가
   filterInput.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' || e.keyCode === 13) {
+    if (e.key === 'Enter') {
       e.preventDefault(); // 기본 동작 방지
       applyTableFilter(); // Filter 버튼과 동일한 함수 호출
     }
@@ -297,7 +297,7 @@ function applyTableFilter() {
     // **여기서 장비 select를 강제로 전체로 초기화**
     document.getElementById('searchEquipName').value = '';
 
-    searchAlarms(true); // 원본 데이터 다시 로드
+    resetTableFilter(); // 원본 데이터 다시 로드
     return;
   }
 
@@ -383,13 +383,17 @@ function applyTableFilter() {
 
   console.log(`[TableSearch] 필터링 결과: ${filteredData.length}개 행 일치`);
 
-  // 결과가 있는 경우 테이블 업데이트
+  // 필터링된 데이터가 있는 경우 경보 테이블 업데이트
   if (filteredData.length > 0) {
-    // 필터링된 데이터로 테이블 갱신
     window.currentSortedData = filteredData;
 
-    // updateAlarmTable 함수 호출
-    updateAlarmTable(filteredData);
+    addRowsToAlarmTable(filteredData);
+
+    // 필터 적용 후
+    renderPagination(filteredData.length);
+
+    // 리셋 후
+    //renderPagination(sourceData.length); ############## To check list
   } else {
     // 결과가 없는 경우 메시지 표시
     const tbody = table.querySelector('tbody');
@@ -400,7 +404,88 @@ function applyTableFilter() {
   }
 }
 
-// 필터링된 데이터로 테이블 업데이트 (updateAlarmTable 함수가 없을 경우)
+// 하단 경보 테이블에 실제 데이터 Row추가
+function addRowsToAlarmTable(alarmDataList) {
+  console.log('addRowsToAlarmTable 함수 실행: 실제 경보 테이블에 데이터를 추가');
+  const tBody = document.getElementById('alarmTableBody');
+
+  if (!tBody) {
+    console.error('테이블 본문 요소를 찾을 수 없습니다.');
+    return;
+  }
+
+  tBody.innerHTML = '';
+
+  if (!Array.isArray(alarmDataList) || alarmDataList.length === 0) {
+    showTableErrorMessage('데이터가 없습니다');
+    return;
+  }
+
+  // 유효경보 표시 준비
+  const validCounts = {};
+  SECTORS.forEach((sector) => {
+    validCounts[sector] = 0;
+  });
+
+  // 테이블 행 생성
+  alarmDataList.forEach((item) => {
+    if (!item) return;
+
+    const row = document.createElement('tr');
+
+    // 각 row에 guksa_id 데이터를 속성으로 추가
+    row.setAttribute('data-guksa-id', item.guksa_id || '');
+
+    // 유효경보인 경우 row에 style이 적용된 클래스로 설정
+    if (item.valid_yn === 'Y') {
+      row.classList.add('valid-alarm');
+      if (item.sector && SECTORS.includes(item.sector)) {
+        validCounts[item.sector] += 1;
+      }
+    }
+
+    // 국사 이름
+    let guksaName = item.guksa_name || '-';
+
+    // 테이블 셀 생성
+    const cells = [
+      { value: guksaName, className: 'col-guksa', title: item.guksa_id },
+      { value: item.sector || '-', className: 'col-sector' },
+      { value: item.valid_yn === 'Y' ? '유효' : '무효', className: 'col-valid' },
+      { value: formatDateTime(item.occur_datetime), className: 'col-occur-time' },
+      { value: item.equip_id || '', className: 'col-equip-id' },
+      { value: item.equip_type || '-', className: 'col-equip-type' },
+      { value: item.equip_name || '-', className: 'col-equip-name' },
+      { value: item.alarm_message || '-', className: 'col-alarm-message' },
+    ];
+
+    cells.forEach((cell) => {
+      const td = document.createElement('td');
+      td.className = cell.className;
+      td.textContent = cell.value;
+
+      if (cell.title) {
+        td.title = cell.title;
+      }
+
+      row.appendChild(td);
+    });
+
+    tBody.appendChild(row);
+  });
+
+  // Sector 분야별 대시보드 박스 글자 색상 업데이트 (유효 경보 강조)
+  SECTORS.forEach((sector) => {
+    if (validCounts[sector] > 0) {
+      const box = document.querySelector(`.dashboard-box[data-sector="${sector}"]`);
+      if (box) {
+        box.classList.add('has-valid-alarms');
+      }
+    }
+  });
+}
+
+// 필터링된 데이터로 테이블 업데이트
 function updateTableWithFilteredData(data) {
   const tbody = document.getElementById('alarmTableBody');
   if (!tbody) return;
@@ -471,40 +556,6 @@ function updateTableWithFilteredData(data) {
   updatePagination(data.length, rowsPerPage, currentPage);
 }
 
-// 간단한 페이지네이션 업데이트
-function updatePagination(totalItems, rowsPerPage, currentPage) {
-  const pagination = document.getElementById('pagination');
-  if (!pagination) return;
-
-  // 페이지 수 계산
-  const totalPages = Math.ceil(totalItems / rowsPerPage);
-
-  // 간단한 페이지네이션 생성
-  pagination.innerHTML = '';
-
-  // 이전 페이지 버튼
-  if (totalPages > 1) {
-    const prevBtn = document.createElement('button');
-    prevBtn.textContent = '이전';
-    prevBtn.disabled = currentPage <= 1;
-    pagination.appendChild(prevBtn);
-
-    // 페이지 버튼
-    for (let i = 1; i <= Math.min(totalPages, 5); i++) {
-      const pageBtn = document.createElement('button');
-      pageBtn.textContent = i;
-      pageBtn.classList.toggle('active', i === currentPage);
-      pagination.appendChild(pageBtn);
-    }
-
-    // 다음 페이지 버튼
-    const nextBtn = document.createElement('button');
-    nextBtn.textContent = '다음';
-    nextBtn.disabled = currentPage >= totalPages;
-    pagination.appendChild(nextBtn);
-  }
-}
-
 // 테이블 필터 초기화 함수
 function resetTableFilter() {
   // 필터 입력 필드 초기화
@@ -514,8 +565,15 @@ function resetTableFilter() {
   if (columnSelect) columnSelect.value = '';
   if (filterInput) filterInput.value = '';
 
-  // 하단 경보 테이블 원래 데이터로 갱신 (필터 리셋)
-  searchAlarms();
+  // 원본 데이터로 테이블 갱신
+  let alarmAllData = [];
+  if (typeof _totalAlarmDataList !== 'undefined' && typeof _selectedSector !== 'undefined') {
+    alarmAllData = _totalAlarmDataList.filter(
+      (item) => item && item.sector && item.sector.toLowerCase() === _selectedSector.toLowerCase()
+    );
+  }
+  window.currentSortedData = alarmAllData;
+  addRowsToAlarmTable(alarmAllData);
 }
 
 // 컬럼 인덱스를 필드 이름으로 변환
@@ -535,6 +593,7 @@ function getColumnFieldByIndex(index) {
   return columnFields[index] || null;
 }
 
+// To do list patchAlarmTableContentFunction 와 중복됨 ##################################
 // 유효 경보 행에 클래스 추가 함수
 function setupValidAlarmHighlighting() {
   console.log('[TableSearch] 유효 경보 행 하이라이팅 설정');
@@ -560,22 +619,6 @@ function setupValidAlarmHighlighting() {
 
     console.log('[TableSearch] 유효 경보 행 하이라이팅 완료');
   }, 300);
-}
-
-// 경보 테이블 데이터가 업데이트될 때마다 유효 경보 행에 클래스 추가
-// 기존 updateAlarmTable 함수가 호출된 후 실행되어야 함
-if (
-  typeof window.originalUpdateAlarmTable === 'undefined' &&
-  typeof window.updateAlarmTable === 'function'
-) {
-  window.originalUpdateAlarmTable = window.updateAlarmTable;
-
-  window.updateAlarmTable = function (data) {
-    // 원래 함수 호출
-    window.originalUpdateAlarmTable(data);
-
-    // setupValidAlarmHighlighting()을 호출하지 않음, 이미 원본 함수에서 처리됨
-  };
 }
 
 // 경보 테이블 유효 경보 행에 클래스 추가 함수

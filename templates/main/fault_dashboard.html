@@ -3,6 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <title>AI Detector Alarm Dashboard</title>
+
+    <!-- simplePagination.js -->
+    <link rel="stylesheet" href="/static/css/fault_dashboard.css" />
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,500;1,500&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/simplePagination.js/1.6/simplePagination.css"
+    />
+
     <script src="https://d3js.org/d3.v7.min.js"></script>
 
     <script src="/static/js/fault_d3_map.js" defer></script>
@@ -15,19 +28,7 @@
 
     <!-- jQuery -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <!-- simplePagination.js -->
-
-    <link
-      href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,500;1,500&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/simplePagination.js/1.6/simplePagination.css"
-    />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/simplePagination.js/1.6/jquery.simplePagination.min.js"></script>
-
-    <link rel="stylesheet" href="/static/css/fault_dashboard.css" />
   </head>
   <body>
     <div class="container">
@@ -93,7 +94,7 @@
             <select id="searchEquipName" class="equip-select" size="15"></select>
           </div>
         </div>
-
+        <br /><br />
         <button id="fault-point-btn" class="fault-view-btn">장애점 찾기</button>
       </div>
 
