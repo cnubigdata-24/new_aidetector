@@ -284,7 +284,7 @@ def get_topology(guksa_name):
             "remote_equipments": remote_equipments,
             "field": remote_sector,
             "type": link.updown_type,
-            "cable_num": link.cable_num if hasattr(link, 'cable_num') else None,
+            "link_name": link.link_name if hasattr(link, 'link_name') else None,
             "link_id": str(link.id) if hasattr(link, 'id') else None
         }
 
@@ -1031,7 +1031,7 @@ def get_equipment_details(n):
                 "remote_guksa": link.remote_guksa_name,
                 "link_type": link.link_type,
                 "updown_type": link.updown_type,
-                "cable_num": link.cable_num if hasattr(link, 'cable_num') else None
+                "link_name": link.link_name if hasattr(link, 'link_name') else None
             }
             link_list.append(link_data)
 
@@ -1167,7 +1167,7 @@ def get_network_map():
                     "to": remote_guksa.guksa_id,
                     "type": link.link_type,
                     "updown": link.updown_type,
-                    "cable_num": link.cable_num if hasattr(link, 'cable_num') else None
+                    "link_name": link.link_name if hasattr(link, 'link_name') else None
                 }
                 edges.append(edge)
 
@@ -1336,7 +1336,7 @@ def alarm_dashboard_equip():
             # 장비 ID에 해당하는 국사 이름으로 링크맵 먼저 로드
             if guksa_name:
                 link_map = load_links_by_guksa(guksa_name)
-                equipment_dict, processed_links = find_connected_equip_from_graph(
+                equipment_dict, processed_links = find_all_connected_equip(
                     str_equip_id, link_map)
             else:
                 # 국사 정보가 없는 경우 처리
@@ -1356,7 +1356,7 @@ def alarm_dashboard_equip():
                 processed_links = set()
 
                 for node_id in link_map.keys():
-                    sub_dict, sub_links = find_connected_equip_from_graph(
+                    sub_dict, sub_links = find_all_connected_equip(
                         node_id, link_map, visited)
                     equipment_dict.update(sub_dict)
                     processed_links.update(sub_links)
@@ -1370,11 +1370,20 @@ def alarm_dashboard_equip():
         # 링크 정보 변환
         links = []
         for link_key in processed_links:
-            source, target = link_key.split(':::')
+            # 안전한 파싱: link_name이 없는 경우 처리
+            parts = link_key.split(':::')
+            if len(parts) >= 3:
+                source, target, link_name = parts[0], parts[1], parts[2]
+            elif len(parts) == 2:
+                source, target = parts[0], parts[1]
+                link_name = f"링크-{source}-{target}"  # 기본 링크명 생성
+            else:
+                continue  # 잘못된 형식은 건너뛰기
+
             links.append({
                 "source": source,
                 "target": target,
-                "cable_num": f"케이블-{source}-{target}"  # 실제 cable_num 정보 추가 필요
+                "link_name": link_name
             })
 
         # 분야 필터링 적용
@@ -1396,9 +1405,8 @@ def alarm_dashboard_equip():
         print("장비 네트워크 맵 데이터 생성 중 오류 발생:", str(e))
         traceback.print_exc()  # 상세 에러 출력
 
-        # 오류 발생 시 샘플 데이터 생성
         _, guksa_name = get_guksa_info(guksa_id)
-        response_data = use_sample_equip_data(guksa_id, guksa_name)
+        response_data = None
 
         return jsonify(response_data)
 
@@ -1406,11 +1414,11 @@ def alarm_dashboard_equip():
 # MW-MW 구간 페이딩 체크 API
 @api_bp.route('/check_mw_fading', methods=['POST'])
 def check_mw_fading():
-    """ 
+    """
     Request Body:
     {
         "source_equip_id": "MW001",
-        "target_equip_id": "MW002", 
+        "target_equip_id": "MW002",
         "check_type": "fading_analysis"
     }
 
@@ -1470,7 +1478,7 @@ def check_mw_power():
     Response:
     {
         "result_code": "1111",
-        "battery_mode": "battery|main_power", 
+        "battery_mode": "battery|main_power",
         "result_msg": "분석 결과 메시지"
     }
     """
@@ -1865,15 +1873,6 @@ def perform_fading_analysis(source_data, target_data):
 
 
 def perform_power_analysis(power_data):
-    """
-
-
-    Args:
-        power_data (dict): 전원 관련 SNMP 데이터
-
-    Returns:
-        dict: 분석 결과
-    """
     try:
         input_voltage = power_data.get('input_voltage', 0)
         battery_voltage = power_data.get('battery_voltage', 0)
@@ -1907,8 +1906,6 @@ def perform_power_analysis(power_data):
 
 
 # 분야 필터링 적용 함수
-
-
 def apply_sector_filter(equipment_dict, links, sectors):
     sector_filter = None
     if sectors and sectors != 'all':
@@ -2001,7 +1998,7 @@ def load_links_by_guksa(guksa_name):
 
 
 # 2. 인메모리 DFS 기반 장비 연결 탐색
-def find_connected_equip_from_graph(equip_id, link_map, visited=None, depth=0, max_depth=5):
+def find_all_connected_equip(equip_id, link_map, visited=None, depth=0, max_depth=5):
     if visited is None:
         visited = set()
 
@@ -2018,6 +2015,9 @@ def find_connected_equip_from_graph(equip_id, link_map, visited=None, depth=0, m
     for link in neighbors:
         id1 = str(link.equip_id)
         id2 = str(link.link_equip_id)
+
+        # 링크 이름 추가
+        link_name = link.link_name
 
         # 장비 정보 등록 (소스)
         if id1 not in equipment_dict:
@@ -2043,60 +2043,20 @@ def find_connected_equip_from_graph(equip_id, link_map, visited=None, depth=0, m
                 "up_down": "unknown"
             }
 
-        # 링크 중복 없이 저장
-        key1 = f"{id1}:::{id2}"
-        key2 = f"{id2}:::{id1}"
+        # 링크 중복 없이 저장 (link_name 포함)
+        key1 = f"{id1}:::{id2}:::{link_name}"
+        key2 = f"{id2}:::{id1}:::{link_name}"
         if key1 not in processed_links and key2 not in processed_links:
             processed_links.add(key1)
 
             # 다음 노드 DFS 재귀
             next_id = id2 if equip_id == id1 else id1
-            sub_dict, sub_links = find_connected_equip_from_graph(
-                next_id, link_map, visited)
+            sub_dict, sub_links = find_all_connected_equip(
+                next_id, link_map, visited, depth + 1, max_depth)
             equipment_dict.update(sub_dict)
             processed_links.update(sub_links)
 
     return equipment_dict, processed_links
-
-
-# 테스트용 샘플 데이터 리턴
-def use_sample_equip_data(guksa_id, guksa_name):
-    # 샘플 장비 데이터
-    sample_equipment = [
-        {"id": 1, "equip_id": 101, "equip_type": "IP20", "equip_name": f"{guksa_name} IP#1",
-            "equip_field": "IP", "up_down": "up", "guksa_id": guksa_id, "guksa_name": guksa_name},
-        {"id": 2, "equip_id": 102, "equip_type": "IP20", "equip_name": f"{guksa_name} IP#2",
-            "equip_field": "IP", "up_down": "up", "guksa_id": guksa_id, "guksa_name": guksa_name},
-        {"id": 3, "equip_id": 103, "equip_type": "MSPP", "equip_name": f"{guksa_name} 전송#1",
-            "equip_field": "전송", "up_down": "down", "guksa_id": guksa_id, "guksa_name": guksa_name},
-        {"id": 4, "equip_id": 104, "equip_type": "MSPP", "equip_name": f"{guksa_name} 전송#2",
-            "equip_field": "전송", "up_down": "down", "guksa_id": guksa_id, "guksa_name": guksa_name},
-        {"id": 5, "equip_id": 105, "equip_type": "L3", "equip_name": f"{guksa_name} 교환#1",
-            "equip_field": "교환", "up_down": "up", "guksa_id": guksa_id, "guksa_name": guksa_name},
-        {"id": 6, "equip_id": 106, "equip_type": "OLT", "equip_name": f"{guksa_name} IP#3",
-            "equip_field": "IP", "up_down": "down", "guksa_id": guksa_id, "guksa_name": guksa_name}
-    ]
-
-    # 샘플 링크 데이터
-    sample_links = [
-        {"source": 101, "target": 102, "cable_num": "케이블-101-102"},
-        {"source": 101, "target": 103, "cable_num": "케이블-101-103"},
-        {"source": 101, "target": 104, "cable_num": "케이블-101-104"},
-        {"source": 102, "target": 105, "cable_num": "케이블-102-105"},
-        {"source": 103, "target": 106, "cable_num": "케이블-103-106"}
-    ]
-
-    print(
-        f"샘플 데이터로 대체합니다: 장비 {len(sample_equipment)}개, 링크 {len(sample_links)}개")
-
-    # 최종 응답 구성
-    return {
-        "guksa_id": guksa_id,
-        "guksa_name": guksa_name,
-        "equipment_list": sample_equipment,
-        "links": sample_links,
-        "is_sample": True  # 샘플 데이터임을 표시
-    }
 
 
 # puresnmp를 사용한 여러 OID 값을 가져오는 함수

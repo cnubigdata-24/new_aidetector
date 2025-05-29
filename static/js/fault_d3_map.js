@@ -1,5 +1,5 @@
-// 간격 및 배치 관련 상수 정의
-const SPACING_CONFIG = {
+// 국사 기준 맵 관련 상수 정의
+const GUKSA_MAP_CONFIG = {
   // 국사-장비 간 기본 간격 (더 줄임)
   GUKSA_TO_EQUIP_MIN: 50, // 300 → 200 (더 가깝게)
   GUKSA_TO_EQUIP_MAX: 150, // 600 → 400 (더 가깝게)
@@ -10,8 +10,8 @@ const SPACING_CONFIG = {
   GROUP_SPACING: 250,
 
   // 그룹 내 노드 간격
-  NODE_VERTICAL_SPACING: 100,
-  NODE_HORIZONTAL_SPACING: 120,
+  NODE_VERTICAL_SPACING: 80,
+  NODE_HORIZONTAL_SPACING: 100,
   NODES_PER_COLUMN: 8,
 
   // SVG 크기
@@ -20,6 +20,10 @@ const SPACING_CONFIG = {
 
   // 경계 설정
   BOUNDARY_MARGIN: 30,
+
+  // 줌 설정
+  ZOOM_MIN_SCALE: 0.2, // 국사 맵은 더 작게 축소 가능
+  ZOOM_MAX_SCALE: 3.0,
 };
 
 const COLORS = {
@@ -124,6 +128,9 @@ function createGuksaTopologyMap(equipData) {
   // 제목 추가
   addTitle(mapContainer, guksaName, nodes.length - 1);
 
+  // 줌 컨트롤 패널 추가
+  addZoomControlPanel(mapContainer, svg, currentZoom, svg.attr('width'), svg.attr('height'));
+
   // 범례 추가
   // addLegend(mapContainer); // 범례는 일단 제거
 
@@ -227,8 +234,8 @@ function addEquipNodesToMap(uniqueEquipMap, nodes, links, guksaName) {
 
 // SVG 설정 및 생성 (크기 개선)
 function setupSVG(mapContainer) {
-  const width = mapContainer.clientWidth || SPACING_CONFIG.SVG_WIDTH;
-  const height = SPACING_CONFIG.SVG_HEIGHT;
+  const width = mapContainer.clientWidth || GUKSA_MAP_CONFIG.SVG_WIDTH;
+  const height = GUKSA_MAP_CONFIG.SVG_HEIGHT;
 
   // SVG 생성
   const svg = d3
@@ -248,14 +255,14 @@ function setupSVG(mapContainer) {
   // 줌 행동 정의
   const zoom = d3
     .zoom()
-    .scaleExtent([0.5, 3])
+    .scaleExtent([GUKSA_MAP_CONFIG.ZOOM_MIN_SCALE, GUKSA_MAP_CONFIG.ZOOM_MAX_SCALE])
     .on('zoom', (event) => {
       container.attr('transform', event.transform);
       currentZoom = event.transform;
     });
 
-  // SVG에 줌 기능 적용
-  svg.call(zoom);
+  // SVG에 줌 기능 적용 (마우스 휠 줌 비활성화)
+  svg.call(zoom).on('wheel.zoom', null);
 
   return { svg, container, currentZoom, width, height };
 }
@@ -266,6 +273,204 @@ function addTitle(mapContainer, guksaName, equipmentCount) {
   titleDiv.className = 'map-title';
   titleDiv.textContent = `${guksaName} 경보 장비(${equipmentCount} 대)`;
   mapContainer.appendChild(titleDiv);
+}
+
+// 공통 줌 컨트롤 패널 추가 함수 (전역 사용 가능)
+function addMapZoomControlPanel(mapContainer, svg, zoom, width, height, options = {}) {
+  // 기본 옵션 설정
+  const defaultOptions = {
+    zoomMinScale: GUKSA_MAP_CONFIG.ZOOM_MIN_SCALE,
+    zoomMaxScale: GUKSA_MAP_CONFIG.ZOOM_MAX_SCALE,
+    mapPadding: 30, // 패딩 줄임
+    nodeMargin: 50,
+    position: { top: '10px', right: '10px' },
+  };
+
+  const config = { ...defaultOptions, ...options };
+
+  const controlPanel = document.createElement('div');
+  controlPanel.className = 'map-control-panel';
+
+  controlPanel.style.marginTop = '-10px';
+  controlPanel.style.marginRight = '-10px';
+  controlPanel.style.position = 'absolute';
+  controlPanel.style.top = config.position.top;
+  controlPanel.style.right = config.position.right;
+  controlPanel.style.background = 'white';
+  controlPanel.style.border = '0px solid #ddd';
+  controlPanel.style.borderRadius = '4px';
+  controlPanel.style.padding = '1px';
+  controlPanel.style.zIndex = '1000';
+  controlPanel.style.display = 'flex';
+  controlPanel.style.flexDirection = 'row';
+  controlPanel.style.gap = '1px';
+  controlPanel.style.boxShadow = '0 0px 0px rgba(0,0,0,0.1)';
+
+  // 줌 인 버튼
+  const zoomInBtn = document.createElement('button');
+  zoomInBtn.textContent = '+';
+  zoomInBtn.style.margin = '0px';
+  zoomInBtn.style.padding = '4px 0px';
+  zoomInBtn.style.cursor = 'pointer';
+  zoomInBtn.style.fontSize = '15px';
+  zoomInBtn.style.border = '1px solid #ccc';
+  zoomInBtn.style.background = '#f8f9fa';
+  zoomInBtn.style.borderRadius = '3px';
+  zoomInBtn.style.width = '24px';
+  zoomInBtn.style.height = '28px';
+  zoomInBtn.onclick = () => {
+    // svg가 D3 selection인지 DOM 노드인지 확인
+    const svgElement = svg.node ? svg.node() : svg;
+    const svgSelection = svg.node ? svg : d3.select(svg);
+
+    const currentTransform = d3.zoomTransform(svgElement);
+    const newScale = Math.min(currentTransform.k * 1.2, config.zoomMaxScale);
+
+    // 현재 뷰포트의 중앙점
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    // 현재 중심점의 월드 좌표 계산
+    const worldCenterX = (centerX - currentTransform.x) / currentTransform.k;
+    const worldCenterY = (centerY - currentTransform.y) / currentTransform.k;
+
+    // 새로운 변환에서 같은 월드 좌표가 중심에 오도록 계산
+    const newX = centerX - worldCenterX * newScale;
+    const newY = centerY - worldCenterY * newScale;
+
+    svgSelection
+      .transition()
+      .duration(300)
+      .call(zoom.transform, d3.zoomIdentity.translate(newX, newY).scale(newScale));
+  };
+  controlPanel.appendChild(zoomInBtn);
+
+  // 줌 아웃 버튼
+  const zoomOutBtn = document.createElement('button');
+  zoomOutBtn.textContent = '-';
+  zoomOutBtn.style.margin = '0px';
+  zoomOutBtn.style.padding = '4px 0px';
+  zoomOutBtn.style.cursor = 'pointer';
+  zoomOutBtn.style.fontSize = '15px';
+  zoomOutBtn.style.border = '1px solid #ccc';
+  zoomOutBtn.style.background = '#f8f9fa';
+  zoomOutBtn.style.borderRadius = '3px';
+  zoomOutBtn.style.width = '24px';
+  zoomOutBtn.style.height = '28px';
+  zoomOutBtn.onclick = () => {
+    // svg가 D3 selection인지 DOM 노드인지 확인
+    const svgElement = svg.node ? svg.node() : svg;
+    const svgSelection = svg.node ? svg : d3.select(svg);
+
+    const currentTransform = d3.zoomTransform(svgElement);
+    const newScale = Math.max(currentTransform.k * 0.8, config.zoomMinScale);
+
+    // 현재 뷰포트의 중앙점
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    // 현재 중심점의 월드 좌표 계산
+    const worldCenterX = (centerX - currentTransform.x) / currentTransform.k;
+    const worldCenterY = (centerY - currentTransform.y) / currentTransform.k;
+
+    // 새로운 변환에서 같은 월드 좌표가 중심에 오도록 계산
+    const newX = centerX - worldCenterX * newScale;
+    const newY = centerY - worldCenterY * newScale;
+
+    svgSelection
+      .transition()
+      .duration(300)
+      .call(zoom.transform, d3.zoomIdentity.translate(newX, newY).scale(newScale));
+  };
+  controlPanel.appendChild(zoomOutBtn);
+
+  // 중앙으로 이동 + 줌 리셋 버튼
+  const fitBtn = document.createElement('button');
+  fitBtn.textContent = 'Restore';
+  fitBtn.style.marginLeft = '2px';
+  fitBtn.style.marginRight = '2px';
+  fitBtn.style.marginTop = '1px';
+  fitBtn.style.marginBottom = '1px';
+
+  fitBtn.style.padding = '4px 4px';
+  fitBtn.style.cursor = 'pointer';
+  fitBtn.style.fontSize = '12px';
+  fitBtn.style.border = '1px solid #ccc';
+  fitBtn.style.background = '#f8f9fa';
+  fitBtn.onclick = () => {
+    // svg가 D3 selection인지 DOM 노드인지 확인
+    const svgElement = svg.node ? svg.node() : svg;
+    const svgSelection = svg.node ? svg : d3.select(svg);
+
+    // 모든 노드의 범위 계산
+    const nodes = svgSelection.selectAll('.node, .equip-node').data();
+    if (nodes.length === 0) return;
+
+    let minX = Infinity,
+      minY = Infinity;
+    let maxX = -Infinity,
+      maxY = -Infinity;
+
+    nodes.forEach((d) => {
+      const margin = config.nodeMargin;
+      minX = Math.min(minX, d.x - margin);
+      minY = Math.min(minY, d.y - margin);
+      maxX = Math.max(maxX, d.x + margin);
+      maxY = Math.max(maxY, d.y + margin);
+    });
+
+    // 링크 오프셋 범위도 고려 (장비 토폴로지용)
+    if (options.includeLinks && typeof linksData !== 'undefined') {
+      linksData.forEach((d) => {
+        const offsetX = d.offsetX || 0;
+        const offsetY = d.offsetY || 0;
+
+        if (Math.abs(offsetX) > 0 || Math.abs(offsetY) > 0) {
+          const sourceX = typeof d.source === 'object' ? d.source.x : _equipmentMap[d.source].x;
+          const sourceY = typeof d.source === 'object' ? d.source.y : _equipmentMap[d.source].y;
+          const targetX = typeof d.target === 'object' ? d.target.x : _equipmentMap[d.target].x;
+          const targetY = typeof d.target === 'object' ? d.target.y : _equipmentMap[d.target].y;
+
+          minX = Math.min(minX, sourceX + offsetX - 20, targetX + offsetX - 20);
+          minY = Math.min(minY, sourceY + offsetY - 20, targetY + offsetY - 20);
+          maxX = Math.max(maxX, sourceX + offsetX + 20, targetX + offsetX + 20);
+          maxY = Math.max(maxY, sourceY + offsetY + 20, targetY + offsetY + 20);
+        }
+      });
+    }
+
+    // 패딩 추가
+    const padding = config.mapPadding;
+    minX -= padding;
+    minY -= padding;
+    maxX += padding;
+    maxY += padding;
+
+    // 화면에 맞게 스케일과 위치 계산 - 최소 1배율 유지
+    const dx = maxX - minX;
+    const dy = maxY - minY;
+    const scale = Math.min(width / dx, height / dy, 1.0); // 0.5 → 1.0으로 변경하여 최소 1배율 유지
+    const tx = (width - scale * (minX + maxX)) / 2;
+    const ty = (height - scale * (minY + maxY)) / 2;
+
+    // 변환 적용 (부드러운 전환)
+    svgSelection
+      .transition()
+      .duration(500)
+      .call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+  };
+  controlPanel.appendChild(fitBtn);
+
+  mapContainer.appendChild(controlPanel);
+}
+
+// 기존 함수는 새로운 공통 함수를 호출하도록 변경
+function addZoomControlPanel(mapContainer, svg, zoom, width, height) {
+  addMapZoomControlPanel(mapContainer, svg, zoom, width, height, {
+    zoomMinScale: GUKSA_MAP_CONFIG.ZOOM_MIN_SCALE,
+    zoomMaxScale: GUKSA_MAP_CONFIG.ZOOM_MAX_SCALE,
+    nodeMargin: 50,
+  });
 }
 
 // 범례 추가 (기존 유지)
@@ -361,17 +566,18 @@ function setupSectorGroupPositions(sectorGroups, totalEquipCount) {
 
   if (totalEquipCount <= 50) {
     // 장비가 적으면 가까이 배치
-    startDistance = SPACING_CONFIG.GUKSA_TO_EQUIP_MIN;
+    startDistance = GUKSA_MAP_CONFIG.GUKSA_TO_EQUIP_MIN;
   } else if (totalEquipCount <= 150) {
     // 중간 정도면 적당히 배치
     startDistance =
-      SPACING_CONFIG.GUKSA_TO_EQUIP_MIN +
-      (totalEquipCount - 50) * (SPACING_CONFIG.GUKSA_TO_EQUIP_MULTIPLIER / 2);
+      GUKSA_MAP_CONFIG.GUKSA_TO_EQUIP_MIN +
+      (totalEquipCount - 50) * (GUKSA_MAP_CONFIG.GUKSA_TO_EQUIP_MULTIPLIER / 2);
   } else {
     // 장비가 많으면 더 멀리 배치
     startDistance = Math.min(
-      SPACING_CONFIG.GUKSA_TO_EQUIP_MAX,
-      SPACING_CONFIG.GUKSA_TO_EQUIP_MIN + totalEquipCount * SPACING_CONFIG.GUKSA_TO_EQUIP_MULTIPLIER
+      GUKSA_MAP_CONFIG.GUKSA_TO_EQUIP_MAX,
+      GUKSA_MAP_CONFIG.GUKSA_TO_EQUIP_MIN +
+        totalEquipCount * GUKSA_MAP_CONFIG.GUKSA_TO_EQUIP_MULTIPLIER
     );
   }
 
@@ -384,17 +590,17 @@ function setupSectorGroupPositions(sectorGroups, totalEquipCount) {
 
       // 그룹의 기본 X 위치 계산
       const groupBaseX =
-        LAYOUT.LEFT_MARGIN + startDistance + groupIndex * SPACING_CONFIG.GROUP_SPACING;
+        LAYOUT.LEFT_MARGIN + startDistance + groupIndex * GUKSA_MAP_CONFIG.GROUP_SPACING;
 
       // 그룹 내 노드들을 격자 형태로 배치
       sectorNodes.forEach((node, nodeIndex) => {
         // 열과 행 계산
-        const column = Math.floor(nodeIndex / SPACING_CONFIG.NODES_PER_COLUMN);
-        const row = nodeIndex % SPACING_CONFIG.NODES_PER_COLUMN;
+        const column = Math.floor(nodeIndex / GUKSA_MAP_CONFIG.NODES_PER_COLUMN);
+        const row = nodeIndex % GUKSA_MAP_CONFIG.NODES_PER_COLUMN;
 
         // 노드 위치 설정
-        node.x = groupBaseX + column * SPACING_CONFIG.NODE_HORIZONTAL_SPACING;
-        node.y = LAYOUT.TOP_MARGIN + row * SPACING_CONFIG.NODE_VERTICAL_SPACING;
+        node.x = groupBaseX + column * GUKSA_MAP_CONFIG.NODE_HORIZONTAL_SPACING;
+        node.y = LAYOUT.TOP_MARGIN + row * GUKSA_MAP_CONFIG.NODE_VERTICAL_SPACING;
 
         // 그룹 정보 추가
         node.groupIndex = groupIndex;
@@ -478,10 +684,12 @@ function createSimulation(nodes, links) {
           // 그룹별 X 위치 유지
           if (d.groupIndex !== undefined) {
             const startDistance = Math.max(
-              SPACING_CONFIG.GUKSA_TO_EQUIP_MIN,
-              SPACING_CONFIG.GUKSA_TO_EQUIP_MAX
+              GUKSA_MAP_CONFIG.GUKSA_TO_EQUIP_MIN,
+              GUKSA_MAP_CONFIG.GUKSA_TO_EQUIP_MAX
             );
-            return LAYOUT.LEFT_MARGIN + startDistance + d.groupIndex * SPACING_CONFIG.GROUP_SPACING;
+            return (
+              LAYOUT.LEFT_MARGIN + startDistance + d.groupIndex * GUKSA_MAP_CONFIG.GROUP_SPACING
+            );
           }
           return LAYOUT.LEFT_MARGIN + 600; // 기본값
         })
@@ -748,12 +956,12 @@ function setupSimulation(simulation, nodes, link, node) {
     nodes.forEach((d) => {
       if (d.type !== 'guksa') {
         d.x = Math.max(
-          SPACING_CONFIG.BOUNDARY_MARGIN,
-          Math.min(SPACING_CONFIG.SVG_WIDTH - SPACING_CONFIG.BOUNDARY_MARGIN, d.x)
+          GUKSA_MAP_CONFIG.BOUNDARY_MARGIN,
+          Math.min(GUKSA_MAP_CONFIG.SVG_WIDTH - GUKSA_MAP_CONFIG.BOUNDARY_MARGIN, d.x)
         );
         d.y = Math.max(
-          SPACING_CONFIG.BOUNDARY_MARGIN,
-          Math.min(SPACING_CONFIG.SVG_HEIGHT - SPACING_CONFIG.BOUNDARY_MARGIN, d.y)
+          GUKSA_MAP_CONFIG.BOUNDARY_MARGIN,
+          Math.min(GUKSA_MAP_CONFIG.SVG_HEIGHT - GUKSA_MAP_CONFIG.BOUNDARY_MARGIN, d.y)
         );
       }
     });
@@ -787,3 +995,8 @@ function dragended(event, d, simulation) {
   d.fx = d.x;
   d.fy = d.y;
 }
+
+// 전역 함수 등록
+window.createGuksaTopologyMap = createGuksaTopologyMap;
+window.addMapZoomControlPanel = addMapZoomControlPanel;
+window.GUKSA_MAP_CONFIG = GUKSA_MAP_CONFIG;

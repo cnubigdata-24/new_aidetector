@@ -15,16 +15,18 @@ const LINK_HOVER_STROKE_WIDTH = 10;
 const LINK_OPACITY = 0.7;
 const LINK_HOVER_OPACITY = 1;
 
-// 맵 관련 상수
-const MAP_HEIGHT = 500;
-const MAP_PADDING = 50;
-const MAP_MARGIN_TOP = -50;
-const HORIZONTAL_SPACING = 450;
-const VERTICAL_SPACING = 100;
-const ZOOM_MIN_SCALE = 0.5;
-const ZOOM_MAX_SCALE = 5;
+// 맵 관련 상수 (장비 연결 기준)
+const EQUIP_MAP_CONFIG = {
+  MAP_HEIGHT: 500,
+  MAP_PADDING: 50,
+  MAP_MARGIN_TOP: -50,
+  HORIZONTAL_SPACING: 400,
+  VERTICAL_SPACING: 70,
+  ZOOM_MIN_SCALE: 0.3, // 0.8 → 0.3으로 감소하여 더 많이 축소 가능
+  ZOOM_MAX_SCALE: 3.0,
+};
 
-// 툴팁 관련 상수
+// 툴크 관련 상수
 const TOOLTIP_DURATION = 200;
 const TOOLTIP_AUTO_HIDE_DELAY = 10000; // 10초
 const MAX_TOOLTIP_ALARMS = 5;
@@ -49,6 +51,7 @@ const FIELD_COLORS = {
   전송: '#9467bd', // 보라색
   선로: '#8c564b', // 갈색
   무선: '#51f13c', // 파란색
+  기타: '#999999', // 회색 (기타/미분류)
 };
 
 // 기본 색상 상수
@@ -102,6 +105,10 @@ const DEFAULT_MAP_STYLES = `
 
   .node-무선 rect {
     fill: ${FIELD_COLORS.무선};
+  }
+
+  .node-기타 rect {
+    fill: ${FIELD_COLORS.기타};
   }
   
 `;
@@ -461,9 +468,9 @@ function updateRecentUpdateTime(recentTime) {
   if (!recentUpdateTimeEl) return;
 
   if (recentTime) {
-    recentUpdateTimeEl.textContent = `최근 경보: ${formatDateTime(recentTime)}`;
+    recentUpdateTimeEl.textContent = `| 최근 경보: ${formatDateTime(recentTime)}`;
   } else {
-    recentUpdateTimeEl.textContent = `최근 경보: -`;
+    recentUpdateTimeEl.textContent = `| 최근 경보`;
   }
 }
 
@@ -962,8 +969,6 @@ function handleEquipChangeEvent(equipInfo) {
   addChatMessage(message, 'system', isAlarmMessage);
 }
 
-window.handleEquipChangeEvent = handleEquipChangeEvent;
-
 // 특정 장비의 최근 경보를 가져오는 함수
 function getRecentAlarmsForEquip(equipId, maxCount = 3) {
   if (!_totalAlarmDataList || !Array.isArray(_totalAlarmDataList)) {
@@ -982,3 +987,16 @@ function getRecentAlarmsForEquip(equipId, maxCount = 3) {
 
   return equipAlarms;
 }
+
+// 전역 함수 등록
+window.handleEquipChangeEvent = handleEquipChangeEvent;
+window.EQUIP_MAP_CONFIG = EQUIP_MAP_CONFIG;
+
+// 하위 호환성을 위한 개별 상수들도 등록
+window.MAP_HEIGHT = EQUIP_MAP_CONFIG.MAP_HEIGHT;
+window.MAP_PADDING = EQUIP_MAP_CONFIG.MAP_PADDING;
+window.MAP_MARGIN_TOP = EQUIP_MAP_CONFIG.MAP_MARGIN_TOP;
+window.HORIZONTAL_SPACING = EQUIP_MAP_CONFIG.HORIZONTAL_SPACING;
+window.VERTICAL_SPACING = EQUIP_MAP_CONFIG.VERTICAL_SPACING;
+window.ZOOM_MIN_SCALE = EQUIP_MAP_CONFIG.ZOOM_MIN_SCALE;
+window.ZOOM_MAX_SCALE = EQUIP_MAP_CONFIG.ZOOM_MAX_SCALE;

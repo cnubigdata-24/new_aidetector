@@ -94,6 +94,11 @@ function initSectorRadioEvent() {
         // 현재 필터링 분야 설정
         _selectedSector = selectedSector;
 
+        // 테이블 검색 필터 초기화 (분야 변경 시)
+        if (typeof window.clearTableSearchFilter === 'function') {
+          window.clearTableSearchFilter();
+        }
+
         // 장비 목록 업데이트
         fetchSideBarEquipListBySector(_selectedSector);
 
@@ -123,6 +128,11 @@ function initDashboardClickEvents() {
 
     _selectedSector = sector;
     console.log(`대시보드 박스 클릭: ${_selectedSector} 분야`);
+
+    // 테이블 검색 필터 초기화 (분야 변경 시)
+    if (typeof window.clearTableSearchFilter === 'function') {
+      window.clearTableSearchFilter();
+    }
 
     // SideBar 라디오 버튼 Sector 값 동기화
     const radio = document.querySelector(`input[name="sector"][value="${_selectedSector}"]`);
@@ -656,15 +666,17 @@ function updateAlarmSummary() {
   };
 
   if (elements.equipmentCount) {
-    elements.equipmentCount.textContent = `경보 장비(${formatNumber(totalEquipmentCount)}대)`;
+    elements.equipmentCount.textContent = `| 실시간 경보장비: ${formatNumber(
+      totalEquipmentCount
+    )}대`;
   }
 
   if (elements.alarmCount) {
-    elements.alarmCount.textContent = `전체 경보(${formatNumber(totalAlarmCount)}개)`;
+    elements.alarmCount.textContent = `| 전체 경보: ${formatNumber(totalAlarmCount)}개`;
   }
 
   if (elements.validCount) {
-    elements.validCount.textContent = `유효 경보(${formatNumber(totalValidCount)}개)`;
+    //     elements.validCount.textContent = `유효 경보(${formatNumber(totalValidCount)}개)`;
   }
 
   // 분야별 대시보드 업데이트
@@ -888,7 +900,7 @@ function generateMapCompletionMessage(equipList, mapData) {
       const isCableLink =
         sourceField === '선로' ||
         targetField === '선로' ||
-        (link.cable_num && link.cable_num.trim() !== '');
+        (link.link_name && link.link_name.trim() !== '');
 
       if (isCableLink) {
         totalCableLinks++;
@@ -1037,7 +1049,7 @@ function createMapTotal(responseData, selectedView = 'equip') {
   if (selectedView === 'equip') {
     mapFunction = window.createEquipTopologyMap;
   } else {
-    mapFunction = window.window.createGuksaTopologyMap;
+    mapFunction = window.createGuksaTopologyMap;
   }
 
   if (typeof mapFunction === 'function') {

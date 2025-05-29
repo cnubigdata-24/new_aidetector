@@ -681,12 +681,6 @@ function toggleFailureTypeVisualization(failureType, show = true) {
   }
 }
 
-// 외부에서 접근 가능하도록 전역 함수로 등록
-window.analyzeFailurePatterns = analyzeFailurePatterns;
-window.getFailureAnalysisResults = getFailureAnalysisResults;
-window.clearFailureVisualization = clearFailureVisualization;
-window.toggleFailureTypeVisualization = toggleFailureTypeVisualization;
-
 // 채팅창 초기화 함수
 function clearChatMessages() {
   const chatArea = document.getElementById('chat-messages-area');
@@ -756,3 +750,7 @@ async function runFailureAnalysis() {
 // 전역 함수로 등록
 window.clearChatMessages = clearChatMessages;
 window.runFailureAnalysis = runFailureAnalysis;
+window.analyzeFailurePatterns = analyzeFailurePatterns;
+window.getFailureAnalysisResults = getFailureAnalysisResults;
+window.clearFailureVisualization = clearFailureVisualization;
+window.toggleFailureTypeVisualization = toggleFailureTypeVisualization;

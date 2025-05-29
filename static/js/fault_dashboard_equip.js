@@ -71,8 +71,6 @@ function analyzeNetworkTopology(nodesData) {
 
   return { centralNodeId: null, levels: {} };
 }
-// 전역함수 등록
-window.analyzeNetworkTopology = analyzeNetworkTopology;
 
 // 장비 토폴로지 맵 생성 함수
 function createEquipTopologyMap(data, alarmDataList) {
@@ -82,21 +80,12 @@ function createEquipTopologyMap(data, alarmDataList) {
   // 🔥 근본 원인 결과 전역변수 초기화
   window.currentRootCauseResults = {
     nodes: [],
-    nodeNames: [],
     timestamp: null,
   };
-
-  console.log('경보 데이터 확인:', {
-    alarmDataListProvided: !!alarmDataList,
-    alarmCount: alarmDataList ? alarmDataList.length : 0,
-    sampleAlarm: alarmDataList && alarmDataList.length > 0 ? alarmDataList[0] : null,
-  });
 
   // 맵 컨테이너 초기화
   const mapContainer = document.getElementById('map-container');
   mapContainer.innerHTML = '';
-
-  console.log('장비맵 데이터:', data); // 디버깅
 
   // 장비 목록과 링크 정보 추출
   const equipmentList = data.equipment_list || [];
@@ -122,12 +111,64 @@ function createEquipTopologyMap(data, alarmDataList) {
       });
     }
 
+    // equip_field 추론 로직 개선
+    let equipField = d.equip_field;
+
+    // equip_field가 없거나 빈 값인 경우 다른 방법으로 추론
+    if (!equipField || equipField.trim() === '') {
+      // 1. 경보 데이터에서 sector 정보 가져오기
+      if (nodeAlarms.length > 0 && nodeAlarms[0].sector) {
+        equipField = nodeAlarms[0].sector;
+      }
+      // 2. 전역 경보 데이터에서 해당 장비의 sector 찾기
+      else if (alarmDataList && Array.isArray(alarmDataList)) {
+        const equipAlarm = alarmDataList.find((alarm) => alarm && alarm.equip_id === nodeId);
+        if (equipAlarm && equipAlarm.sector) {
+          equipField = equipAlarm.sector;
+        }
+      }
+      // 3. 장비 타입에서 추론
+      else if (d.equip_type) {
+        const equipType = d.equip_type.toUpperCase();
+        if (equipType.includes('IP') || equipType.includes('OLT') || equipType.includes('DSLAM')) {
+          equipField = 'IP';
+        } else if (
+          equipType.includes('MSPP') ||
+          equipType.includes('SDH') ||
+          equipType.includes('WDM')
+        ) {
+          equipField = '전송';
+        } else if (equipType.includes('MW') || equipType.includes('MICROWAVE')) {
+          equipField = 'MW';
+        } else if (
+          equipType.includes('SWITCH') ||
+          equipType.includes('L3') ||
+          equipType.includes('L2')
+        ) {
+          equipField = '교환';
+        } else if (equipType.includes('CABLE') || equipType.includes('FIBER')) {
+          equipField = '선로';
+        } else if (
+          equipType.includes('BTS') ||
+          equipType.includes('RBS') ||
+          equipType.includes('RADIO')
+        ) {
+          equipField = '무선';
+        }
+      }
+
+      // 4. 여전히 없으면 기본값 설정
+      if (!equipField || equipField.trim() === '') {
+        equipField = '기타'; // '분야 미상' 대신 '기타'로 변경
+      }
+    }
+
     const node = {
       id: nodeId,
       equip_id: nodeId,
       equip_name: d.equip_name || '장비' + nodeId,
       equip_type: d.equip_type || '타입 미상',
-      equip_field: d.equip_field || '분야 미상',
+      equip_field: equipField,
       guksa_name: d.guksa_name || '정보 없음',
       up_down: d.up_down || 'none',
       connections: [],
@@ -149,7 +190,7 @@ function createEquipTopologyMap(data, alarmDataList) {
 
   // SVG 설정 - 맵 크기 증가
   const width = mapContainer.clientWidth || 1000;
-  const height = MAP_HEIGHT;
+  const height = EQUIP_MAP_CONFIG.MAP_HEIGHT;
 
   // 줌 기능 추가를 위한 전체 그룹 생성
   const svg = d3
@@ -158,7 +199,10 @@ function createEquipTopologyMap(data, alarmDataList) {
     .attr('width', width)
     .attr('height', height)
     .attr('viewBox', [0, 0, width, height])
-    .attr('style', `max-width: 100%; height: auto; margin-top: ${MAP_MARGIN_TOP}px;`); // 위쪽 마진 추가
+    .attr(
+      'style',
+      `max-width: 100%; height: auto; margin-top: ${EQUIP_MAP_CONFIG.MAP_MARGIN_TOP}px;`
+    ); // 위쪽 마진 추가
 
   // 줌 동작을 위한 컨테이너 그룹
   const container = svg.append('g');
@@ -166,13 +210,13 @@ function createEquipTopologyMap(data, alarmDataList) {
   // 줌 행동 정의
   const zoom = d3
     .zoom()
-    .scaleExtent([ZOOM_MIN_SCALE, ZOOM_MAX_SCALE]) // 줌 범위 확장
+    .scaleExtent([EQUIP_MAP_CONFIG.ZOOM_MIN_SCALE, EQUIP_MAP_CONFIG.ZOOM_MAX_SCALE]) // 줌 범위 확장
     .on('zoom', (event) => {
       container.attr('transform', event.transform);
     });
 
-  // SVG에 줌 기능 적용
-  svg.call(zoom);
+  // SVG에 줌 기능 적용 (마우스 휠 줌 비활성화)
+  svg.call(zoom).on('wheel.zoom', null);
 
   // 모든 툴팁 숨기기 함수
   function hideAllTooltips() {
@@ -201,6 +245,7 @@ function createEquipTopologyMap(data, alarmDataList) {
     // ID 필드 추출 (equip_id 또는 source)
     const sourceId = link.equip_id || link.source;
     const targetId = link.link_equip_id || link.target;
+    const linkName = link.link_name || '';
 
     // source와 target 모두 존재하는지 확인
     const valid = _equipmentMap[sourceId] && _equipmentMap[targetId];
@@ -216,16 +261,16 @@ function createEquipTopologyMap(data, alarmDataList) {
   const linksData = validLinks.map((d) => {
     const sourceId = d.equip_id || d.source;
     const targetId = d.link_equip_id || d.target;
+    const linkName = d.link_name || '링크 불명';
 
     return {
       source: sourceId,
       target: targetId,
-      cable_num: d.cable_num || '', // cable_num이 없으면 빈 문자열로 설정
+      link_name: linkName,
       sourceField: _equipmentMap[sourceId]?.equip_field,
       targetField: _equipmentMap[targetId]?.equip_field,
     };
   });
-
   // 노드간 링크 정보 구축 (각 노드마다 연결된 노드 목록)
   linksData.forEach((link) => {
     const source = _equipmentMap[link.source];
@@ -243,9 +288,9 @@ function createEquipTopologyMap(data, alarmDataList) {
   // NW 토폴로지 분석
   const { centralNodeId, levels } = analyzeNetworkTopology(nodesData);
 
-  // 맵 중앙 계산 - 위쪽으로 이동
+  // 맵 중앙 계산
   const centerX = width / 2;
-  const centerY = height / 2 - 40; // 위쪽으로 이동
+  const centerY = height / 2 - 40; //
 
   // 노드 위치 설정 - 레벨 기반 배치
   function assignNodePositions() {
@@ -324,21 +369,21 @@ function createEquipTopologyMap(data, alarmDataList) {
         });
       }
     } else {
-      // 중앙 노드가 없는 경우 모든 노드를 가로로 일렬 배치
+      // 중앙 노드가 없는 경우 모든 노드를 중앙에 배치
       let allNodes = [];
       for (const level in levels) {
         allNodes = allNodes.concat(levels[level]);
       }
-      horizontalLevels[1] = allNodes;
+      horizontalLevels[0] = allNodes; // 중앙에 배치
     }
 
-    // 가로 배치 간격 계산
+    // 가로 배치 간격 계산 - 노드가 겹치지 않도록 간격 증가
     const maxNodesInDirection = Math.max(
       ...Object.values(horizontalLevels).map((nodes) => nodes.length)
     );
-    const effectiveHorizontalSpacing = Math.min(
-      HORIZONTAL_SPACING,
-      (width * 0.8) / (maxNodesInDirection + 1)
+    const effectiveHorizontalSpacing = Math.max(
+      EQUIP_MAP_CONFIG.HORIZONTAL_SPACING, // 최소 간격을 HORIZONTAL_SPACING으로 보장
+      width / (maxNodesInDirection + 1) // 화면 비율 조정
     );
 
     // 각 방향별로 노드 배치
@@ -354,16 +399,25 @@ function createEquipTopologyMap(data, alarmDataList) {
       directionNodes.forEach((nodeId, index) => {
         const node = _equipmentMap[nodeId];
 
-        // X 위치: 중앙에서 방향에 따라 간격 배치
-        const xPos = centerX + (dir > 0 ? 1 : -1) * effectiveHorizontalSpacing * absLevel;
+        // X 위치: 중앙에서 방향에 따라 간격 배치 (중앙 정렬 개선)
+        let xPos;
+        if (dir === 0) {
+          // 중앙 배치인 경우 - 간격을 더 좁게
+          xPos = centerX + (index - (nodeCount - 1) / 2) * effectiveHorizontalSpacing * 0.5;
+        } else {
+          xPos = centerX + (dir > 0 ? 1 : -1) * effectiveHorizontalSpacing * absLevel;
+        }
 
         // Y 위치: 노드 수에 따라 균등 배치
         let yPos;
         if (nodeCount <= 1) {
           yPos = centerY; // 단일 노드는 중앙에
         } else {
-          // 여러 노드는 고르게 분포
-          const totalHeight = Math.min(height * 0.7, nodeCount * VERTICAL_SPACING);
+          // 여러 노드는 고르게 분포 - 세로 간격 조정
+          const totalHeight = Math.min(
+            height * 0.5,
+            nodeCount * EQUIP_MAP_CONFIG.VERTICAL_SPACING * 0.9
+          );
           const yOffset =
             (index - (nodeCount - 1) / 2) * (totalHeight / Math.max(1, nodeCount - 1));
           yPos = centerY + yOffset;
@@ -380,10 +434,11 @@ function createEquipTopologyMap(data, alarmDataList) {
     // 연결되지 않은 노드들 처리 (있을 경우)
     const unvisitedNodes = nodesData.filter((node) => node.level === -1);
     if (unvisitedNodes.length > 0) {
-      // 맵 하단에 일렬로 배치
-      const bottomY = centerY + VERTICAL_SPACING * 3;
+      // 맵 하단에 일렬로 배치 - 간격 줄임
+      const bottomY = centerY + EQUIP_MAP_CONFIG.VERTICAL_SPACING * 1.8;
       unvisitedNodes.forEach((node, index) => {
-        const xPos = centerX + effectiveHorizontalSpacing * (index - unvisitedNodes.length / 2);
+        const xPos =
+          centerX + effectiveHorizontalSpacing * 0.6 * (index - unvisitedNodes.length / 2);
         node.fx = xPos;
         node.fy = bottomY;
         node.x = xPos;
@@ -411,7 +466,7 @@ function createEquipTopologyMap(data, alarmDataList) {
     linkPairs[pairKey].push(link);
   });
 
-  // 두 노드 사이의 멀티 링크 처리를 위한 함수 개선
+  // 두 노드 사이의 멀티 링크 처리
   function getLinkOffset(d) {
     if (!d.source || !d.target) return 0;
 
@@ -532,8 +587,8 @@ function createEquipTopologyMap(data, alarmDataList) {
 
   // 링크 텍스트 (케이블 번호) - 20자까지만 표시
   link.each(function (d) {
-    if (d.cable_num && d.cable_num.trim() !== '') {
-      const cableText = d.cable_num.length > 20 ? d.cable_num.slice(0, 20) + '...' : d.cable_num;
+    if (d.link_name && d.link_name.trim() !== '') {
+      const cableText = d.link_name.length > 20 ? d.link_name.slice(0, 20) + '...' : d.link_name;
 
       const linkText = d3
         .select(this)
@@ -578,18 +633,34 @@ function createEquipTopologyMap(data, alarmDataList) {
     // 노드/링크 정보 추출
     let equip_id, equip_type, equip_field, equip_name, guksa_name, alarms;
     if (isLink) {
-      // 링크의 source/target에서 정보 추출
+      // 링크 툴팁 정보: source/target에서 정보 추출
       const source = typeof d.source === 'object' ? d.source : _equipmentMap[d.source];
       const target = typeof d.target === 'object' ? d.target : _equipmentMap[d.target];
-      // 링크의 대표 장비(예: source) 기준으로 정보 표시
-      // TODO: 현재 링크 툴팁에 표시되는 경보는 소스 노드의 경보임 => 링크의 경보를 보여주도록 수정 필요
-      equip_id = source.equip_id;
-      equip_type = source.equip_type;
-      equip_field = source.equip_field;
-      equip_name = source.equip_name;
-      guksa_name = source.guksa_name;
-      alarms = source.alarms;
+
+      if (source.equip_field === 'MW' && target.equip_field === 'MW') {
+        equip_field = 'MW';
+        equip_type = 'MW-MW';
+      } else {
+        equip_field = '선로';
+        equip_type = '광케이블';
+      }
+
+      equip_id = d.link_name;
+      equip_name = d.link_name;
+      guksa_name = `(${source.guksa_name}) ↔ (${target.guksa_name})`;
+
+      // link_name과 일치하는 경보를 _totalAlarmDataList에서 찾기
+      if (alarmDataList && Array.isArray(alarmDataList)) {
+        alarms = alarmDataList.filter((alarm) => alarm && alarm.equip_name === d.link_name);
+      } else if (window._totalAlarmDataList && Array.isArray(window._totalAlarmDataList)) {
+        alarms = window._totalAlarmDataList.filter(
+          (alarm) => alarm && alarm.equip_name === d.link_name
+        );
+      } else {
+        alarms = [];
+      }
     } else {
+      // 노드 툴팁 정보: 장비 정보 추출
       equip_id = d.equip_id;
       equip_type = d.equip_type;
       equip_field = d.equip_field;
@@ -1054,12 +1125,12 @@ function createEquipTopologyMap(data, alarmDataList) {
     let maxX = -Infinity,
       maxY = -Infinity;
 
-    // 노드 범위 계산
+    // 노드 범위 계산 - 마진 증가
     nodesData.forEach((d) => {
-      minX = Math.min(minX, d.x - 100);
-      minY = Math.min(minY, d.y - 50);
-      maxX = Math.max(maxX, d.x + 100);
-      maxY = Math.max(maxY, d.y + 50);
+      minX = Math.min(minX, d.x - 100); // 80 → 120으로 증가
+      minY = Math.min(minY, d.y - 40); // 40 → 60으로 증가
+      maxX = Math.max(maxX, d.x + 100); // 80 → 120으로 증가
+      maxY = Math.max(maxY, d.y + 60); // 40 → 60으로 증가
     });
 
     // 링크 오프셋 범위 고려
@@ -1080,16 +1151,17 @@ function createEquipTopologyMap(data, alarmDataList) {
       }
     });
 
-    // 패딩 추가
-    minX -= MAP_PADDING;
-    minY -= MAP_PADDING;
-    maxX += MAP_PADDING;
-    maxY += MAP_PADDING;
+    // 패딩 증가
+    const padding = EQUIP_MAP_CONFIG.MAP_PADDING; // 패딩을 원래대로 복원
+    minX -= padding;
+    minY -= padding;
+    maxX += padding;
+    maxY += padding;
 
-    // 화면에 맞게 스케일과 위치 계산
+    // 화면에 맞게 스케일과 위치 계산 - 최소 1배율 유지
     const dx = maxX - minX;
     const dy = maxY - minY;
-    const scale = Math.min(width / dx, height / dy, 0.9);
+    const scale = Math.min(width / dx, height / dy, 1.0); // 0.6 → 1.0으로 변경하여 최소 1배율 유지
     const tx = (width - scale * (minX + maxX)) / 2;
     const ty = (height - scale * (minY + maxY)) / 2;
 
@@ -1100,30 +1172,29 @@ function createEquipTopologyMap(data, alarmDataList) {
       .call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
   }
 
-  // 컨트롤 패널 추가
+  // 컨트롤 패널 추가 (공통 함수 사용)
   function addControlPanel() {
-    const controlPanel = d3
-      .select('#map-container')
-      .append('div')
-      .attr('class', 'map-control-panel')
-      .style('position', 'absolute')
-      .style('top', '10px')
-      .style('right', '10px')
-      .style('background', 'white')
-      .style('border', '1px solid #ddd')
-      .style('border-radius', '4px')
-      .style('padding', '5px')
-      .style('z-index', '1000');
-
-    // 맵 중앙으로 이동 버튼
-    controlPanel
-      .append('button')
-      .attr('class', 'fit-map-btn')
-      .style('margin', '0px')
-      .style('padding', '0px 0px')
-      .style('cursor', 'pointer')
-      .text('중앙으로 이동')
-      .on('click', () => fitAllNodes());
+    // fault_d3_map.js의 공통 함수 사용
+    if (typeof window.addMapZoomControlPanel === 'function') {
+      window.addMapZoomControlPanel(
+        document.getElementById('map-container'),
+        svg, // svg.node() 대신 svg 객체 직접 전달
+        zoom,
+        width,
+        height,
+        {
+          zoomMinScale: EQUIP_MAP_CONFIG.ZOOM_MIN_SCALE,
+          zoomMaxScale: EQUIP_MAP_CONFIG.ZOOM_MAX_SCALE,
+          mapPadding: EQUIP_MAP_CONFIG.MAP_PADDING,
+          nodeMargin: 100,
+          includeLinks: true, // 링크 오프셋 범위도 고려
+        }
+      );
+    } else {
+      console.warn(
+        'addMapZoomControlPanel 함수를 찾을 수 없습니다. fault_d3_map.js가 로드되었는지 확인하세요.'
+      );
+    }
   }
 
   // 컨트롤 패널 추가 (활성화)
@@ -1136,7 +1207,17 @@ function createEquipTopologyMap(data, alarmDataList) {
     console.error('근본 원인 노드 강조 중 오류 발생:', error);
   }
 
-  setTimeout(fitAllNodes, 50);
+  // 초기 맵 중앙 정렬 (100ms 후)
+  setTimeout(() => {
+    // 공통 함수의 중앙으로 이동 버튼 클릭
+    const fitBtn = document.querySelector('.map-control-panel button:last-child');
+    if (fitBtn) {
+      fitBtn.click();
+    } else {
+      // 공통 함수 버튼이 없으면 기존 함수 사용
+      fitAllNodes();
+    }
+  }, 100);
 }
 
 // ===== 추가 유틸리티 함수들 =====
@@ -1186,8 +1267,6 @@ async function handleFaultPointClick() {
     }
   }
 }
-// 전역함수 등록
-window.handleFaultPointClick = handleFaultPointClick;
 
 // 장비 분석 결과를 채팅창에 누적하여 표시하는 함수
 function displayFailureAnalysisResultsToChat() {
@@ -1304,7 +1383,7 @@ function displayFailureAnalysisResultsToChat() {
   }, 400);
 }
 
-// 근본 원인 노드 강조 함수 (수정된 버전)
+// 근본 원인 노드 강조 함수
 function highlightRootCauseNodes(centralNodeId, levels, nodesData, linksData) {
   console.log('개선된 근본 원인 노드 강조 함수 시작...');
 
@@ -1314,7 +1393,6 @@ function highlightRootCauseNodes(centralNodeId, levels, nodesData, linksData) {
     // 빈 결과로 초기화
     window.currentRootCauseResults = {
       nodes: [],
-      nodeNames: [],
       timestamp: new Date().toISOString(),
     };
     return;
@@ -1323,22 +1401,10 @@ function highlightRootCauseNodes(centralNodeId, levels, nodesData, linksData) {
   // 근본 원인 찾기
   const rootCauses = findRootCauseNodes(nodesData, linksData, levels, centralNodeId);
   const rootCauseNodeIds = rootCauses.nodes || [];
-  const rootCauseNodeNames = [];
-
-  // 노드 ID를 이름으로 변환 (🔥 수정: equipmentMap 사용)
-  rootCauseNodeIds.forEach((nodeId) => {
-    const node = _equipmentMap[nodeId]; // currentEquipmentMap -> equipmentMap 수정
-    if (node) {
-      rootCauseNodeNames.push(node.equip_name || node.equip_id || nodeId);
-    } else {
-      rootCauseNodeNames.push(nodeId);
-    }
-  });
 
   // 🔥 수정: 전역 변수에 결과 저장 (효과 적용 전에 먼저 저장)
   window.currentRootCauseResults = {
     nodes: rootCauseNodeIds,
-    nodeNames: rootCauseNodeNames,
     timestamp: new Date().toISOString(),
   };
 
@@ -1360,7 +1426,7 @@ function highlightRootCauseNodes(centralNodeId, levels, nodesData, linksData) {
       applyLinkVisualEffect(rootCauses.links);
     }
 
-    console.log('근본 원인 노드 강조 완료:', rootCauseNodeNames);
+    console.log('근본 원인 노드 강조 완료');
   } else {
     console.log('근본 원인 노드를 찾을 수 없습니다. 기존 효과 유지');
     // 🔥 수정: 근본 원인이 없어도 기존 효과는 제거하지 않음
@@ -1492,3 +1558,5 @@ function findRootCauseLinks(links) {
 
 // 전역 함수로 등록
 window.initFaultPointButton = initFaultPointButton;
+window.analyzeNetworkTopology = analyzeNetworkTopology;
+window.handleFaultPointClick = handleFaultPointClick;

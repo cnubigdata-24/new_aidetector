@@ -34,7 +34,7 @@ html {
   background-color: #f5f5f5;
 
   height: auto;
-  min-height: 140px;
+  min-height: 120px; /* 140px → 120px로 줄임 */
 
   overflow: visible;
   border-bottom: 0px solid #ddd;
@@ -117,16 +117,17 @@ html {
   min-height: 0 !important;
 
   border-radius: 6px;
-  border: 1px solid #ddd;
-  background-color: #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 1px solid #cccccc; /* 옅은 회색 테두리 */
+  background-color: #ffffff !important; /* 항상 흰색 배경 */
+  box-shadow: none; /* 그림자 효과 제거 */
   overflow: hidden;
   position: relative;
   margin-top: 3px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, border-color 0.2s ease; /* box-shadow 제거 */
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  color: #ffffff; /* 글자색을 흰색으로 통일 */
 }
 
 /* 대시보드 박스 제목 */
@@ -134,7 +135,7 @@ html {
   margin-top: 0 !important;
   margin-bottom: 5px !important;
   padding-bottom: 2px !important;
-  color: #2e2d2d;
+  color: #ffffff !important; /* 흰색 글자 */
   text-align: center;
   border-bottom: 1px solid #eee;
   font-size: 14px !important;
@@ -156,13 +157,14 @@ html {
   margin-bottom: 1px !important;
   white-space: nowrap;
   overflow: visible;
+  color: #424242 !important; /* 흰색 글자 */
 }
 
-/* 유효 경보 수 하이라이트 */
+/* 유효 경보 수 하이라이트 - 흰색으로 통일 */
 .highlight-valid,
 .valid-count.highlight-valid,
 .dashboard-summary .highlight-valid {
-  color: #ff8c00 !important;
+  color: #424242 !important; /* 오렌지색에서 흰색으로 변경 */
   font-weight: bold !important;
 }
 
@@ -172,14 +174,15 @@ html {
   font-size: 0.9em !important;
   white-space: nowrap;
   overflow: visible;
+  color: #424242 !important; /* 흰색 글자 */
 }
 
-/* 호버 효과 */
+/* 호버 효과 - 그림자 제거 */
 .dashboard-box:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  background-color: #ffffff !important;
-  border-color: #cce5ff;
+  box-shadow: none; /* 그림자 효과 제거 */
+  background-color: #f1f1f1 !important; /* 배경 흰색 유지 */
+  border-color: #999999; /* 호버 시 조금 더 진한 회색 테두리 */
   cursor: pointer;
 }
 
@@ -188,44 +191,44 @@ html {
   background-color: inherit !important;
 }
 
-/* 드래그 중일 때 */
+/* 드래그 중일 때 - 그림자 제거 */
 .dashboard-box.dragging {
   opacity: 0.6;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: none; /* 그림자 효과 제거 */
   z-index: 999;
-  background-color: #ffffff !important;
+  background-color: #f0f6ff !important;
 }
 
-/* 선택된 박스 스타일 */
+/* 선택된 박스 스타일 - 진한 회색 테두리 */
 .dashboard-box.selected {
-  border: 2px solid #007bff !important;
-  box-shadow: 0 0 10px rgba(0, 123, 255, 0.5) !important;
-  background-color: #ffffff !important;
+  border: 2px solid #666666 !important; /* 진한 회색 테두리로 변경 */
+  box-shadow: none !important; /* 그림자 효과 제거 */
+  background-color: #f0f6ff !important; /* 배경 흰색 유지 */
 }
 
 .dashboard-box.selected h3 {
-  color: #007bff !important;
+  color: #424242 !important; /* 흰색 글자 유지 */
 }
 
-/* 유효 경보가 있는 박스 */
+/* 유효 경보가 있는 박스 - 스타일 통일 */
 .dashboard-box.has-valid-alarms {
-  border: 1px solid #ffab40;
-  background-color: #fff6e6 !important;
+  border: 1px solid #cccccc; /* 일반 박스와 동일한 회색 테두리 */
+  background-color: #f0f6ff !important; /* 배경 흰색으로 통일 */
 }
 
 .dashboard-box.has-valid-alarms h3 {
-  color: #ff8c00 !important;
+  color: #424242 !important; /* 흰색 글자로 통일 */
 }
 
-/* 유효 경보 + 선택된 박스 */
+/* 유효 경보 + 선택된 박스 - 스타일 통일 */
 .dashboard-box.has-valid-alarms.selected {
-  border: 2px solid #ff8c00 !important;
-  box-shadow: 0 0 10px rgba(255, 140, 0, 0.5) !important;
-  background-color: #fff6e6 !important;
+  border: 2px solid #4492ff !important; /* 진한 회색 테두리로 통일 */
+  box-shadow: none !important; /* 그림자 효과 제거 */
+  background-color: #deebff !important; /* 배경 흰색으로 통일 */
 }
 
 .dashboard-box.has-valid-alarms.selected h3 {
-  color: #e65c00 !important;
+  color: #424242 !important; /* 흰색 글자로 통일 */
 }
 
 /* 드래그 컨테이너 스타일 */
@@ -249,31 +252,35 @@ html {
 
 /* 전체 현황 요약 스타일 */
 .dashboard-summary {
-  padding: 5px 10px;
+  padding: 3px 10px;
   margin-bottom: 0px !important;
-  background-color: #f5f5f5;
-  border: 0px solid #ddd;
+  background-color: #0078d4;
+  border: 0px solid #0078d4;
   font-size: 14px;
   text-align: left;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+  color: #ffffff;
 }
 
 .dashboard-summary span {
   margin-right: 12px;
+  color: #ffffff;
 }
 
 /* 제목 스타일 */
 .summary-title {
-  color: #000000;
-  font-weight: bold;
+  color: #ffffff;
+  margin-right: 2px;
+  padding-right: 2px;
+  /* font-weight: bold; */
 }
 
 .default-title {
-  color: #000000;
+  color: #1b1b1b;
   font-weight: bold;
-  font-size: 11pt;
+  font-size: 10pt;
   min-width: 100px;
 }
 
@@ -418,7 +425,13 @@ html {
 /* 드래그 핸들 */
 .drag-handle {
   width: 3px;
-  background-color: #e0e0e0;
+  background: linear-gradient(
+    to bottom,
+    #0078d4 0px,
+    #0078d4 33px,
+    #e0e0e0 33px,
+    #e0e0e0 100%
+  ); /* 상단 파란색, 나머지는 회색 */
   cursor: col-resize;
   position: relative;
   height: 100%;
@@ -617,7 +630,7 @@ select {
   height: 22px !important;
   line-height: 1 !important;
   font-size: 13px;
-  font-weight: bold;
+  font-weight: normal;
   border-bottom: 1px solid #ddd;
   cursor: pointer;
   text-align: left;
@@ -762,6 +775,8 @@ select {
 .table-filter-container {
   display: flex;
   align-items: center;
+  justify-content: flex-start; /* 기본 정렬은 왼쪽 */
+  width: 100%; /* 전체 너비 사용 */
   margin-bottom: 0px;
   padding: 1px;
   border-radius: 4px;
@@ -796,7 +811,7 @@ select {
 }
 
 .filter-button {
-  padding: 2px 5px;
+  padding: 3px 5px;
   background-color: #e0e0e0;
   color: rgb(0, 0, 0);
   border: none;
@@ -810,7 +825,7 @@ select {
 }
 
 .filter-reset {
-  padding: 2px 5px;
+  padding: 3px 5px;
   background-color: #e0e0e0;
   color: rgb(0, 0, 0);
   border: none;
@@ -1469,61 +1484,97 @@ select {
   align-items: center;
 }
 
-/* 뷰 버튼 스타일 */
+/* 장비 연결 기준, 동일 국사 기준 뷰 버튼 */
 .view-btn {
-  background-color: #f8f8f8;
-  border: 1px solid #ddd;
-  padding: 3px 8px;
-  margin: 0 3px;
-  border-radius: 4px;
+  background-color: #0078d4;
+  border: 1px solid #0078d4;
+  padding: 0px 3px;
+
+  margin-right: 5px;
+  border-radius: 2px;
   cursor: pointer;
-  color: #888888;
-  font-size: 15px;
-  font-weight: bold;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: normal;
   transition: all 0.2s ease;
-  width: 130px;
+  width: 110px;
+  height: 27px;
+  line-height: 27px;
 }
 
 .view-btn:hover {
-  background-color: #f3f3f3;
-  border-color: #6e6e6e;
+  background-color: #0078d4;
+  border: 1px solid #cccccc;
 }
 
 .view-btn.active {
-  background-color: #6e6e6e;
-  border-color: #868686;
+  background-color: #005aa3;
+  border-color: #005aa3;
+
   color: #ffffff;
-  font-weight: bold;
+  /* font-weight: bold; */
+}
+
+/* 장비 연결 기준, 동일 국사 기준 뷰 버튼 */
+.view-btn-rag {
+  background-color: #0078d4;
+  border: 1px solid #0078d4;
+  padding: 0px 3px;
+
+  margin-right: 5px;
+  border-radius: 5px;
+  cursor: pointer;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: normal;
+  transition: all 0.2s ease;
+  width: 140px;
+  height: 27px;
+  line-height: 27px;
+}
+
+.view-btn-rag:hover {
+  background-color: #005aa3;
+  /* border: 1px solid #cccccc; */
+}
+
+.view-btn-rag.active {
+  background-color: #005aa3;
+  border-color: #005aa3;
+
+  color: #ffffff;
+  /* font-weight: bold; */
 }
 
 /* 장애 뷰 버튼 스타일 */
 .fault-view-btn {
-  background-color: #a32202;
-  border: 1px solid #a32202;
+  background-color: #0078d4;
+  border: 1px solid #0078d4;
   padding: 0px 12px;
 
   margin-top: 3px;
   margin-bottom: 0px;
 
-  border-radius: 4px;
+  border-radius: 5px;
   cursor: pointer;
 
-  font-size: 14px;
+  font-size: 15px !important;
   color: #ffffff;
-  font-weight: bold;
+  font-weight: normal !important;
+  /* font-family: Arial, sans-serif !important; */
 
   transition: all 0.2s ease;
   width: 150px;
-  height: 20px; /* 고정 높이 설정 */
-  line-height: 20px; /* height와 일치시켜 수직 중앙 정렬 */
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
 }
 
 .fault-view-btn:hover {
-  background-color: #791a02;
-  font-size: 15px;
+  background-color: #0460a7;
   color: #ffffff;
-  font-weight: bold;
 }
 
 .fault-view-btn:disabled {
@@ -1559,10 +1610,10 @@ select {
 
 /* 좌상단 메인 타이틀: AI Detector 타이틀 */
 .aidetector-title {
-  height: 38px;
-  background-color: #e0e0e0;
-  color: rgb(0, 0, 0);
-  font-size: 17px;
+  height: 35px;
+  background-color: #0078d4;
+  color: rgb(255, 255, 255);
+  font-size: 16px;
   font-family: 'Poppins', sans-serif;
   font-weight: 600;
 
@@ -1572,4 +1623,9 @@ select {
   margin: -15px -15px 10px -15px; /* 좌우상 여백 제거, 아래만 10px */
   padding: 0;
   box-sizing: border-box;
+}
+
+/* 추가: dashboard-summary 내부의 모든 요소들을 흰색으로 강제 설정 */
+.dashboard-summary * {
+  color: #ffffff !important;
 }
