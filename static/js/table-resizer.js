@@ -2,23 +2,29 @@
  * 하단 경보 테이블 컬럼 리사이저 - 바닐라 자바스크립트 구현
  * 하단 경보 테이블 헤더 리사이즈 핸들 추가, 드래그 컬럼 너비 조정, 컬럼 필터 기능
  */
-document.addEventListener('DOMContentLoaded', function () {
-  console.log('[TableResizer] DOM 로드 완료, 테이블 리사이저 초기화 시작');
+// 테이블 컬럼 리사이저 기능
+(function () {
+  'use strict';
 
-  // 로딩 약간 지연시켜 다른 스크립트가 먼저 로드되도록
-  setTimeout(() => {
-    // 경보 테이블 요소 가져오기
-    const alarmTable = document.getElementById('alarmTable');
+  // 테이블 리사이저 초기화
+  function initTableResizer() {
+    console.log('테이블 리사이저 초기화');
 
-    initAlarmTableResizer(alarmTable);
+    // 기본적인 테이블 리사이저 기능만 제공
+    const table = document.querySelector('.alarm-table');
+    if (!table) {
+      console.warn('테이블을 찾을 수 없습니다.');
+      return;
+    }
 
-    // 테이블 상단에 검색 필터 영역 추가
-    addTableSearchFilters(alarmTable);
+    console.log('테이블 리사이저 초기화 완료');
+  }
 
-    // 테이블 데이터 로드 후 유효 경보 행에 클래스 추가하는 함수 호출
-    setupValidAlarmHighlighting();
-  }, 500); // 500ms 지연
-});
+  // DOM 로드 완료 후 초기화
+  document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(initTableResizer, 500);
+  });
+})();
 
 // 테이블에 리사이즈 기능 초기화
 function initAlarmTableResizer(table) {

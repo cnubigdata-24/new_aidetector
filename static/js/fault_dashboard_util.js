@@ -1,5 +1,21 @@
 // 🚩 🔴 🟡 🟢 🔵 ✅ ⚡ 🔥 💡 ✨ 🎯 📊 ❌ ⏱️ 🧭 🗺️ 🔄 ⏳ 📌 🗂️ 🔍 💬 🗨️ ▶️ ⏹️
 
+// 테이블 관련 상수
+const ALARM_TABLE_PAGE_SIZE = 5;
+const TABLE_COLUMNS = [
+  'guksa_id',
+  'sector',
+  'valid_yn',
+  'occur_datetime',
+  'equip_id',
+  'equip_type',
+  'equip_name',
+  'alarm_message',
+];
+
+// 분야 관련 상수
+const SECTORS = ['MW', '선로', '전송', 'IP', '무선', '교환'];
+
 // 노드 관련 상수
 const NODE_WIDTH = 250;
 const NODE_WIDTH_HALF = NODE_WIDTH / 2;
@@ -992,6 +1008,11 @@ function getRecentAlarmsForEquip(equipId, maxCount = 3) {
 window.handleEquipChangeEvent = handleEquipChangeEvent;
 window.EQUIP_MAP_CONFIG = EQUIP_MAP_CONFIG;
 
+// 테이블 및 분야 관련 상수들 전역 등록
+window.ALARM_TABLE_PAGE_SIZE = ALARM_TABLE_PAGE_SIZE;
+window.TABLE_COLUMNS = TABLE_COLUMNS;
+window.SECTORS = SECTORS;
+
 // 하위 호환성을 위한 개별 상수들도 등록
 window.MAP_HEIGHT = EQUIP_MAP_CONFIG.MAP_HEIGHT;
 window.MAP_PADDING = EQUIP_MAP_CONFIG.MAP_PADDING;
@@ -1000,3 +1021,31 @@ window.HORIZONTAL_SPACING = EQUIP_MAP_CONFIG.HORIZONTAL_SPACING;
 window.VERTICAL_SPACING = EQUIP_MAP_CONFIG.VERTICAL_SPACING;
 window.ZOOM_MIN_SCALE = EQUIP_MAP_CONFIG.ZOOM_MIN_SCALE;
 window.ZOOM_MAX_SCALE = EQUIP_MAP_CONFIG.ZOOM_MAX_SCALE;
+
+// 색상 관련 변수들 전역 등록
+window.FIELD_COLORS = FIELD_COLORS;
+window.DEFAULT_COLOR = DEFAULT_COLOR;
+window.LINK_COLOR = LINK_COLOR;
+window.LINK_HOVER_COLOR = LINK_HOVER_COLOR;
+window.LINK_MULTI_BASE_COLOR = LINK_MULTI_BASE_COLOR;
+window.LINK_MULTI_VARIATION = LINK_MULTI_VARIATION;
+window.FIRST_CENTRAL_NODE_BORDER_COLOR = FIRST_CENTRAL_NODE_BORDER_COLOR;
+window.DEFAULT_MAP_STYLES = DEFAULT_MAP_STYLES;
+
+// 추가 유틸리티 함수들
+window.addChatMessage = addChatMessage;
+window.applyVisualPatternEffect = applyVisualPatternEffect;
+window.applyLinkVisualEffect = applyLinkVisualEffect;
+window.clearRootCauseEffects = clearRootCauseEffects;
+window.getNodeName = getNodeName;
+window.getRecentAlarmsForEquip = getRecentAlarmsForEquip;
+
+// 상수들도 전역으로 등록
+window.NODE_WIDTH = NODE_WIDTH;
+window.NODE_HEIGHT = NODE_HEIGHT;
+window.NODE_CORNER_RADIUS = NODE_CORNER_RADIUS;
+window.NODE_STROKE_WIDTH = NODE_STROKE_WIDTH;
+window.LINK_STROKE_WIDTH = LINK_STROKE_WIDTH;
+window.TOOLTIP_DURATION = TOOLTIP_DURATION;
+window.ROOT_CAUSE_HIGHLIGHT_COLOR = ROOT_CAUSE_HIGHLIGHT_COLOR;
+window.ROOT_CAUSE_STROKE_WIDTH = ROOT_CAUSE_STROKE_WIDTH;

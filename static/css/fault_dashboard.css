@@ -40,15 +40,15 @@ html {
   border-bottom: 0px solid #ddd;
   width: 100% !important; /* 100%에서 98%로 변경 */
 
-  margin-left: auto !important; /* 중앙 정렬 */
-  margin-right: auto !important; /* 중앙 정렬 */
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 
 /* 경보 테이블 컨테이너 - flex로 남은 공간 모두 사용 */
 .table-container {
   flex: 1; /* 남은 공간 모두 사용 */
   overflow-y: auto !important;
-  overflow-x: auto !important;
+  overflow-x: hidden !important;
   margin: 0 !important;
   padding: 0 !important;
   width: 100%;
@@ -61,7 +61,7 @@ html {
 
 /* 하단 영역 */
 .bottom-div {
-  height: 200px !important; /* 테이블 영역 고정 높이 */
+  height: 170px !important; /* 테이블 영역 고정 높이 */
   flex-shrink: 0; /* 크기 고정 */
   max-width: 100%;
   position: relative;

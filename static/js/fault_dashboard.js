@@ -2,21 +2,7 @@
  * 경보 대시보드 시스템: 주요 기능: 분야별 경보 표시, 데이터 필터링, 테이블 정렬, 국사/장비 기준 뷰 등
  */
 
-// 🚩 🔴 🟡 🟢 🔵 🔘 🔥 ⚠️ 🚨 🔔 ☑️ ✅ ✔️ ⚡ 🔥 💡 ✨ 🎯 📊 ❌ ⏱️ 🧭 🗺️ 🔄 ⏳ 📌 🗂️ 🔍 💬 🗨️ ▶️ ⏹️
-
-// 상수 및 전역 변수 정의
-const SECTORS = ['MW', '선로', '전송', 'IP', '무선', '교환'];
-const ALARM_TABLE_PAGE_SIZE = 5;
-const TABLE_COLUMNS = [
-  'guksa_id',
-  'sector',
-  'valid_yn',
-  'occur_datetime',
-  'equip_id',
-  'equip_type',
-  'equip_name',
-  'alarm_message',
-];
+// 🚩 🔴 🟡 🟢 🔵 🔘 🔥 ⚠️ 🚨 🔔 ☑️ ✅ ✔️ ⚡ 🔥 💡 ✨ 🎯 📊 ❌ ⏱️ 🧭 🗺️ 🔄 ⏳ 📌 🗂️ �� 💬 🗨️ ▶️ ⏹️
 
 // 상태 변수들
 let _totalAlarmDataList = []; // 원본 데이터 보존용 (API로부터 받은 원래 데이터)
@@ -49,8 +35,9 @@ function initDashboard() {
   const dashboard = d3.select('#dashboard');
   dashboard.html(''); // 기존 내용 삭제
 
-  // 가로 배열을 위해 바로 6개 분야를 추가
-  SECTORS.forEach((sector) => {
+  // 가로 배열을 위해 바로 6개 분야를 추가 - 전역 변수 사용
+  const sectors = window.SECTORS || ['MW', '선로', '전송', 'IP', '무선', '교환'];
+  sectors.forEach((sector) => {
     dashboard
       .append('div')
       .attr('class', 'dashboard-box draggable')
@@ -560,7 +547,8 @@ function addRowsToAlarmTable(alarmDataList) {
 
   // 유효경보 표시 준비
   const validCounts = {};
-  SECTORS.forEach((sector) => {
+  const sectors = window.SECTORS || ['MW', '선로', '전송', 'IP', '무선', '교환'];
+  sectors.forEach((sector) => {
     validCounts[sector] = 0;
   });
 
@@ -576,7 +564,7 @@ function addRowsToAlarmTable(alarmDataList) {
     // 유효경보인 경우 row에 style이 적용된 클래스로 설정
     if (item.valid_yn === 'Y') {
       row.classList.add('valid-alarm');
-      if (item.sector && SECTORS.includes(item.sector)) {
+      if (item.sector && sectors.includes(item.sector)) {
         validCounts[item.sector] += 1;
       }
     }
@@ -612,7 +600,7 @@ function addRowsToAlarmTable(alarmDataList) {
   });
 
   // Sector 분야별 대시보드 박스 글자 색상 업데이트 (유효 경보 강조)
-  SECTORS.forEach((sector) => {
+  sectors.forEach((sector) => {
     if (validCounts[sector] > 0) {
       const box = document.querySelector(`.dashboard-box[data-sector="${sector}"]`);
       if (box) {
@@ -626,14 +614,15 @@ function addRowsToAlarmTable(alarmDataList) {
 function updateAlarmSummary() {
   // 분야별 데이터 집계
   const summary = {};
-  SECTORS.forEach((sector) => {
+  const sectors = window.SECTORS || ['MW', '선로', '전송', 'IP', '무선', '교환'];
+  sectors.forEach((sector) => {
     summary[sector] = [];
   });
 
   // 분야별 데이터 분류
   if (Array.isArray(_summaryAlarmData)) {
     _summaryAlarmData.forEach((item) => {
-      if (item && item.sector && SECTORS.includes(item.sector)) {
+      if (item && item.sector && sectors.includes(item.sector)) {
         if (!summary[item.sector]) {
           summary[item.sector] = [];
         }
@@ -648,7 +637,7 @@ function updateAlarmSummary() {
   let totalValidCount = 0;
 
   // 각 분야별 현황 합산
-  SECTORS.forEach((sector) => {
+  sectors.forEach((sector) => {
     const items = summary[sector] || [];
     const validAlarms = items.filter((d) => d.valid_yn === 'Y').length;
     const uniqueEquipmentCount = new Set(items.map((d) => d.equip_name)).size;
@@ -682,11 +671,13 @@ function updateAlarmSummary() {
   // 분야별 대시보드 업데이트
   updateDashboardSector(summary);
 }
+
 // 상단 분야별 경보 대시보드 업데이트
 function updateDashboardSector(summary) {
   console.log('분야별 대시보드 업데이트 시작');
 
-  SECTORS.forEach((sector) => {
+  const sectors = window.SECTORS || ['MW', '선로', '전송', 'IP', '무선', '교환'];
+  sectors.forEach((sector) => {
     const box = d3.select(`[data-sector="${sector}"]`);
 
     // 박스가 존재하지 않으면 스킵
@@ -840,36 +831,34 @@ async function fetchEquipmentData(options = {}) {
 function generateMapCompletionMessage(equipList, mapData) {
   if (_selectedView !== 'equip') return;
 
-  const equipCount = equipList ? equipList.length : 0;
+  // 안전한 배열 접근을 위한 검증
+  const safeEquipList = equipList && Array.isArray(equipList) ? equipList : [];
+  const equipCount = safeEquipList.length;
 
   // 장비 분야 정보를 빠르게 조회하기 위한 맵 생성
   const equipFieldMap = {};
-  if (equipList && Array.isArray(equipList)) {
-    equipList.forEach((equip) => {
-      const equipId = equip.equip_id || equip.id;
-      equipFieldMap[equipId] = equip.equip_field;
-    });
-  }
+  safeEquipList.forEach((equip) => {
+    const equipId = equip.equip_id || equip.id;
+    equipFieldMap[equipId] = equip.equip_field;
+  });
 
   // 경보 발생 장비 계산 (기존 로직 유지)
   let equipWithAlarms = 0;
-  if (equipList && Array.isArray(equipList)) {
-    equipWithAlarms = equipList.filter((equip) => {
-      if (equip.alarms && Array.isArray(equip.alarms) && equip.alarms.length > 0) {
-        return true;
-      }
-      if (_totalAlarmDataList && Array.isArray(_totalAlarmDataList)) {
-        const hasAlarmInGlobal = _totalAlarmDataList.some(
-          (alarm) => alarm && alarm.equip_id === (equip.equip_id || equip.id)
-        );
-        return hasAlarmInGlobal;
-      }
-      return false;
-    }).length;
-  }
+  equipWithAlarms = safeEquipList.filter((equip) => {
+    if (equip.alarms && Array.isArray(equip.alarms) && equip.alarms.length > 0) {
+      return true;
+    }
+    if (_totalAlarmDataList && Array.isArray(_totalAlarmDataList)) {
+      const hasAlarmInGlobal = _totalAlarmDataList.some(
+        (alarm) => alarm && alarm.equip_id === (equip.equip_id || equip.id)
+      );
+      return hasAlarmInGlobal;
+    }
+    return false;
+  }).length;
 
   // 선로 정보 계산
-  const links = mapData.links || [];
+  const links = mapData && mapData.links ? mapData.links : [];
   let alarmCableLinks = 0;
   let totalCableLinks = 0;
   let alarmMwLinks = 0;
@@ -888,13 +877,17 @@ function generateMapCompletionMessage(equipList, mapData) {
       if (!sourceField && sourceId) {
         sourceField =
           equipFieldMap[sourceId] ||
-          _totalAlarmDataList?.find((alarm) => alarm.equip_id === sourceId)?.sector;
+          (_totalAlarmDataList && Array.isArray(_totalAlarmDataList)
+            ? _totalAlarmDataList.find((alarm) => alarm.equip_id === sourceId)?.sector
+            : undefined);
       }
 
       if (!targetField && targetId) {
         targetField =
           equipFieldMap[targetId] ||
-          _totalAlarmDataList?.find((alarm) => alarm.equip_id === targetId)?.sector;
+          (_totalAlarmDataList && Array.isArray(_totalAlarmDataList)
+            ? _totalAlarmDataList.find((alarm) => alarm.equip_id === targetId)?.sector
+            : undefined);
       }
 
       const isCableLink =
@@ -926,6 +919,7 @@ function generateMapCompletionMessage(equipList, mapData) {
   if (
     window.currentRootCauseResults &&
     window.currentRootCauseResults.nodeNames &&
+    Array.isArray(window.currentRootCauseResults.nodeNames) &&
     window.currentRootCauseResults.nodeNames.length > 0
   ) {
     // ✅ 이미 분석된 결과를 다시 직접 사용
@@ -1192,7 +1186,6 @@ function equipChangeEventHandler() {
       fetchEquipmentData({
         guksaId: guksaId,
         equipId: equipId,
-        equipName: equipName,
         viewType: _selectedView,
       });
     } else {
