@@ -343,7 +343,7 @@ function forcePaginationStyles() {
     border-left: none !important;
     border-right: none !important;
     border-bottom: none !important;
-    background-color: #ffffff !important;
+    background-color: #f5f5f5 !important; /* 페이지네이션 배경색 설정 */
     background-image: none !important;
     display: flex !important;
     justify-content: center !important;
