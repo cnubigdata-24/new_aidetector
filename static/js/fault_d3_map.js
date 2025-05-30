@@ -1,28 +1,34 @@
 // 국사 기준 맵 관련 상수 정의
 const GUKSA_MAP_CONFIG = {
-  // 국사-장비 간 기본 간격 (더 줄임)
-  GUKSA_TO_EQUIP_MIN: 50, // 300 → 200 (더 가깝게)
-  GUKSA_TO_EQUIP_MAX: 150, // 600 → 400 (더 가깝게)
-  GUKSA_TO_EQUIP_MULTIPLIER: 5, // 8 → 5 (증가율도 줄임)
+  // 국사-장비 간 기본 간격
+  GUKSA_TO_EQUIP_MIN: 50,
+  GUKSA_TO_EQUIP_MAX: 150,
+  GUKSA_TO_EQUIP_MULTIPLIER: 5,
 
-  // 분야별 그룹 간격
-  GROUP_BASE_WIDTH: 250,
-  GROUP_SPACING: 250,
+  // 분야별 그룹 간격 (화면에 맞게 조정)
+  GROUP_BASE_WIDTH: 200, // 280 → 200 (그룹 기본 너비 축소)
+  GROUP_SPACING: 250, // 180 → 250 (그룹 간 기본 간격 대폭 증가)
+  GROUP_MARGIN: 30, // 50 → 30 (그룹 좌우 여백 축소)
 
-  // 그룹 내 노드 간격
-  NODE_VERTICAL_SPACING: 80,
-  NODE_HORIZONTAL_SPACING: 100,
-  NODES_PER_COLUMN: 8,
+  // 노드 수에 따른 동적 간격 조정 (더 세밀하게)
+  NODE_COUNT_THRESHOLD: 20, // 30 → 20 (더 낮은 임계값)
+  EXTRA_SPACING_PER_10_NODES: 30, // 50 → 30 (10개 노드당 추가 간격 축소)
 
-  // SVG 크기
-  SVG_WIDTH: 1400, // 1600 → 1400 (폭도 조금 줄임)
+  // 그룹 내 노드 배치
+  NODE_VERTICAL_SPACING: 45, // 60 → 45 (세로 간격 더 축소)
+  NODE_HORIZONTAL_SPACING: 60, // 80 → 60 (가로 간격 더 축소)
+  NODES_PER_COLUMN: 8, // 한 열당 노드 수
+  NODES_PER_ROW: 3, // 한 행당 노드 수 (새로 추가)
+
+  // SVG 크기 (간격 축소에 맞춰 조정)
+  SVG_WIDTH: 1400, // 1800 → 1400 (폭 축소)
   SVG_HEIGHT: 600,
 
   // 경계 설정
   BOUNDARY_MARGIN: 30,
 
   // 줌 설정
-  ZOOM_MIN_SCALE: 0.2, // 국사 맵은 더 작게 축소 가능
+  ZOOM_MIN_SCALE: 0.2,
   ZOOM_MAX_SCALE: 3.0,
 };
 
@@ -49,17 +55,24 @@ const LAYOUT = {
   LEFT_MARGIN: 80,
   TOP_MARGIN: 80,
 
-  NODE_RADIUS: 16,
-  NODE_RADIUS_HOVER: 19,
+  // 국사 노드 위치 상수
+  GUKSA_X: -100, // (완전히 좌측 가장자리로 밀착)
+  GUKSA_Y: 300, // 국사 노드 Y 위치 (맵 세로 중앙)
 
-  GUKSA_WIDTH: 100,
-  GUKSA_WIDTH_HOVER: 105,
+  // 장비 노드 크기 (80% 축소: 29 → 23)
+  NODE_RADIUS: 23, // 29 → 23 (80% 축소)
+  NODE_RADIUS_HOVER: 27, // 34 → 27 (80% 축소)
 
-  GUKSA_HEIGHT: 35,
-  GUKSA_HEIGHT_HOVER: 38,
+  // 국사 노드 크기 (80% 축소)
+  GUKSA_WIDTH: 144, // 180 → 144 (80% 축소)
+  GUKSA_WIDTH_HOVER: 151, // 189 → 151 (80% 축소)
 
-  BADGE_RADIUS: 9,
-  BADGE_RADIUS_HOVER: 11,
+  GUKSA_HEIGHT: 50, // 63 → 50 (80% 축소)
+  GUKSA_HEIGHT_HOVER: 54, // 68 → 54 (80% 축소)
+
+  // 경보 배지 크기 (80% 축소)
+  BADGE_RADIUS: 13, // 16 → 13 (80% 축소)
+  BADGE_RADIUS_HOVER: 16, // 20 → 16 (80% 축소)
 
   SECTOR_SPACING: 800,
   SECTOR_ORDER: ['MW', '선로', '전송', 'IP', '무선', '교환'],
@@ -71,22 +84,22 @@ const STYLE = {
   LINK_OPACITY: 0.6,
 
   FONT_SIZE: {
-    GUKSA: '13px',
-    SECTOR: '12px',
-    LABEL: '11px',
-    BADGE: '9px',
-    BADGE_HOVER: '10px',
+    GUKSA: '20px',
+    SECTOR: '18px',
+    LABEL: '20px',
+    BADGE: '14px',
+    BADGE_HOVER: '15px',
   },
 };
 
 const FORCE = {
   LINK_DISTANCE: 100,
-  CHARGE_STRENGTH: -30,
-  X_STRENGTH: 1.5,
-  Y_STRENGTH: 0.5,
-  COLLIDE_RADIUS: 18,
-  ALPHA_DECAY: 0.05,
-  ALPHA: 0.3,
+  CHARGE_STRENGTH: -10,
+  X_STRENGTH: 1.0,
+  Y_STRENGTH: 0.4,
+  COLLIDE_RADIUS: 20,
+  ALPHA_DECAY: 0.04,
+  ALPHA: 0.15,
 };
 
 // ========================================
@@ -123,13 +136,13 @@ function createGuksaTopologyMap(equipData) {
   }
 
   // SVG 설정 및 생성
-  const { svg, container, currentZoom } = setupSVG(mapContainer);
+  const { svg, container, currentZoom, width, height, zoom } = setupSVG(mapContainer);
 
   // 제목 추가
   addTitle(mapContainer, guksaName, nodes.length - 1);
 
   // 줌 컨트롤 패널 추가
-  addZoomControlPanel(mapContainer, svg, currentZoom, svg.attr('width'), svg.attr('height'));
+  addZoomControlPanel(mapContainer, svg, zoom, width, height);
 
   // 범례 추가
   // addLegend(mapContainer); // 범례는 일단 제거
@@ -264,7 +277,7 @@ function setupSVG(mapContainer) {
   // SVG에 줌 기능 적용 (마우스 휠 줌 비활성화)
   svg.call(zoom).on('wheel.zoom', null);
 
-  return { svg, container, currentZoom, width, height };
+  return { svg, container, currentZoom, width, height, zoom };
 }
 
 // 제목 추가 (기존 유지)
@@ -550,9 +563,9 @@ function setupNodePositions(nodes) {
     sectorGroups[node.sector].push(node);
   }
 
-  // 국사 노드 위치 고정
-  nodes[0].fx = LAYOUT.LEFT_MARGIN;
-  nodes[0].fy = LAYOUT.TOP_MARGIN;
+  // 국사 노드 위치 고정 - 좌측 중앙으로 배치
+  nodes[0].fx = LAYOUT.GUKSA_X; // 상수 사용
+  nodes[0].fy = LAYOUT.GUKSA_Y; // 상수 사용
 
   // 항상 분야별 그룹 배치 사용 (원형 배치 비활성화)
   // 장비가 많아도 그룹핑 유지
@@ -581,35 +594,146 @@ function setupSectorGroupPositions(sectorGroups, totalEquipCount) {
     );
   }
 
+  // 전체 장비 수에 따른 기본 간격 조정 (비율 기반)
+  let baseSpacing = GUKSA_MAP_CONFIG.GROUP_SPACING;
+
+  // 분야 수 계산
+  const activeSectorCount = Object.keys(sectorGroups).length;
+  const avgNodesPerSector = totalEquipCount / activeSectorCount;
+
+  if (avgNodesPerSector <= 10) {
+    // 분야당 평균 10개 이하: 간격을 늘려서 공간 활용
+    baseSpacing = GUKSA_MAP_CONFIG.GROUP_SPACING * 1.6;
+    console.log(
+      `평균 ${avgNodesPerSector.toFixed(1)}개/분야 → 기본 간격 증가: ${baseSpacing}px (기본의 160%)`
+    );
+  } else if (avgNodesPerSector <= 20) {
+    // 분야당 평균 10-20개: 약간 간격 증가
+    baseSpacing = GUKSA_MAP_CONFIG.GROUP_SPACING * 1.2;
+    console.log(
+      `평균 ${avgNodesPerSector.toFixed(1)}개/분야 → 기본 간격 증가: ${baseSpacing}px (기본의 120%)`
+    );
+  } else if (avgNodesPerSector >= 40) {
+    // 분야당 평균 40개 이상: 간격을 줄여서 화면에 맞춤
+    baseSpacing = GUKSA_MAP_CONFIG.GROUP_SPACING * 0.7;
+    console.log(
+      `평균 ${avgNodesPerSector.toFixed(1)}개/분야 → 기본 간격 축소: ${baseSpacing}px (기본의 70%)`
+    );
+  } else {
+    // 분야당 평균 20-40개: 기본 간격 유지
+    console.log(`평균 ${avgNodesPerSector.toFixed(1)}개/분야 → 기본 간격 유지: ${baseSpacing}px`);
+  }
+
   let groupIndex = 0;
+  let cumulativeX = LAYOUT.GUKSA_X + startDistance; // 누적 X 위치
 
   // MW, 선로, 전송, IP, 무선, 교환 순서로 그룹 배치
   LAYOUT.SECTOR_ORDER.forEach((sector) => {
     if (sectorGroups[sector] && sectorGroups[sector].length > 0) {
       const sectorNodes = sectorGroups[sector];
+      const nodeCount = sectorNodes.length;
 
-      // 그룹의 기본 X 위치 계산
-      const groupBaseX =
-        LAYOUT.LEFT_MARGIN + startDistance + groupIndex * GUKSA_MAP_CONFIG.GROUP_SPACING;
+      // 노드 수에 따른 동적 간격 계산 (비율 기반 개선)
+      let dynamicSpacing = baseSpacing;
 
-      // 그룹 내 노드들을 격자 형태로 배치
+      // 해당 분야의 노드 비율 계산 (평균 대비)
+      const nodeRatio = nodeCount / avgNodesPerSector;
+
+      if (nodeRatio >= 2.0) {
+        // 평균의 2배 이상: 큰 추가 간격
+        dynamicSpacing = baseSpacing * 1.5;
+        console.log(
+          `분야 [${sector}]: ${nodeCount}개 노드 (평균의 ${nodeRatio.toFixed(
+            1
+          )}배) → 간격 ${dynamicSpacing}px (기본의 150%)`
+        );
+      } else if (nodeRatio >= 1.5) {
+        // 평균의 1.5배 이상: 중간 추가 간격
+        dynamicSpacing = baseSpacing * 1.3;
+        console.log(
+          `분야 [${sector}]: ${nodeCount}개 노드 (평균의 ${nodeRatio.toFixed(
+            1
+          )}배) → 간격 ${dynamicSpacing}px (기본의 130%)`
+        );
+      } else if (nodeRatio <= 0.3) {
+        // 평균의 30% 이하: 간격 축소
+        dynamicSpacing = baseSpacing * 0.8;
+        console.log(
+          `분야 [${sector}]: ${nodeCount}개 노드 (평균의 ${nodeRatio.toFixed(
+            1
+          )}배) → 간격 ${dynamicSpacing}px (기본의 80%)`
+        );
+      } else {
+        // 평균 범위 내: 기본 간격 유지
+        console.log(
+          `분야 [${sector}]: ${nodeCount}개 노드 (평균의 ${nodeRatio.toFixed(
+            1
+          )}배) → 간격 ${dynamicSpacing}px (기본 간격 유지)`
+        );
+      }
+
+      // 그룹의 X 위치 설정
+      const groupBaseX = cumulativeX;
+
+      // 그룹 내 노드들을 원형으로 배치 (격자 대신)
       sectorNodes.forEach((node, nodeIndex) => {
-        // 열과 행 계산
-        const column = Math.floor(nodeIndex / GUKSA_MAP_CONFIG.NODES_PER_COLUMN);
-        const row = nodeIndex % GUKSA_MAP_CONFIG.NODES_PER_COLUMN;
+        const groupCenterX = groupBaseX + 100; // 그룹 중심 X
+        const groupCenterY = 300; // 그룹 중심 Y (맵 중앙)
 
-        // 노드 위치 설정
-        node.x = groupBaseX + column * GUKSA_MAP_CONFIG.NODE_HORIZONTAL_SPACING;
-        node.y = LAYOUT.TOP_MARGIN + row * GUKSA_MAP_CONFIG.NODE_VERTICAL_SPACING;
+        if (sectorNodes.length === 1) {
+          // 노드가 1개면 중심에 배치
+          node.x = groupCenterX;
+          node.y = groupCenterY;
+        } else if (sectorNodes.length <= 6) {
+          // 노드가 6개 이하면 작은 원형으로 배치
+          const radius = 50;
+          const angle = (nodeIndex / sectorNodes.length) * 2 * Math.PI;
+          node.x = groupCenterX + radius * Math.cos(angle);
+          node.y = groupCenterY + radius * Math.sin(angle);
+        } else if (sectorNodes.length <= 15) {
+          // 노드가 15개 이하면 중간 원형으로 배치
+          const radius = 80;
+          const angle = (nodeIndex / sectorNodes.length) * 2 * Math.PI;
+          node.x = groupCenterX + radius * Math.cos(angle);
+          node.y = groupCenterY + radius * Math.sin(angle);
+        } else {
+          // 노드가 많으면 이중 원형으로 배치
+          const innerRadius = 60;
+          const outerRadius = 120;
+          const innerCount = Math.min(8, Math.floor(sectorNodes.length / 2));
+
+          if (nodeIndex < innerCount) {
+            // 내부 원
+            const angle = (nodeIndex / innerCount) * 2 * Math.PI;
+            node.x = groupCenterX + innerRadius * Math.cos(angle);
+            node.y = groupCenterY + innerRadius * Math.sin(angle);
+          } else {
+            // 외부 원
+            const outerIndex = nodeIndex - innerCount;
+            const outerCount = sectorNodes.length - innerCount;
+            const angle = (outerIndex / outerCount) * 2 * Math.PI;
+            node.x = groupCenterX + outerRadius * Math.cos(angle);
+            node.y = groupCenterY + outerRadius * Math.sin(angle);
+          }
+        }
+
+        // 힘 시뮬레이션을 위한 목표 위치 저장
+        node.targetX = node.x;
+        node.targetY = node.y;
 
         // 그룹 정보 추가
         node.groupIndex = groupIndex;
         node.sector = sector;
+        node.groupCenterX = groupCenterX; // 그룹 중심 저장
+        node.groupCenterY = groupCenterY;
       });
 
       console.log(
         `그룹 ${groupIndex} [${sector}]: ${sectorNodes.length}개 노드, X위치: ${groupBaseX}`
       );
+
+      // 다음 그룹을 위한 누적 X 위치 업데이트
+      cumulativeX += dynamicSpacing;
       groupIndex++;
     }
   });
@@ -665,7 +789,7 @@ function setupCircularLayout(nodes, sectorGroups, totalEquipCount) {
 
 // 힘 시뮬레이션 생성 (그룹 유지 강화)
 function createSimulation(nodes, links) {
-  return d3
+  const simulation = d3
     .forceSimulation(nodes)
     .force(
       'link',
@@ -680,34 +804,112 @@ function createSimulation(nodes, links) {
       d3
         .forceX()
         .x((d) => {
-          if (d.type === 'guksa') return LAYOUT.LEFT_MARGIN;
-          // 그룹별 X 위치 유지
+          if (d.type === 'guksa') return LAYOUT.GUKSA_X; // 상수 사용
+          // 동적으로 계산된 목표 X 위치 사용
+          if (d.targetX !== undefined) {
+            return d.targetX;
+          }
+          // 그룹별 X 위치 유지 (fallback)
           if (d.groupIndex !== undefined) {
             const startDistance = Math.max(
               GUKSA_MAP_CONFIG.GUKSA_TO_EQUIP_MIN,
               GUKSA_MAP_CONFIG.GUKSA_TO_EQUIP_MAX
             );
             return (
-              LAYOUT.LEFT_MARGIN + startDistance + d.groupIndex * GUKSA_MAP_CONFIG.GROUP_SPACING
+              LAYOUT.GUKSA_X + startDistance + d.groupIndex * GUKSA_MAP_CONFIG.GROUP_SPACING // 상수 사용
             );
           }
-          return LAYOUT.LEFT_MARGIN + 600; // 기본값
+          return LAYOUT.GUKSA_X + 600; // 상수 사용
         })
-        .strength(1.8) // X 위치 유지 강도 증가
+        .strength(1.0) // X 위치 유지 강도 감소 (2.0 → 1.0, 애니메이션 안정화)
     )
     .force(
       'y',
       d3
         .forceY()
         .y((d) => {
-          if (d.type === 'guksa') return LAYOUT.TOP_MARGIN;
-          return LAYOUT.TOP_MARGIN + 200; // 기본 Y 위치
+          if (d.type === 'guksa') return LAYOUT.GUKSA_Y; // 상수 사용
+          // 동적으로 계산된 목표 Y 위치 사용
+          if (d.targetY !== undefined) {
+            return d.targetY;
+          }
+          return 80 + 200; // 기본 Y 위치도 조정
         })
-        .strength(0.3) // Y 위치는 더 자유롭게
+        .strength(0.4) // Y 위치 강도 감소 (0.8 → 0.4, 애니메이션 안정화)
     )
-    .force('collide', d3.forceCollide().radius(FORCE.COLLIDE_RADIUS))
+    .force('collide', d3.forceCollide().radius(30))
     .alphaDecay(FORCE.ALPHA_DECAY)
     .alpha(FORCE.ALPHA);
+
+  // 분야별 그룹 응집력 추가 (원형 배치에 맞게 조정)
+  simulation.force('sector-group', () => {
+    const alpha = simulation.alpha();
+
+    nodes.forEach((d) => {
+      if (d.type === 'equip' && d.groupCenterX !== undefined && d.groupCenterY !== undefined) {
+        // 그룹 중심으로 약하게 끌어당기기 (원형 유지)
+        const dx = d.groupCenterX - d.x;
+        const dy = d.groupCenterY - d.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // 그룹 중심에서 너무 멀어지지 않도록 제한
+        const maxDistance = 150;
+        if (distance > maxDistance) {
+          const strength = 0.05 * alpha; // 약한 강도로 조정
+          d.vx += (dx / distance) * strength;
+          d.vy += (dy / distance) * strength;
+        }
+      }
+    });
+  });
+
+  // 분야별 그룹 간 분리 강화 (간격 증가에 맞게 조정)
+  simulation.force('sector-separation', () => {
+    const alpha = simulation.alpha();
+
+    nodes.forEach((d, i) => {
+      if (d.type === 'equip') {
+        nodes.forEach((other, j) => {
+          if (i !== j && other.type === 'equip' && d.sector !== other.sector) {
+            // 다른 분야 노드와의 거리 계산
+            const dx = other.x - d.x;
+            const dy = other.y - d.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // 최소 분리 거리 설정 (그룹 간격 증가에 맞춰 조정)
+            const minSeparation = 120; // 80 → 120으로 증가
+
+            if (distance < minSeparation && distance > 0) {
+              // 서로 밀어내는 힘 적용 (강도 감소)
+              const force = ((minSeparation - distance) / distance) * alpha * 0.05; // 0.1 → 0.05로 감소
+              const fx = dx * force;
+              const fy = dy * force;
+
+              d.vx -= fx;
+              d.vy -= fy;
+              other.vx += fx;
+              other.vy += fy;
+            }
+          }
+        });
+      }
+    });
+  });
+
+  // 시뮬레이션이 안정화되면 노드 고정 해제 (드래그 가능하도록)
+  simulation.on('tick', () => {
+    if (simulation.alpha() < 0.05) {
+      // 시뮬레이션이 거의 안정화되면 고정 해제
+      nodes.forEach((d) => {
+        if (d.type === 'equip') {
+          d.fx = null;
+          d.fy = null;
+        }
+      });
+    }
+  });
+
+  return simulation;
 }
 
 // 링크 생성 (기존 유지)
@@ -775,8 +977,8 @@ function createNodes(container, nodes, simulation, tooltip) {
     .filter((d) => d.type === 'equip' && d.alarmMessages && d.alarmMessages.length > 1)
     .append('circle')
     .attr('class', 'alarm-badge-guksa')
-    .attr('cx', 12)
-    .attr('cy', -12)
+    .attr('cx', 22)
+    .attr('cy', -22)
     .attr('r', LAYOUT.BADGE_RADIUS)
     .attr('fill', '#f7f7f7')
     .attr('stroke', 'white')
@@ -787,8 +989,8 @@ function createNodes(container, nodes, simulation, tooltip) {
     .filter((d) => d.type === 'equip' && d.alarmMessages && d.alarmMessages.length > 1)
     .append('text')
     .attr('class', 'alarm-count-guksa')
-    .attr('x', 12)
-    .attr('y', -11)
+    .attr('x', 22)
+    .attr('y', -21)
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'middle')
     .attr('fill', 'black')
@@ -819,7 +1021,7 @@ function createNodes(container, nodes, simulation, tooltip) {
     })
     .attr('text-anchor', 'middle')
     .attr('x', 0)
-    .attr('y', (d) => (d.type === 'guksa' ? 40 : 25))
+    .attr('y', (d) => (d.type === 'guksa' ? 72 : 40))
     .attr('font-size', STYLE.FONT_SIZE.LABEL)
     .attr('fill', '#333');
 
@@ -830,7 +1032,7 @@ function createNodes(container, nodes, simulation, tooltip) {
     .text('국사')
     .attr('text-anchor', 'middle')
     .attr('x', 0)
-    .attr('y', -25)
+    .attr('y', -45)
     .attr('font-size', STYLE.FONT_SIZE.LABEL)
     .attr('font-weight', 'bold')
     .attr('fill', '#333');
@@ -905,15 +1107,15 @@ function handleMouseOver(element, event, d, tooltip) {
     .transition()
     .duration(200)
     .attr('r', LAYOUT.BADGE_RADIUS_HOVER)
-    .attr('cx', 15)
-    .attr('cy', -15);
+    .attr('cx', 22)
+    .attr('cy', -22);
 
   d3.select(element)
     .select('.alarm-count-guksa')
     .transition()
     .duration(200)
-    .attr('x', 15)
-    .attr('y', -13)
+    .attr('x', 22)
+    .attr('y', -21)
     .attr('font-size', STYLE.FONT_SIZE.BADGE_HOVER);
 }
 
@@ -937,15 +1139,15 @@ function handleMouseOut(element, tooltip) {
     .transition()
     .duration(200)
     .attr('r', LAYOUT.BADGE_RADIUS)
-    .attr('cx', 12)
-    .attr('cy', -12);
+    .attr('cx', 22)
+    .attr('cy', -22);
 
   d3.select(element)
     .select('.alarm-count-guksa')
     .transition()
     .duration(200)
-    .attr('x', 12)
-    .attr('y', -10)
+    .attr('x', 22)
+    .attr('y', -20)
     .attr('font-size', STYLE.FONT_SIZE.BADGE);
 }
 

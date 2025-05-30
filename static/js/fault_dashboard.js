@@ -23,8 +23,7 @@ const DOM = {
   timeFilter: () => document.getElementById('timeFilter'),
   pagination: () => $('#pagination'),
   leftSidebar: () => document.querySelector('.left-sidebar'),
-  sideBarToggleBtn: () => document.getElementById('toggle-btn'),
-  dragHandle: () => document.getElementById('drag-handle'),
+  hamburgerBtn: () => document.getElementById('hamburger-btn'),
   equipViewBtn: () => document.getElementById('equip-view-btn'),
   guksaViewBtn: () => document.getElementById('guksa-view-btn'),
   recentUpdateTime: () => document.getElementById('recent-update-time'),
@@ -1233,6 +1232,29 @@ function guksaChangeEventHandler() {
   }
 }
 
+// 햄버거 버튼 이벤트 설정
+function initHamburgerButton() {
+  const hamburgerBtn = document.getElementById('hamburger-btn');
+  const leftSidebar = document.querySelector('.left-sidebar');
+
+  if (!hamburgerBtn || !leftSidebar) {
+    console.error('햄버거 버튼 또는 사이드바 요소를 찾을 수 없습니다.');
+    return;
+  }
+
+  hamburgerBtn.addEventListener('click', function () {
+    // 사이드바 토글
+    leftSidebar.classList.toggle('hidden');
+
+    // 햄버거 버튼 애니메이션
+    hamburgerBtn.classList.toggle('active');
+
+    console.log('사이드바 토글:', leftSidebar.classList.contains('hidden') ? '숨김' : '표시');
+  });
+
+  console.log('햄버거 버튼 이벤트 설정 완료');
+}
+
 // 초기화 함수
 function initAll() {
   console.log('대시보드 초기화 시작');
@@ -1242,6 +1264,7 @@ function initAll() {
   // setupTableHeaderSort();
   setupTableRowClick();
   setToggleViewButtons();
+  initHamburgerButton();
 
   initSectorRadioEvent();
 
@@ -1257,6 +1280,15 @@ function initAll() {
   // 기본 검색 수행 - 모든 분야 데이터 가져오기
   console.log('기본 검색 수행 시작 - 모든 분야');
   fetchAllAlarmsFromDB();
+
+  // 기본 선택된 IP 분야에 선택 스타일 적용
+  setTimeout(() => {
+    const ipDashboardBox = document.querySelector('.dashboard-box[data-sector="IP"]');
+    if (ipDashboardBox) {
+      ipDashboardBox.classList.add('selected');
+      console.log('기본 IP 분야 선택 스타일 적용 완료');
+    }
+  }, 100);
 
   // ===== 새로 추가된 부분 =====
   // 장애점 찾기 버튼 이벤트 초기화
@@ -1280,9 +1312,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 사이드바 초기 상태 설정
   setSidebarState();
-
-  // 사이드바 리사이즈 초기화
-  initSidebarResize();
 
   // 국사 목록 로드
   fetchGuksaList();

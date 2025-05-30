@@ -8,12 +8,142 @@ html {
   overflow-y: hidden !important;
 }
 
-/* 전체 컨테이너 높이 100% 사용 */
+/* 상단 헤더 영역 */
+.top-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 35px;
+  background: linear-gradient(135deg, #1e88e5 0%, #1976d2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 헤더 좌측 영역 */
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+/* 헤더 우측 영역 */
+.header-right {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+/* 헤더 요약 정보 */
+.header-summary {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-size: 14px;
+  color: white;
+}
+
+.header-summary span {
+  color: white;
+  white-space: nowrap;
+}
+
+/* 헤더 뷰 토글 버튼 영역 */
+.header-view-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 20px;
+}
+
+.header-view-toggle .summary-title {
+  color: white;
+  margin-right: 5px;
+}
+
+/* 햄버거 버튼 */
+.hamburger-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  margin-right: 15px;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 30px;
+  height: 30px;
+}
+
+.hamburger-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.hamburger-btn span {
+  display: block;
+  height: 3px;
+  width: 100%;
+  background-color: white;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.hamburger-btn.active span:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+
+.hamburger-btn.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger-btn.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(7px, -6px);
+}
+
+/* 헤더 타이틀 */
+.header-title {
+  color: white;
+  font-size: 17px;
+  font-weight: bold;
+  margin: 0;
+}
+
+/* 전체 컨테이너 높이 100% 사용 - 상단 헤더 높이만큼 조정 */
 .container {
   display: flex;
-  height: 100vh;
+  height: calc(100vh - 35px);
   max-width: 100vw;
   overflow: hidden !important;
+  margin-top: 35px;
+  transition: all 0.3s ease;
+}
+
+/* 사이드바 토글 상태 */
+.left-sidebar {
+  width: 250px;
+  background: #eeeeee;
+  padding: 13px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: auto !important;
+  overflow: hidden !important;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.left-sidebar.hidden {
+  width: 0;
+  padding: 0;
+  margin: 0;
+  transform: translateX(-100%);
+  opacity: 0;
 }
 
 /* 메인 콘텐츠 영역 */
@@ -22,10 +152,45 @@ html {
   display: flex;
   flex-direction: column;
   max-width: 100%;
-  overflow: hidden !important; /* 전체 overflow 제어 */
-  height: 100vh; /* 전체 화면 높이 사용 */
-
+  overflow: hidden !important;
+  height: calc(100vh - 35px);
   padding-bottom: 0 !important;
+  transition: all 0.3s ease;
+}
+
+/* 사이드바가 숨겨졌을 때 메인 콘텐츠 확장 */
+.left-sidebar.hidden + .right-content {
+  width: 100vw;
+  max-width: 100vw;
+}
+
+/* 사이드바가 숨겨졌을 때 대시보드 영역 확장 */
+.left-sidebar.hidden + .right-content .top-dashboard {
+  width: 100% !important;
+  max-width: 100vw;
+}
+
+.left-sidebar.hidden + .right-content #dashboard {
+  width: 100% !important;
+  max-width: 100%;
+  padding-left: 20px !important;
+  padding-right: 20px !important;
+}
+
+/* 사이드바가 숨겨졌을 때 테이블 영역 확장 */
+.left-sidebar.hidden + .right-content .bottom-div {
+  width: 100% !important;
+  max-width: 100vw;
+}
+
+.left-sidebar.hidden + .right-content .table-container {
+  width: 100% !important;
+  max-width: 100vw;
+}
+
+.left-sidebar.hidden + .right-content .alarm-table {
+  width: 100% !important;
+  max-width: 100vw;
 }
 
 /* 상단 대시보드 영역 */
@@ -34,7 +199,7 @@ html {
   background-color: #f5f5f5;
 
   height: auto;
-  min-height: 120px; /* 140px → 120px로 줄임 */
+  min-height: 90px; /* 120px → 90px로 더 줄임 */
 
   overflow: visible;
   border-bottom: 0px solid #ddd;
@@ -42,6 +207,7 @@ html {
 
   margin-left: auto !important;
   margin-right: auto !important;
+  margin-top: 0px; /* 5px → 0px */
 }
 
 /* 경보 테이블 컨테이너 - flex로 남은 공간 모두 사용 */
@@ -61,7 +227,7 @@ html {
 
 /* 하단 영역 */
 .bottom-div {
-  height: 170px !important; /* 테이블 영역 고정 높이 */
+  height: 200px !important; /* 테이블 영역 고정 높이 */
   flex-shrink: 0; /* 크기 고정 */
   max-width: 100%;
   position: relative;
@@ -90,8 +256,8 @@ html {
   margin-left: auto !important; /* 중앙 정렬을 위한 마진 조정 */
   margin-right: auto !important; /* 중앙 정렬을 위한 마진 조정 */
   overflow-x: hidden !important;
-  padding-bottom: 5px;
-  padding-top: 5px;
+  padding-bottom: 0px;
+  padding-top: 0px;
   padding-left: 10px !important; /* 왼쪽 패딩 늘림 */
   padding-right: 30px !important; /* 오른쪽 패딩 늘림 */
   max-width: 100%;
@@ -122,7 +288,7 @@ html {
   box-shadow: none; /* 그림자 효과 제거 */
   overflow: hidden;
   position: relative;
-  margin-top: 3px;
+  margin-top: 0px;
   transition: transform 0.2s ease, border-color 0.2s ease; /* box-shadow 제거 */
   cursor: pointer;
   display: flex;
@@ -285,17 +451,6 @@ html {
 }
 
 /* 좌측 사이드바 */
-.left-sidebar {
-  width: 250px;
-  background: #eeeeee;
-  padding: 13px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  height: auto !important;
-  overflow: hidden !important;
-}
-
 .left-sidebar label {
   display: block;
   margin-bottom: 2px;
@@ -422,24 +577,6 @@ html {
   padding-bottom: 20px;
 }
 
-/* 드래그 핸들 */
-.drag-handle {
-  width: 3px;
-  background: linear-gradient(
-    to bottom,
-    #0078d4 0px,
-    #0078d4 33px,
-    #e0e0e0 33px,
-    #e0e0e0 100%
-  ); /* 상단 파란색, 나머지는 회색 */
-  cursor: col-resize;
-  position: relative;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 /* 사이드바 항목 간격 증가 */
 .summary-entry {
   margin-top: 10px !important;
@@ -461,25 +598,6 @@ html {
 .summary-entry:hover {
   background-color: #fff;
   transform: translateX(2px);
-}
-
-/* 접힘 버튼 */
-.toggle-btn {
-  width: 16px;
-  height: 40px;
-  background-color: #cccccc;
-  color: #666;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.toggle-btn:hover {
-  background-color: #d6d6d6;
-  color: #a0a0a0;
 }
 
 /* 메시지 스타일 */
@@ -799,7 +917,7 @@ select {
   border: 1px solid #ccc;
   border-radius: 3px;
   margin-right: 8px;
-  max-width: 130px;
+  max-width: 150px;
 }
 
 .filter-input {
@@ -807,7 +925,7 @@ select {
   border: 1px solid #ccc;
   border-radius: 3px;
   margin-right: 8px;
-  width: 150px;
+  width: 300px;
 }
 
 .filter-button {
@@ -817,7 +935,7 @@ select {
   border: none;
   border-radius: 3px;
   cursor: pointer;
-  width: 150px;
+  width: 120px;
 }
 
 .filter-button:hover {
@@ -916,7 +1034,7 @@ select {
   height: 400px;
   border: 1px solid #ddd !important;
   border-radius: 0px;
-  margin-top: 2px !important;
+  margin-top: 0px;
   margin-bottom: 0px !important;
   background-color: #ffffff;
   overflow: hidden;
@@ -941,10 +1059,11 @@ select {
   flex-direction: row;
   border: 1px solid #ddd;
   border-radius: 0px;
-  margin-top: 2px;
+  margin-top: 0px;
   margin-bottom: 0px;
   background-color: #ffffff;
   overflow: hidden;
+  transition: all 0.3s ease;
 }
 
 .left-map-panel {
@@ -954,6 +1073,7 @@ select {
   flex-direction: column;
   border-right: 1px solid #ddd;
   background-color: #ffffff;
+  transition: all 0.3s ease;
 }
 
 .right-chat-panel {
@@ -963,6 +1083,22 @@ select {
   display: flex;
   flex-direction: column;
   background-color: #f9f9f9;
+  transition: all 0.3s ease;
+}
+
+/* 사이드바가 숨겨졌을 때 맵과 채팅 영역 확장 */
+.left-sidebar.hidden + .right-content .horizontal-split-area {
+  width: 100vw;
+  max-width: 100vw;
+}
+
+.left-sidebar.hidden + .right-content .left-map-panel {
+  min-width: 400px;
+}
+
+.left-sidebar.hidden + .right-content .right-chat-panel {
+  width: 450px;
+  max-width: 650px;
 }
 
 .panel-header {
@@ -1477,73 +1613,34 @@ select {
   stroke-width: 3px;
 }
 
-/* 버튼 컨테이너 스타일 */
-.view-toggle-buttons {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-}
-
 /* 장비 연결 기준, 동일 국사 기준 뷰 버튼 */
 .view-btn {
-  background-color: #0078d4;
-  border: 1px solid #0078d4;
-  padding: 0px 3px;
-
-  margin-right: 5px;
-  border-radius: 2px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 4px 8px;
+  margin: 0 2px;
+  border-radius: 4px;
   cursor: pointer;
-  color: #ffffff;
-  font-size: 14px;
+  color: white;
+  font-size: 12px;
   font-weight: normal;
   transition: all 0.2s ease;
-  width: 110px;
-  height: 27px;
-  line-height: 27px;
+  width: 100px;
+  height: 28px;
+  line-height: 20px;
+  text-align: center;
 }
 
 .view-btn:hover {
-  background-color: #0078d4;
-  border: 1px solid #cccccc;
+  background-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .view-btn.active {
-  background-color: #005aa3;
-  border-color: #005aa3;
-
-  color: #ffffff;
-  /* font-weight: bold; */
-}
-
-/* 장비 연결 기준, 동일 국사 기준 뷰 버튼 */
-.view-btn-rag {
-  background-color: #0078d4;
-  border: 1px solid #0078d4;
-  padding: 0px 3px;
-
-  margin-right: 5px;
-  border-radius: 5px;
-  cursor: pointer;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: normal;
-  transition: all 0.2s ease;
-  width: 140px;
-  height: 27px;
-  line-height: 27px;
-}
-
-.view-btn-rag:hover {
-  background-color: #005aa3;
-  /* border: 1px solid #cccccc; */
-}
-
-.view-btn-rag.active {
-  background-color: #005aa3;
-  border-color: #005aa3;
-
-  color: #ffffff;
-  /* font-weight: bold; */
+  background-color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 1);
+  color: #1976d2;
+  font-weight: 500;
 }
 
 /* 장애 뷰 버튼 스타일 */

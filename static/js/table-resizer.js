@@ -250,6 +250,7 @@ function addTableSearchFilters(table) {
   filterInput.type = 'text';
   filterInput.className = 'filter-input';
   filterInput.id = 'filter-value-input';
+  //   filterInput.style.width = '300px';
   filterInput.placeholder = '검색어 입력...';
 
   // 엔터키 이벤트 추가
@@ -285,6 +286,7 @@ function addTableSearchFilters(table) {
   ragButton.textContent = 'AI RAG 사례조회';
   ragButton.style.marginLeft = 'auto'; // 오른쪽 끝으로 배치
   ragButton.style.marginRight = '10px'; // 오른쪽 여백
+  ragButton.style.cursor = 'pointer'; // 마우스 오버 시 손모양 커서
   ragButton.addEventListener('click', function () {
     // AI RAG 사례조회 기능 (추후 구현)
     console.log('AI RAG 사례조회 버튼 클릭됨');

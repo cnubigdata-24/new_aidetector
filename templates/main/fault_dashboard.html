@@ -31,11 +31,39 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/simplePagination.js/1.6/jquery.simplePagination.min.js"></script>
   </head>
   <body>
+    <!-- 상단 헤더 영역 -->
+    <div class="top-header">
+      <div class="header-left">
+        <button id="hamburger-btn" class="hamburger-btn">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="header-title" onclick="location.reload();" style="cursor: pointer">
+          AI Detector
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- 전체 현황 요약 라인 -->
+        <div class="header-summary">
+          <span id="total-equip-count">| 실시간 경보장비 (0대)</span>
+          <span id="total-alarm-count">| 전체 경보 (0개)</span>
+          <span id="recent-update-time" class="recent-update-time">| 최근 경보</span>
+
+          <!-- 우상단에 장비/국사 기준 메뉴 -->
+          <div class="header-view-toggle">
+            <span class="summary-title">| 경보 맵 그리기:</span>
+            <button id="equip-view-btn" class="view-btn active">장비 연결 기준</button>
+            <button id="guksa-view-btn" class="view-btn">동일 국사 기준</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="container">
       <div class="left-sidebar">
         <div>
-          <div class="aidetector-title">AI Detector</div>
-
           <div style="display: flex; justify-content: space-between; align-items: center">
             <span class="default-title">대상 국사 </span>
             <span style="cursor: pointer; font-size: 10pt" onclick="refreshPage()">Refresh ⟳</span>
@@ -98,29 +126,9 @@
         <button id="fault-point-btn" class="fault-view-btn">장애점 찾기</button>
       </div>
 
-      <div class="drag-handle" id="drag-handle">
-        <div class="toggle-btn" id="toggle-btn">◀</div>
-      </div>
-
       <!-- right-content 영역 -->
       <div class="right-content">
         <div class="top-dashboard">
-          <!-- 전체 현황 요약 라인 -->
-          <div class="dashboard-summary">
-            <!-- <span class="summary-title">실시간 경보현황: </span> -->
-            <span id="total-equip-count">| 실시간 경보장비 (0대)</span>
-            <span id="total-alarm-count">| 전체 경보 (0개)</span>
-            <!-- <span id="total-valid-count">유효 경보(0개)</span> -->
-            <span id="recent-update-time" class="recent-update-time">| 최근 경보</span>
-
-            <!-- 우상단에 장비/국사 기준 메뉴 -->
-            <div class="view-toggle-buttons">
-              <span class="summary-title">| 경보 맵 그리기:</span>
-              <button id="equip-view-btn" class="view-btn active">장비 연결 기준</button>
-              <button id="guksa-view-btn" class="view-btn">동일 국사 기준</button>
-            </div>
-          </div>
-
           <div
             id="dashboard"
             class="draggable-container"
