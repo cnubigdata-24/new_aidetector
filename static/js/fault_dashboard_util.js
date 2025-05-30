@@ -1231,3 +1231,207 @@ function applyPaginationStylesAfterRender() {
     forceApplyPaginationStyles();
   }, 500);
 }
+
+// 테이블 컬럼 리사이즈 기능 초기화
+function initTableColumnResize() {
+  const table = document.querySelector('.alarm-table');
+  if (!table) return;
+
+  const headers = table.querySelectorAll('th');
+  let isResizing = false;
+  let currentHeader = null;
+  let startX = 0;
+  let startWidth = 0;
+  let lastMouseX = 0;
+
+  headers.forEach((header, index) => {
+    // 마지막 컬럼은 리사이즈 제외
+    if (index === headers.length - 1) return;
+
+    // 모든 드래그 관련 이벤트 방지
+    header.addEventListener('dragstart', (e) => {
+      e.preventDefault();
+      return false;
+    });
+
+    header.addEventListener('drag', (e) => {
+      e.preventDefault();
+      return false;
+    });
+
+    header.addEventListener('mousedown', (e) => {
+      const rect = header.getBoundingClientRect();
+      const isRightEdge = e.clientX > rect.right - 10;
+
+      if (isRightEdge) {
+        isResizing = true;
+        currentHeader = header;
+        startX = e.clientX;
+        startWidth = header.offsetWidth;
+        lastMouseX = e.clientX;
+
+        // 드래그 중 스타일 적용
+        header.classList.add('resizing');
+
+        // 더 강력한 드래그 방지
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        document.body.style.webkitUserSelect = 'none';
+        document.body.style.mozUserSelect = 'none';
+        document.body.style.msUserSelect = 'none';
+
+        // 모든 드래그 관련 속성 비활성화
+        header.draggable = false;
+        header.setAttribute('draggable', 'false');
+
+        // 테이블 레이아웃 고정
+        table.style.tableLayout = 'fixed';
+
+        // 기본 동작 완전 차단
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+
+        return false;
+      }
+    });
+
+    header.addEventListener('mousemove', (e) => {
+      if (isResizing) return; // 드래그 중에는 호버 효과 무시
+
+      const rect = header.getBoundingClientRect();
+      const isRightEdge = e.clientX > rect.right - 10;
+
+      if (isRightEdge) {
+        header.style.cursor = 'col-resize';
+      } else {
+        header.style.cursor = 'pointer';
+      }
+    });
+
+    header.addEventListener('mouseleave', () => {
+      if (!isResizing) {
+        header.style.cursor = 'pointer';
+      }
+    });
+
+    // 컨텍스트 메뉴도 방지
+    header.addEventListener('contextmenu', (e) => {
+      if (isResizing) {
+        e.preventDefault();
+        return false;
+      }
+    });
+  });
+
+  // 전역 마우스 이벤트 - 더 정확한 위치 추적
+  document.addEventListener(
+    'mousemove',
+    (e) => {
+      if (!isResizing || !currentHeader) return;
+
+      // 마우스 이동량 계산 (직접적인 차이값 사용)
+      const deltaX = e.clientX - lastMouseX;
+      const currentWidth = currentHeader.offsetWidth;
+      const newWidth = Math.max(50, currentWidth + deltaX);
+
+      // 너비 적용
+      currentHeader.style.width = newWidth + 'px';
+
+      // 마지막 마우스 위치 업데이트
+      lastMouseX = e.clientX;
+
+      // 모든 기본 동작 방지
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      return false;
+    },
+    { passive: false }
+  );
+
+  document.addEventListener(
+    'mouseup',
+    (e) => {
+      if (isResizing && currentHeader) {
+        // 드래그 종료 시 스타일 정리
+        currentHeader.classList.remove('resizing');
+        currentHeader.style.cursor = 'pointer';
+
+        // 드래그 속성 복원
+        currentHeader.draggable = true;
+        currentHeader.setAttribute('draggable', 'true');
+
+        isResizing = false;
+        currentHeader = null;
+        lastMouseX = 0;
+
+        // 문서 스타일 복원
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        document.body.style.webkitUserSelect = '';
+        document.body.style.mozUserSelect = '';
+        document.body.style.msUserSelect = '';
+
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    },
+    { passive: false }
+  );
+
+  // 마우스가 창을 벗어날 때도 드래그 종료
+  document.addEventListener('mouseleave', () => {
+    if (isResizing && currentHeader) {
+      currentHeader.classList.remove('resizing');
+      currentHeader.style.cursor = 'pointer';
+      currentHeader.draggable = true;
+      currentHeader.setAttribute('draggable', 'true');
+
+      isResizing = false;
+      currentHeader = null;
+      lastMouseX = 0;
+
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.body.style.webkitUserSelect = '';
+      document.body.style.mozUserSelect = '';
+      document.body.style.msUserSelect = '';
+    }
+  });
+
+  // 전역 드래그 이벤트 방지
+  document.addEventListener('dragstart', (e) => {
+    if (isResizing) {
+      e.preventDefault();
+      return false;
+    }
+  });
+
+  document.addEventListener('drag', (e) => {
+    if (isResizing) {
+      e.preventDefault();
+      return false;
+    }
+  });
+}
+
+// 테이블 컬럼 크기 초기화 함수
+function resetTableColumnSizes() {
+  const headers = document.querySelectorAll('.alarm-table th');
+
+  // 기본 너비 설정 (CSS에서 정의한 기본값들)
+  const defaultWidths = ['8%', '4%', '4%', '12%', '12%', '10%', '20%', '30%'];
+
+  headers.forEach((header, index) => {
+    if (index < defaultWidths.length) {
+      header.style.width = defaultWidths[index];
+    }
+  });
+
+  console.log('테이블 컬럼 크기가 기본값으로 복원되었습니다.');
+}
+
+// 테이블 관련 함수들 전역 등록
+window.resetTableColumnSizes = resetTableColumnSizes;

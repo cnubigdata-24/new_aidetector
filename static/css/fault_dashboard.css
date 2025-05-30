@@ -700,6 +700,11 @@ select {
   cursor: pointer;
   margin-bottom: 0 !important;
   height: auto; /* 테이블 자체는 자동 높이 */
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
 }
 
 /* 경보 테이블 구조 관련 스타일 */
@@ -752,141 +757,47 @@ select {
   cursor: pointer;
   text-align: left;
   background-color: #e7e7e7;
-
   position: relative;
-  padding-right: 15px;
+  user-select: none;
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
 }
 
-/* 테이블 셀 높이 고정 */
-.alarm-table td {
-  padding: 2px 5px !important;
-  height: 22px !important;
-  max-height: 22px !important;
-  min-height: 22px !important;
-  line-height: 18px !important;
-  font-size: 13px;
-  box-sizing: border-box !important;
-  vertical-align: middle !important;
-}
-
-/* 경보 테이블 고정 컬럼 너비 설정 */
-.alarm-table th:nth-child(1),
-.col-guksa {
-  width: 8% !important;
-  min-width: 80px !important;
-  max-width: 80px !important;
-}
-
-.alarm-table th:nth-child(2),
-.col-sector {
-  width: 4% !important;
-  min-width: 45px !important;
-  max-width: 45px !important;
-}
-
-.alarm-table th:nth-child(3),
-.col-valid {
-  width: 4% !important;
-  min-width: 45px !important;
-  max-width: 45px !important;
-}
-
-.alarm-table th:nth-child(4),
-.col-occur-time {
-  width: 12% !important;
-  min-width: 120px !important;
-  max-width: 120px !important;
-}
-
-.alarm-table th:nth-child(5),
-.col-equip-id {
-  width: 12% !important;
-  min-width: 120px !important;
-  max-width: 120px !important;
-}
-
-.alarm-table th:nth-child(6),
-.col-equip-type {
-  width: 10% !important;
-  min-width: 80px !important;
-  max-width: 80px !important;
-}
-
-.alarm-table th:nth-child(7),
-.col-equip-name {
-  width: 20% !important;
-  min-width: 180px !important;
-  max-width: 180px !important;
-}
-
-.alarm-table th:nth-child(8),
-.col-alarm-message {
-  width: 30% !important;
-  min-width: 280px !important;
-}
-
-/* 행 호버 효과 */
-.alarm-table tbody tr:hover {
-  background-color: #e0e0e0;
-  transition: background-color 0.15s ease;
-}
-
-/* 유효 경보 행 스타일 */
-.alarm-table tbody tr.valid-alarm {
-  background-color: #fff3e0;
-}
-
-.alarm-table tbody tr.valid-alarm:hover {
-  background-color: #ffe0b2;
-}
-
-/* 정렬 아이콘 스타일 */
-.alarm-table th.sort-asc::after,
-.alarm-table th.sort-desc::after {
-  position: absolute;
-  right: 5px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 8px;
-  line-height: 1;
-  color: #333;
-}
-
-.alarm-table th.sort-asc::after {
-  content: ' ▲';
-}
-
-.alarm-table th.sort-desc::after {
-  content: ' ▼';
-}
-
-/* 테이블 헤더 hover 비활성화 */
-.alarm-table thead tr:hover {
-  background-color: inherit;
-  cursor: default;
-}
-
-/* 리사이저 스타일 */
-.col-resizer {
+/* 리사이즈 핸들 스타일 - 드래그 중 이동하지 않도록 수정 */
+.alarm-table th::after {
+  content: '';
   position: absolute;
   top: 0;
   right: 0;
-  width: 8px;
+  width: 5px;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.05);
   cursor: col-resize;
-  z-index: 20;
+  background: transparent;
+  z-index: 10;
+  pointer-events: auto;
 }
 
-.col-resizer:hover,
-.col-resizer:active {
-  background-color: rgba(0, 123, 255, 0.5) !important;
-  width: 8px !important;
+/* 호버 시 파란색 표시 - 우측 끝 5px 영역에서 */
+.alarm-table th:hover::after {
+  background: rgba(0, 123, 255, 0.3);
 }
 
-.col-resizing {
-  background-color: rgba(0, 123, 255, 0.7) !important;
-  width: 8px !important;
+/* 드래그 중인 헤더의 스타일 */
+.alarm-table th.resizing {
+  cursor: col-resize !important;
+  -webkit-user-drag: none !important;
+  -khtml-user-drag: none !important;
+  -moz-user-drag: none !important;
+  -o-user-drag: none !important;
+  user-drag: none !important;
+}
+
+.alarm-table th.resizing::after {
+  background: rgba(0, 123, 255, 0.6) !important;
+  cursor: col-resize !important;
 }
 
 /* 테이블 검색 필터 스타일 */
@@ -1971,4 +1882,106 @@ body .simple-pagination li.current a {
   font-weight: normal !important;
   text-shadow: none !important;
   box-shadow: none !important;
+}
+
+/* 테이블 셀 높이 고정 */
+.alarm-table td {
+  padding: 2px 5px !important;
+  height: 22px !important;
+  max-height: 22px !important;
+  min-height: 22px !important;
+  line-height: 18px !important;
+  font-size: 13px;
+  box-sizing: border-box !important;
+  vertical-align: middle !important;
+}
+
+/* 경보 테이블 고정 컬럼 너비 설정 - 리사이즈 가능하도록 수정 */
+.alarm-table th:nth-child(1),
+.col-guksa {
+  width: 8%;
+  min-width: 60px;
+}
+
+.alarm-table th:nth-child(2),
+.col-sector {
+  width: 4%;
+  min-width: 35px;
+}
+
+.alarm-table th:nth-child(3),
+.col-valid {
+  width: 4%;
+  min-width: 35px;
+}
+
+.alarm-table th:nth-child(4),
+.col-occur-time {
+  width: 12%;
+  min-width: 100px;
+}
+
+.alarm-table th:nth-child(5),
+.col-equip-id {
+  width: 12%;
+  min-width: 100px;
+}
+
+.alarm-table th:nth-child(6),
+.col-equip-type {
+  width: 10%;
+  min-width: 60px;
+}
+
+.alarm-table th:nth-child(7),
+.col-equip-name {
+  width: 20%;
+  min-width: 150px;
+}
+
+.alarm-table th:nth-child(8),
+.col-alarm-message {
+  width: 30%;
+  min-width: 200px;
+}
+
+/* 행 호버 효과 */
+.alarm-table tbody tr:hover {
+  background-color: #e0e0e0;
+  transition: background-color 0.15s ease;
+}
+
+/* 유효 경보 행 스타일 */
+.alarm-table tbody tr.valid-alarm {
+  background-color: #fff3e0;
+}
+
+.alarm-table tbody tr.valid-alarm:hover {
+  background-color: #ffe0b2;
+}
+
+/* 정렬 아이콘 스타일 */
+.alarm-table th.sort-asc::after,
+.alarm-table th.sort-desc::after {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 8px;
+  line-height: 1;
+  color: #333;
+}
+
+.alarm-table th.sort-asc::after {
+  content: ' ▲';
+}
+
+.alarm-table th.sort-desc::after {
+  content: ' ▼';
+}
+
+/* 테이블 헤더 hover 비활성화 */
+.alarm-table thead tr:hover {
+  background-color: inherit;
+  cursor: default;
 }

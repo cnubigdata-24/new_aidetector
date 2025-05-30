@@ -322,15 +322,15 @@ function addMapZoomControlPanel(mapContainer, svg, zoom, width, height, options 
   // 줌 인 버튼
   const zoomInBtn = document.createElement('button');
   zoomInBtn.textContent = '+';
-  zoomInBtn.style.margin = '0px';
+  zoomInBtn.style.margin = '1px';
   zoomInBtn.style.padding = '4px 0px';
   zoomInBtn.style.cursor = 'pointer';
   zoomInBtn.style.fontSize = '15px';
   zoomInBtn.style.border = '1px solid #ccc';
   zoomInBtn.style.background = '#f8f9fa';
   zoomInBtn.style.borderRadius = '3px';
-  zoomInBtn.style.width = '24px';
-  zoomInBtn.style.height = '28px';
+  zoomInBtn.style.width = '28px';
+  zoomInBtn.style.height = '25px';
   zoomInBtn.onclick = () => {
     // svg가 D3 selection인지 DOM 노드인지 확인
     const svgElement = svg.node ? svg.node() : svg;
@@ -361,15 +361,15 @@ function addMapZoomControlPanel(mapContainer, svg, zoom, width, height, options 
   // 줌 아웃 버튼
   const zoomOutBtn = document.createElement('button');
   zoomOutBtn.textContent = '-';
-  zoomOutBtn.style.margin = '0px';
+  zoomOutBtn.style.margin = '1px';
   zoomOutBtn.style.padding = '4px 0px';
   zoomOutBtn.style.cursor = 'pointer';
   zoomOutBtn.style.fontSize = '15px';
   zoomOutBtn.style.border = '1px solid #ccc';
   zoomOutBtn.style.background = '#f8f9fa';
   zoomOutBtn.style.borderRadius = '3px';
-  zoomOutBtn.style.width = '24px';
-  zoomOutBtn.style.height = '28px';
+  zoomOutBtn.style.width = '28px';
+  zoomOutBtn.style.height = '25px';
   zoomOutBtn.onclick = () => {
     // svg가 D3 selection인지 DOM 노드인지 확인
     const svgElement = svg.node ? svg.node() : svg;
@@ -401,10 +401,11 @@ function addMapZoomControlPanel(mapContainer, svg, zoom, width, height, options 
   const fitBtn = document.createElement('button');
   fitBtn.textContent = 'Restore';
   fitBtn.style.marginLeft = '2px';
-  fitBtn.style.marginRight = '2px';
+  fitBtn.style.marginRight = '5px';
   fitBtn.style.marginTop = '1px';
   fitBtn.style.marginBottom = '1px';
-
+  fitBtn.style.width = '70px';
+  fitBtn.style.height = '25px';
   fitBtn.style.padding = '4px 4px';
   fitBtn.style.cursor = 'pointer';
   fitBtn.style.fontSize = '12px';

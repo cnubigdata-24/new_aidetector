@@ -1224,46 +1224,82 @@ function createEquipTopologyMap(data, alarmDataList) {
 
 // 장애점 찾기 버튼 이벤트 초기화 함수
 function initFaultPointButton() {
+  console.log('initFaultPointButton 함수 실행 시작');
+
   const faultPointBtn = document.getElementById('fault-point-btn');
+
+  if (!faultPointBtn) {
+    console.error('장애점 찾기 버튼(#fault-point-btn)을 찾을 수 없습니다!');
+    return;
+  }
+
+  console.log('장애점 찾기 버튼 요소 발견:', faultPointBtn);
 
   // 기존 이벤트 리스너 제거 (중복 방지)
   faultPointBtn.removeEventListener('click', handleFaultPointClick);
+  console.log('기존 이벤트 리스너 제거 완료');
 
   // 새 이벤트 리스너 추가
   faultPointBtn.addEventListener('click', handleFaultPointClick);
+  console.log('새 이벤트 리스너 추가 완료');
 
   console.log('장애점 찾기 버튼 이벤트 리스너 추가 완료');
 }
 
 // 장애점 찾기 버튼 클릭 핸들러
 async function handleFaultPointClick() {
-  console.log('장애점 찾기 버튼 클릭...');
+  console.log('=== 장애점 찾기 버튼 클릭 이벤트 실행 ===');
+  console.log('현재 선택된 뷰:', _selectedView);
+  console.log('현재 선택된 분야:', _selectedSector);
 
   if (_selectedView !== 'equip') {
-    console.log('현재 뷰 모드가 equip 장비 모드가 아님...');
+    console.log('현재 뷰 모드가 equip 장비 모드가 아님, 현재 뷰:', _selectedView);
 
+    // 우측 채팅창에 메시지 표시
+    if (typeof addChatMessage === 'function') {
+      addChatMessage(
+        '📌 <strong>장애점 분석 알림</strong><br>장비 연결 맵 뷰에서만 분석이 가능합니다.<br>상단의 "장비 연결" 버튼을 클릭해주세요.',
+        'system',
+        true
+      );
+    }
     return;
   }
 
   const faultPointBtn = document.getElementById('fault-point-btn');
+  console.log('장애점 찾기 버튼 요소:', faultPointBtn);
 
   try {
     // 버튼 비활성화 (중복 클릭 방지)
-
     faultPointBtn.disabled = true;
     faultPointBtn.textContent = 'AI 분석 중...';
+    console.log('버튼 상태 변경 완료 - 분석 시작');
+
+    // 우측 채팅창에 분석 시작 메시지 추가
+    if (typeof addChatMessage === 'function') {
+      addChatMessage(
+        '🔍 <strong>장애점 분석 시작</strong><br>AI가 현재 분야의 경보 데이터를 분석하고 있습니다...',
+        'system',
+        true
+      );
+    }
 
     // 분석 실행
+    console.log('runFailureAnalysis 함수 호출 시작');
     await runFailureAnalysis();
+    console.log('runFailureAnalysis 함수 완료');
   } catch (error) {
     console.error('장애점 찾기 실행 중 오류:', error);
 
-    addChatMessage(`📌 <strong>분석 실행 중 오류:</strong> ${error.message}`, 'error', true);
+    if (typeof addChatMessage === 'function') {
+      addChatMessage(`📌 <strong>분석 실행 중 오류:</strong> ${error.message}`, 'error', true);
+    }
   } finally {
     // 버튼 활성화
     if (faultPointBtn) {
       faultPointBtn.disabled = false;
       faultPointBtn.textContent = '장애점 찾기';
+      console.log('버튼 상태 복원 완료');
     }
   }
 }

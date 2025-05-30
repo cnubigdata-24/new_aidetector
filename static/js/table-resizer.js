@@ -26,16 +26,20 @@
   });
 })();
 
-// 테이블에 리사이즈 기능 초기화
+// 테이블에 리사이즈 기능 초기화 - 새로운 시스템 사용으로 비활성화
 function initAlarmTableResizer(table) {
-  // 테이블 준비
-  prepareTable(table);
+  console.log('[TableResizer] 기존 테이블 리사이저 비활성화 (새로운 시스템 사용)');
 
-  // 각 컬럼에 리사이즈 핸들 추가
-  addResizeHandles(table);
+  // 기존 colgroup과 리사이저만 제거
+  const existingColgroup = table.querySelector('colgroup');
+  if (existingColgroup) {
+    existingColgroup.remove();
+  }
 
-  // 디버깅 정보 출력
-  console.log('[TableResizer] 테이블 리사이저 초기화 완료');
+  table.querySelectorAll('.col-resizer').forEach((resizer) => resizer.remove());
+
+  // 새로운 리사이즈 시스템(fault_dashboard_util.js의 initTableColumnResize)을 사용
+  console.log('[TableResizer] 새로운 리사이즈 시스템을 사용하세요');
 }
 
 // 테이블 준비 - 초기 설정, 동적 DOM 구조 추가
@@ -84,103 +88,15 @@ function prepareTable(table) {
   console.log('[TableResizer] 테이블 준비 완료');
 }
 
-// 각 컬럼에 리사이즈 핸들 추가 ############## To do list 경보 테이블 컬럼 크기 변경시 마우스 이동해버림
+// 각 컬럼에 리사이즈 핸들 추가 - 비활성화 (새로운 리사이즈 시스템 사용)
 function addResizeHandles(table) {
-  const headerCells = table.querySelectorAll('thead th');
-  const cols = table.querySelectorAll('colgroup col');
+  console.log('[TableResizer] 기존 리사이즈 핸들 추가 함수는 비활성화됨 (새로운 시스템 사용)');
 
-  // 기존 리사이저 제거 (중복 방지)
+  // 기존 리사이저 제거만 수행
   table.querySelectorAll('.col-resizer').forEach((resizer) => resizer.remove());
 
-  headerCells.forEach((th, index) => {
-    // 마지막 컬럼은 리사이즈 핸들 생략 (선택사항)
-    if (index === headerCells.length - 1) return;
-
-    // 헤더에 position 설정 확인
-    th.style.position = 'relative';
-
-    // 리사이즈 핸들 생성
-    const resizer = document.createElement('div');
-    resizer.className = 'col-resizer';
-    resizer.innerHTML = ''; // 내용 비움
-
-    // 핸들 위치 강제 조정
-    resizer.style.position = 'absolute';
-    resizer.style.top = '0';
-    resizer.style.right = '0';
-    resizer.style.width = '8px';
-    resizer.style.height = '100%';
-    resizer.style.cursor = 'col-resize';
-    resizer.style.zIndex = '20';
-
-    th.appendChild(resizer);
-
-    // 리사이즈 핸들에 이벤트 리스너 추가
-    resizer.addEventListener('mousedown', function (e) {
-      e.preventDefault();
-      e.stopPropagation(); // 버블링 방지
-
-      console.log(`[TableResizer] 컬럼 ${index} 리사이징 시작`);
-
-      // 현재 컬럼과 col 요소
-      const col = cols[index];
-      if (!col) {
-        console.error(`[TableResizer] 컬럼 ${index}에 대한 col 요소 없음`);
-        return;
-      }
-
-      const startX = e.clientX; // 클라이언트 좌표 사용
-      const startWidth = col.offsetWidth;
-
-      console.log(`[TableResizer] 시작 너비: ${startWidth}px, 시작 X: ${startX}`);
-
-      // 리사이징 중 스타일
-      resizer.classList.add('col-resizing');
-      resizer.style.backgroundColor = 'rgba(0, 123, 255, 0.7)';
-      document.body.style.cursor = 'col-resize'; // 커서 스타일 변경
-
-      // 마우스 이동 이벤트
-      function handleMouseMove(e) {
-        // 이동 거리 계산
-        const offset = e.clientX - startX;
-
-        // 새 너비 계산 (최소 50px)
-        const newWidth = Math.max(50, startWidth + offset);
-
-        // 너비 적용
-        col.style.width = `${newWidth}px`;
-
-        // 디버깅 정보 (많은 로그 발생 방지용 throttle)
-        if (Math.abs(offset) % 20 === 0) {
-          console.log(`[TableResizer] 리사이징 중: ${newWidth}px (오프셋: ${offset})`);
-        }
-      }
-
-      // 마우스 업 이벤트
-      function handleMouseUp(e) {
-        console.log(`[TableResizer] 리사이징 종료`);
-
-        // 스타일 원복
-        resizer.classList.remove('col-resizing');
-        resizer.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
-        document.body.style.cursor = '';
-
-        // 이벤트 리스너 제거
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-
-        // 최종 너비 기록
-        const finalWidth = cols[index].offsetWidth;
-        console.log(`[TableResizer] 최종 너비: ${finalWidth}px`);
-      }
-
-      // 문서 레벨 이벤트 리스너
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    });
-  });
-
-  console.log('[TableResizer] 리사이즈 핸들 추가 완료');
+  // 새로운 리사이즈 시스템을 사용하므로 여기서는 아무것도 하지 않음
+  return;
 }
 
 // 테이블 상단에 컬럼 선택 필터 관련 동적 DOM 구조 추가, 필터와 리셋 이벤트 추가
@@ -285,9 +201,25 @@ function addTableSearchFilters(table) {
   ragButton.className = 'view-btn-rag';
   ragButton.textContent = 'AI RAG 장애사례 조회';
   ragButton.addEventListener('click', function () {
-    // AI RAG 사례조회 기능 (추후 구현)
-    console.log('AI RAG 사례조회 버튼 클릭됨');
-    alert('AI RAG 사례조회 기능이 곧 추가될 예정입니다.');
+    const popupUrl = '/fault-detector';
+    const popupWidth = 1300;
+    const popupHeight = 800;
+
+    // 화면 정중앙
+    const screenLeft = window.screenLeft !== undefined ? window.screenLeft : screen.left;
+    const screenTop = window.screenTop !== undefined ? window.screenTop : screen.top;
+    const width = window.innerWidth || document.documentElement.clientWidth || screen.width;
+    const height = window.innerHeight || document.documentElement.clientHeight || screen.height;
+
+    const left = screenLeft + (width - popupWidth) / 2;
+    const top = screenTop + (height - popupHeight) / 2;
+
+    const popupOptions = `width=${popupWidth},height=${popupHeight},top=${top},left=${left},resizable=yes,scrollbars=yes`;
+
+    // 전체 화면
+    // const popupOptions = `width=${screen.availWidth},height=${screen.availHeight},top=0,left=0,resizable=yes,scrollbars=yes`;
+
+    window.open(popupUrl, 'ragPopupWindow', popupOptions);
   });
   filterContainer.appendChild(ragButton);
 
@@ -297,9 +229,9 @@ function addTableSearchFilters(table) {
   copilotAgentButton.className = 'view-btn-rag';
   copilotAgentButton.textContent = 'Copilot Agent 챗봇';
   copilotAgentButton.addEventListener('click', function () {
-    // AI RAG 사례조회 기능 (추후 구현)
+    // Copilot Agent 기능 (추후 구현)
     console.log('Copilot Agent 버튼 클릭됨');
-    alert('AI RAG 사례조회 기능이 곧 추가될 예정입니다.');
+    alert('Copilot Agent 기능이 곧 추가될 예정입니다.');
   });
   filterContainer.appendChild(copilotAgentButton);
 
@@ -534,6 +466,11 @@ function updateTableWithFilteredData(data) {
 function resetTableFilter() {
   // 검색 필터 초기화
   clearTableSearchFilter();
+
+  // 테이블 컬럼 크기 복원
+  if (typeof resetTableColumnSizes === 'function') {
+    resetTableColumnSizes();
+  }
 
   // 현재 페이지를 1로 초기화
   if (typeof _currentPage !== 'undefined') {

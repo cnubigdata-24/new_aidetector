@@ -559,6 +559,11 @@ function refreshAlarmTable() {
   console.log(
     `> 경보 테이블 업데이트 완료: ${filteredData.length}개 항목, 현재 페이지: ${_currentPage}`
   );
+
+  // 컬럼 리사이즈 기능 초기화
+  if (typeof initTableColumnResize === 'function') {
+    initTableColumnResize();
+  }
 }
 
 // 하단 경보 테이블에 실제 데이터 Row추가
@@ -653,6 +658,11 @@ function addRowsToAlarmTable(alarmDataList) {
       console.log('[TableFilter] 테이블 필터 추가');
       addTableSearchFilters(table);
     }
+  }
+
+  // 컬럼 리사이즈 기능 초기화
+  if (typeof initTableColumnResize === 'function') {
+    initTableColumnResize();
   }
 }
 
@@ -1304,6 +1314,14 @@ function initAll() {
 
   equipChangeEventHandler();
   guksaChangeEventHandler();
+
+  // 장애점 찾기 버튼 이벤트 초기화
+  if (typeof initFaultPointButton === 'function') {
+    setTimeout(() => {
+      initFaultPointButton();
+      console.log('장애점 찾기 버튼 이벤트 초기화 완료');
+    }, 100);
+  }
 
   // 맵 초기화 - 현재 뷰에 맞게 표시
   changeMapText(_selectedView);
