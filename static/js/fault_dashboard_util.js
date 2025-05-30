@@ -432,7 +432,6 @@ function forcePaginationStyles() {
             backgroundColor = '#6c757d';
             borderColor = '#6c757d';
             color = 'white';
-            fontWeight = '700';
           } else if (isDisabled) {
             backgroundColor = '#f8f9fa';
             borderColor = '#e0e0e0';
@@ -450,7 +449,7 @@ function forcePaginationStyles() {
             padding: 1px 4px !important;
             margin: 0 !important;
             font-size: 13px !important;
-            font-weight: ${fontWeight} !important;
+            fontWeight = 'normal' !important;
             text-decoration: none !important;
             border: 1px solid ${borderColor} !important;
             border-radius: 2px !important;

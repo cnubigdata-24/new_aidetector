@@ -283,7 +283,7 @@ function addTableSearchFilters(table) {
   const ragButton = document.createElement('button');
   ragButton.id = 'rag-view-btn';
   ragButton.className = 'view-btn-rag';
-  ragButton.textContent = 'AI RAG 유사 장애사례 조회';
+  ragButton.textContent = 'AI RAG 장애사례 조회';
   ragButton.addEventListener('click', function () {
     // AI RAG 사례조회 기능 (추후 구현)
     console.log('AI RAG 사례조회 버튼 클릭됨');

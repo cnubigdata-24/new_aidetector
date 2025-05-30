@@ -397,7 +397,7 @@ async function fetchSideBarEquipListBySector(sector) {
     setAllEquipmentList(data || []);
   } catch (error) {
     console.error('장비 목록 가져오기 오류:', error);
-    showErrorMessage('장비 목록을 가져오는 중 오류가 발생했습니다.');
+    //showErrorMessage('장비 목록을 가져오는 중 오류가 발생했습니다.');
   }
 }
 

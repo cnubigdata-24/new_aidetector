@@ -1489,13 +1489,13 @@ div#pagination *,
   background-color: #0460a7;
 }
 
-/* AI RAG 유사 장애사례 조회 버튼 특별 스타일 */
+/* AI RAG 장애사례 조회 버튼 특별 스타일 */
 #rag-view-btn {
   margin-left: auto;
   margin-right: 0px;
   margin-top: 0px;
   margin-bottom: 0px;
-  width: 200px !important;
+  width: 165px !important;
   height: 23px !important;
   font-size: 13px !important;
   line-height: 1 !important;
