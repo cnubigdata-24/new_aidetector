@@ -313,6 +313,184 @@ function renderPagination(totalItems) {
       updateCurrentPageData(); // 정렬 상태가 유지된 데이터로 페이지 갱신
     },
   });
+
+  // 페이지네이션 초기화 후 강제로 커스텀 스타일 적용 - 여러 번 시도
+  setTimeout(() => {
+    forcePaginationStyles();
+  }, 100);
+
+  setTimeout(() => {
+    forcePaginationStyles();
+  }, 300);
+
+  setTimeout(() => {
+    forcePaginationStyles();
+  }, 500);
+}
+
+// 페이지네이션 스타일 강제 적용 함수
+function forcePaginationStyles() {
+  const paginationContainer = document.getElementById('pagination');
+  if (!paginationContainer) {
+    console.warn('페이지네이션 컨테이너를 찾을 수 없습니다.');
+    return;
+  }
+
+  // 컨테이너 스타일 강제 적용 - cssText로 모든 스타일 덮어쓰기
+  paginationContainer.style.cssText = `
+    height: 32px !important;
+    line-height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    margin: 0 !important;
+    padding: 5px 0 !important;
+    text-align: center !important;
+    font-size: 12px !important;
+    border-top: 1px solid #dee2e6 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    width: 100% !important;
+    z-index: 5 !important;
+    overflow: hidden !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    visibility: visible !important;
+  `;
+
+  // simplePagination 요소들 강제 스타일 적용
+  const simplePagination = paginationContainer.querySelector('.simple-pagination');
+  if (simplePagination) {
+    simplePagination.style.cssText = `
+      display: flex !important;
+      justify-content: center !important;
+      align-items: center !important;
+      width: 100% !important;
+      height: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: transparent !important;
+      background-image: none !important;
+      border: none !important;
+      list-style: none !important;
+      visibility: visible !important;
+    `;
+
+    const ul = simplePagination.querySelector('ul');
+    if (ul) {
+      ul.style.cssText = `
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        gap: 3px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        list-style: none !important;
+        background: transparent !important;
+        background-image: none !important;
+        border: none !important;
+        flex-wrap: nowrap !important;
+        visibility: visible !important;
+        float: none !important;
+      `;
+
+      // 모든 li 요소에 강제 스타일 적용
+      const listItems = ul.querySelectorAll('li');
+      listItems.forEach((li) => {
+        li.style.cssText = `
+          display: inline-flex !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          list-style: none !important;
+          background: transparent !important;
+          background-image: none !important;
+          border: none !important;
+          float: none !important;
+          visibility: visible !important;
+        `;
+
+        // a, span 요소에 강제 스타일 적용
+        const links = li.querySelectorAll('a, span');
+        links.forEach((link) => {
+          // 상태별 스타일 결정
+          const isCurrentPage = li.classList.contains('current');
+          const isDisabled = li.classList.contains('disabled');
+
+          let backgroundColor = '#ffffff';
+          let borderColor = '#e0e0e0';
+          let color = '#333333';
+          let fontWeight = 'normal';
+          let cursor = 'pointer';
+
+          if (isCurrentPage) {
+            backgroundColor = '#6c757d';
+            borderColor = '#6c757d';
+            color = 'white';
+            fontWeight = '700';
+          } else if (isDisabled) {
+            backgroundColor = '#f8f9fa';
+            borderColor = '#e0e0e0';
+            color = '#999999';
+            cursor = 'not-allowed';
+          }
+
+          link.style.cssText = `
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-width: 24px !important;
+            width: auto !important;
+            height: 22px !important;
+            padding: 1px 4px !important;
+            margin: 0 !important;
+            font-size: 13px !important;
+            font-weight: ${fontWeight} !important;
+            text-decoration: none !important;
+            border: 1px solid ${borderColor} !important;
+            border-radius: 2px !important;
+            background-color: ${backgroundColor} !important;
+            background-image: none !important;
+            color: ${color} !important;
+            cursor: ${cursor} !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+            line-height: 20px !important;
+            vertical-align: middle !important;
+            float: none !important;
+            visibility: visible !important;
+            position: static !important;
+          `;
+
+          // 호버 이벤트 추가 (비활성화되지 않은 일반 버튼만)
+          if (!isDisabled && !isCurrentPage) {
+            // 기존 이벤트 리스너 제거
+            link.onmouseenter = null;
+            link.onmouseleave = null;
+
+            link.addEventListener('mouseenter', function () {
+              this.style.backgroundColor = '#f5f5f5';
+              this.style.borderColor = '#cccccc';
+              this.style.color = '#333333';
+            });
+
+            link.addEventListener('mouseleave', function () {
+              this.style.backgroundColor = '#ffffff';
+              this.style.borderColor = '#e0e0e0';
+              this.style.color = '#333333';
+            });
+          }
+        });
+      });
+    }
+  }
+
+  console.log('페이지네이션 스타일 강제 적용 완료');
 }
 
 // 페이지네이션 표시 시 테이블 높이 자동 조정
@@ -484,9 +662,9 @@ function updateRecentUpdateTime(recentTime) {
   if (!recentUpdateTimeEl) return;
 
   if (recentTime) {
-    recentUpdateTimeEl.textContent = `| 최근 경보 ${formatDateTime(recentTime)}`;
+    recentUpdateTimeEl.textContent = `| 최근 경보  ${formatDateTime(recentTime)}`;
   } else {
-    recentUpdateTimeEl.textContent = `| 최근 경보`;
+    recentUpdateTimeEl.textContent = `| 최근 경보  `;
   }
 }
 

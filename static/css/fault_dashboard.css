@@ -210,6 +210,24 @@ html {
   margin-top: 0px; /* 5px → 0px */
 }
 
+/* 하단 경보 테이블 총괄 영역 */
+.bottom-div {
+  height: 210px !important; /* 테이블 영역 고정 높이 복원 */
+  flex-shrink: 0; /* 크기 고정 */
+  max-width: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background-color: #f5f5f5;
+
+  padding: 3px 3px 0 3px !important;
+
+  overflow: hidden !important;
+
+  scrollbar-width: thin;
+  scrollbar-color: #ccc #f1f1f1;
+}
+
 /* 경보 테이블 컨테이너 - flex로 남은 공간 모두 사용 */
 .table-container {
   flex: 1; /* 남은 공간 모두 사용 */
@@ -220,25 +238,6 @@ html {
   width: 100%;
   display: flex;
   flex-direction: column;
-
-  scrollbar-width: thin;
-  scrollbar-color: #ccc #f1f1f1;
-}
-
-/* 하단 영역 */
-.bottom-div {
-  height: 200px !important; /* 테이블 영역 고정 높이 */
-  flex-shrink: 0; /* 크기 고정 */
-  max-width: 100%;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  background-color: white;
-
-  padding: 3px 3px 0 3px !important;
-
-  overflow: hidden !important;
-
   scrollbar-width: thin;
   scrollbar-color: #ccc #f1f1f1;
 }
@@ -708,7 +707,7 @@ select {
   position: sticky;
   top: 0;
   z-index: 10;
-  background-color: #e0e0e0;
+  background-color: #e7e7e7;
   width: 100%;
   display: table-header-group !important;
 }
@@ -752,7 +751,8 @@ select {
   border-bottom: 1px solid #ddd;
   cursor: pointer;
   text-align: left;
-  background-color: #eeeeee;
+  background-color: #e7e7e7;
+
   position: relative;
   padding-right: 15px;
 }
@@ -769,60 +769,60 @@ select {
   vertical-align: middle !important;
 }
 
-/* 고정 컬럼 너비 설정 */
+/* 경보 테이블 고정 컬럼 너비 설정 */
 .alarm-table th:nth-child(1),
 .col-guksa {
-  width: 16.8% !important;
-  min-width: 180px !important;
-  max-width: 180px !important;
+  width: 12% !important;
+  min-width: 130px !important;
+  max-width: 130px !important;
 }
 
 .alarm-table th:nth-child(2),
 .col-sector {
-  width: 2.5% !important;
-  min-width: 40px !important;
-  max-width: 40px !important;
+  width: 4% !important;
+  min-width: 45px !important;
+  max-width: 45px !important;
 }
 
 .alarm-table th:nth-child(3),
 .col-valid {
-  width: 2.5% !important;
-  min-width: 40px !important;
-  max-width: 40px !important;
+  width: 5% !important;
+  min-width: 55px !important;
+  max-width: 55px !important;
 }
 
 .alarm-table th:nth-child(4),
 .col-occur-time {
-  width: 15% !important;
-  min-width: 140px !important;
-  max-width: 140px !important;
+  width: 12% !important;
+  min-width: 120px !important;
+  max-width: 120px !important;
 }
 
 .alarm-table th:nth-child(5),
 .col-equip-id {
-  width: 15% !important;
-  min-width: 140px !important;
-  max-width: 140px !important;
+  width: 12% !important;
+  min-width: 120px !important;
+  max-width: 120px !important;
 }
 
 .alarm-table th:nth-child(6),
 .col-equip-type {
-  width: 13% !important;
-  min-width: 100px !important;
-  max-width: 100px !important;
+  width: 10% !important;
+  min-width: 80px !important;
+  max-width: 80px !important;
 }
 
 .alarm-table th:nth-child(7),
 .col-equip-name {
-  width: 18% !important;
-  min-width: 150px !important;
-  max-width: 150px !important;
+  width: 20% !important;
+  min-width: 180px !important;
+  max-width: 180px !important;
 }
 
 .alarm-table th:nth-child(8),
 .col-alarm-message {
-  width: 18% !important;
-  min-width: 150px !important;
+  width: 25% !important;
+  min-width: 220px !important;
 }
 
 /* 행 호버 효과 */
@@ -957,75 +957,233 @@ select {
   background-color: #d5d5d5;
 }
 
-/* 페이지네이션 - 하단 고정 및 높이 고정 */
-#pagination {
+/* 페이지네이션 기본 스타일 - 최고 우선순위로 강제 적용 */
+div#pagination,
+div#pagination.simple-pagination,
+#pagination,
+#pagination.simple-pagination {
   height: 32px !important;
   line-height: 32px !important;
   min-height: 32px !important;
   max-height: 32px !important;
-
   margin: 0 !important;
   padding: 5px 0 !important;
-
-  text-align: center;
-  font-size: 11px !important;
-  border-top: 1px solid #eee;
-  background-color: white;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  flex-shrink: 0; /* 페이지네이션 크기 고정 */
-
+  text-align: center !important;
+  font-size: 12px !important;
+  border-top: 1px solid #dee2e6 !important;
+  background-color: #ffffff !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
   width: 100% !important;
-  z-index: 5;
-  overflow-x: hidden !important;
-  white-space: nowrap !important;
+  z-index: 5 !important;
+  overflow: hidden !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+div#pagination .simple-pagination,
+#pagination .simple-pagination,
+div#pagination > .simple-pagination,
+#pagination > .simple-pagination {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  list-style: none !important;
+}
+
+div#pagination .simple-pagination ul,
+#pagination .simple-pagination ul,
+div#pagination > .simple-pagination > ul,
+#pagination > .simple-pagination > ul {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 3px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+  background: transparent !important;
+  border: none !important;
   flex-wrap: nowrap !important;
 }
 
-/* simplePagination.css 완전 Override */
-#pagination,
-.simple-pagination,
-.simple-pagination ul,
+div#pagination .simple-pagination li,
+#pagination .simple-pagination li,
+div#pagination .simple-pagination ul li,
+#pagination .simple-pagination ul li {
+  display: inline-flex !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+  background: transparent !important;
+  border: none !important;
+  float: none !important;
+}
+
+div#pagination .simple-pagination li a,
+div#pagination .simple-pagination li span,
+#pagination .simple-pagination li a,
+#pagination .simple-pagination li span,
+div#pagination .simple-pagination ul li a,
+div#pagination .simple-pagination ul li span,
+#pagination .simple-pagination ul li a,
+#pagination .simple-pagination ul li span {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 24px !important;
+  width: auto !important;
+  height: 22px !important;
+  padding: 1px 4px !important;
+  margin: 0 !important;
+  font-size: 13px !important;
+  font-weight: normal !important;
+  text-decoration: none !important;
+  border: 1px solid #e0e0e0 !important;
+  border-radius: 2px !important;
+  background-color: #ffffff !important;
+  background-image: none !important;
+  color: #333333 !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  line-height: 20px !important;
+  vertical-align: middle !important;
+  float: none !important;
+}
+
+/* 현재 페이지 스타일 - 최고 우선순위 */
+div#pagination .simple-pagination li.current span,
+div#pagination .simple-pagination li.current a,
+#pagination .simple-pagination li.current span,
+#pagination .simple-pagination li.current a,
+div#pagination .simple-pagination ul li.current span,
+div#pagination .simple-pagination ul li.current a,
+#pagination .simple-pagination ul li.current span,
+#pagination .simple-pagination ul li.current a,
+.simple-pagination .light-theme .current,
+.light-theme .current,
+.simple-pagination li.current span,
+.simple-pagination li.current a {
+  background: #6c757d !important;
+  background-image: none !important;
+  border-color: #6c757d !important;
+  color: white !important;
+  font-weight: 700 !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
+/* 비활성화된 페이지 - 최고 우선순위 */
+div#pagination .simple-pagination li.disabled span,
+div#pagination .simple-pagination li.disabled a,
+#pagination .simple-pagination li.disabled span,
+#pagination .simple-pagination li.disabled a,
+div#pagination .simple-pagination ul li.disabled span,
+div#pagination .simple-pagination ul li.disabled a,
+#pagination .simple-pagination ul li.disabled span,
+#pagination .simple-pagination ul li.disabled a {
+  background-color: #f8f9fa !important;
+  background-image: none !important;
+  border-color: #e0e0e0 !important;
+  color: #999999 !important;
+  cursor: not-allowed !important;
+  text-shadow: none !important;
+}
+
+/* 호버 효과 - 최고 우선순위 */
+div#pagination .simple-pagination li a:hover:not(.disabled),
+#pagination .simple-pagination li a:hover:not(.disabled),
+div#pagination .simple-pagination ul li a:hover:not(.disabled),
+#pagination .simple-pagination ul li a:hover:not(.disabled) {
+  background-color: #f5f5f5 !important;
+  background-image: none !important;
+  border-color: #cccccc !important;
+  color: #333333 !important;
+  text-decoration: none !important;
+  text-shadow: none !important;
+}
+
+/* 이전/다음 버튼 특별 스타일 */
+div#pagination .simple-pagination li.prev a,
+div#pagination .simple-pagination li.next a,
+#pagination .simple-pagination li.prev a,
+#pagination .simple-pagination li.next a {
+  min-width: 32px !important;
+  font-weight: normal !important;
+}
+
+/* 모든 가능한 기본 스타일 제거 */
+div#pagination *,
+#pagination * {
+  box-sizing: border-box !important;
+}
+
+/* 특정 라이브러리 스타일 덮어쓰기 - 안전한 방식 */
+.simple-pagination {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.simple-pagination ul {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 3px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+  background: transparent !important;
+  border: none !important;
+}
+
 .simple-pagination li {
-  margin: 0 !important; /* 기본 마진 완전 제거 */
-  padding: 0 !important; /* 기본 패딩 완전 제거 */
+  display: inline-flex !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+  background: transparent !important;
+  border: none !important;
+  float: none !important;
 }
 
-#pagination button,
-#pagination a {
-  height: 22px !important; /* 24px → 22px */
-  margin: 0 2px !important; /* 3px → 2px */
-  min-width: 18px !important; /* 20px → 18px */
-}
-
-#pagination .pagination-inner {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
-#pagination button {
-  height: 24px !important;
-  line-height: 1;
-
-  margin: 0 3px !important;
-  padding: 2px 4px !important;
-
-  background: none;
-  color: #333;
-  border: none;
-  cursor: pointer;
-  font-size: 11px !important;
-  display: inline-block;
-  font-weight: normal;
-  text-decoration: none;
-  background-color: transparent !important;
-  min-width: 20px !important;
-  white-space: nowrap !important;
+.simple-pagination li a,
+.simple-pagination li span {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 24px !important;
+  height: 22px !important;
+  padding: 1px 4px !important;
+  margin: 0 !important;
+  font-size: 13px !important;
+  font-weight: normal !important;
+  text-decoration: none !important;
+  border: 1px solid #e0e0e0 !important;
+  border-radius: 2px !important;
+  background-color: #ffffff !important;
+  background-image: none !important;
+  color: #333333 !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  float: none !important;
 }
 
 /* D3.js 네트워크 맵 컨테이너 스타일 */
@@ -1132,6 +1290,229 @@ select {
   background-color: #dee2e6;
 }
 
+.header-btn:active {
+  transform: scale(0.95);
+}
+
+#map-container .control-btn circle:hover {
+  fill: #e9ecef;
+}
+
+/* 노드 텍스트 스타일 */
+#map-container text {
+  pointer-events: none;
+}
+
+/* 링크 스타일 */
+#map-container line {
+  transition: stroke-width 0.2s;
+}
+
+/* 분야별 노드 색상 */
+.node-MW circle {
+  fill: #ffaa00;
+  stroke: #e67700;
+}
+
+.node-IP circle {
+  fill: #ff3333;
+  stroke: #cc0000;
+}
+
+.node-교환 circle {
+  fill: #cc0000;
+  stroke: #990000;
+}
+
+.node-전송 circle {
+  fill: #ff66cc;
+  stroke: #cc0099;
+}
+
+.node-선로 circle {
+  fill: #ff8833;
+  stroke: #cc5500;
+}
+
+.node-무선 circle {
+  fill: #ffcc66;
+  stroke: #cc9933;
+}
+
+/* 국사 노드 스타일 */
+.node-guksa rect {
+  fill: #0056b3;
+  stroke: #000000;
+  /* filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2)); */
+}
+
+.node-guksa:hover rect {
+  /* filter: drop-shadow(0 0 6px rgba(0, 86, 179, 0.6)); */
+  stroke-width: 3px;
+}
+
+/* 장비 연결 기준, 동일 국사 기준 뷰 버튼 */
+.view-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 4px 8px;
+  margin: 0 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: white;
+  font-size: 13px;
+  font-weight: normal;
+  transition: all 0.2s ease;
+  width: 100px;
+  height: 25px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.view-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.view-btn.active {
+  background-color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 1);
+  color: #1976d2;
+  font-weight: 500;
+}
+
+/* 장애 뷰 버튼 스타일 */
+.fault-view-btn {
+  background-color: #0078d4;
+  border: 1px solid #0078d4;
+  /* padding: 0px 12px; */
+
+  margin-top: 3px;
+  margin-bottom: 0px;
+
+  border-radius: 5px;
+
+  cursor: pointer;
+  color: #ffffff;
+
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* 장애점 찾기 버튼  스타일 (ID 선택자로 우선순위 높임) */
+#fault-point-btn {
+  width: 225px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  font-size: 14px !important;
+  font-weight: normal !important;
+  padding: 0px 8px !important;
+  line-height: 1 !important;
+}
+
+.fault-view-btn:hover {
+  background-color: #0460a7;
+  color: #ffffff;
+}
+
+.fault-view-btn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+/* 체크박스 컨테이너 스타일 */
+#searchSectorContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.checkbox-row {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+.checkbox-row label {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: normal;
+  cursor: pointer;
+  margin-right: 10px;
+  margin-bottom: 0;
+}
+
+/* 좌상단 메인 타이틀: AI Detector 타이틀 */
+.aidetector-title {
+  height: 35px;
+  background-color: #0078d4;
+  color: rgb(255, 255, 255);
+  font-size: 16px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: -15px -15px 10px -15px; /* 좌우상 여백 제거, 아래만 10px */
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* 추가: dashboard-summary 내부의 모든 요소들을 흰색으로 강제 설정 */
+.dashboard-summary * {
+  color: #ffffff !important;
+}
+
+/* AI RAG 사례조회 및 Copilot Agent 버튼 스타일 */
+.view-btn-rag {
+  padding: 3px 8px;
+  background-color: #0078d4;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: background-color 0.2s;
+}
+
+.view-btn-rag:hover {
+  background-color: #0460a7;
+}
+
+/* AI RAG 유사 장애사례 조회 버튼 특별 스타일 */
+#rag-view-btn {
+  margin-left: auto;
+  margin-right: 0px;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  width: 200px !important;
+  height: 23px !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+}
+
+/* Copilot Agent 챗봇 버튼 특별 스타일 */
+#copilot-agent-btn {
+  margin-left: 10px;
+  margin-right: 10px;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  width: 150px !important;
+  height: 23px !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+}
+
 /* 새로운 레이아웃용 맵 컨테이너 */
 /* 기본 채팅 메시지 스타일 */
 .new-map-container {
@@ -1161,10 +1542,6 @@ select {
 .chat-message.alarm-status {
   background-color: #fff4f4;
 }
-
-/* .chat-message.alarm-status .message-content {
-  color: #c62828; 
-} */
 
 /* 사용자 메시지 */
 .chat-message.user {
@@ -1198,21 +1575,11 @@ select {
 
 .chat-message.analyzing .message-content::after {
   display: none;
-  /* content: '';
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  margin-left: 8px;
-  border: 2px solid #007bff;
-  border-top: 2px solid transparent;
-  border-radius: 50%;
-  animation: spin 1s linear infinite; */
 }
 
 /* 요약 메시지 */
 .chat-message.summary {
   background-color: #d1ecf1;
-  /* border-left: 4px solid #0dcaf0; */
 }
 
 .chat-message.summary .message-content {
@@ -1222,7 +1589,6 @@ select {
 /* 오류 메시지 */
 .chat-message.error {
   background-color: #f8d7da;
-  /* border-left: 4px solid #dc3545; */
 }
 
 .chat-message.error .message-content {
@@ -1265,7 +1631,7 @@ select {
 /* 채팅 영역 스크롤바 스타일 */
 .chat-messages-container {
   flex: 1;
-  overflow-y: auto; /* 수직 스크롤바 추가 */
+  overflow-y: auto;
   padding: 10px;
   background-color: #ffffff;
 
@@ -1303,11 +1669,6 @@ select {
 
 .chat-input-container {
   display: none; /* 채팅 입력 프롬프트 삭제 */
-  /* display: flex;
-  gap: 8px;
-  padding: 10px;
-  border-top: 1px solid #ddd;
-  background-color: #f8f9fa; */
 }
 
 .chat-input-container input {
@@ -1343,6 +1704,7 @@ select {
   background-color: #6c757d;
   cursor: not-allowed;
 }
+
 /* 동일 국사 기준 => 맵 제목 스타일 */
 .map-title {
   position: absolute;
@@ -1378,7 +1740,7 @@ select {
   text-align: center;
 }
 
-/* 맵 툴팁 스타일 */
+/* 맵 툴크 스타일 */
 .map-tooltip {
   position: absolute;
   background-color: white;
@@ -1409,11 +1771,8 @@ select {
   margin-bottom: 5px;
 }
 
-/* 경보 메시지 배지 스타일 => 스토로크가 d3에서 분야별로 설정되서 스타일이 안 먹히네 */
+/* 경보 메시지 배지 스타일 */
 .alarm-badge-equip {
-  /* filter: drop-shadow(0 0 3px rgba(255, 0, 0, 0.7)); */
-  /* filter: none !important; */
-  /* stroke-width: 5px; */
   stroke: rgb(148, 3, 3);
   fill: #ec0a0ab4 !important;
 }
@@ -1428,7 +1787,7 @@ select {
 .alarm-badge-guksa {
   filter: none;
   stroke-width: 1.5px;
-  fill: #dddddd !important; /* 연한 회색으로 변경 */
+  fill: #dddddd !important;
 }
 
 .alarm-count-guksa {
@@ -1464,7 +1823,7 @@ select {
   }
 }
 
-/* 장비-맵 툴팁 스타일 */
+/* 장비-맵 툴크 스타일 */
 .equip-map-tooltip {
   position: absolute;
   background-color: white;
@@ -1475,7 +1834,7 @@ select {
   font-size: 12px;
   z-index: 100;
   min-width: 180px;
-  max-width: 350px; /* JavaScript 중복 제거됨 */
+  max-width: 350px;
   max-height: 300px;
   overflow-y: auto;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
@@ -1553,176 +1912,4 @@ select {
 }
 
 .control-btn:active {
-  transform: scale(0.95);
-}
-
-#map-container .control-btn circle:hover {
-  fill: #e9ecef;
-}
-
-/* 노드 텍스트 스타일 */
-#map-container text {
-  pointer-events: none;
-}
-
-/* 링크 스타일 */
-#map-container line {
-  transition: stroke-width 0.2s;
-}
-
-/* 분야별 노드 색상 */
-.node-MW circle {
-  fill: #ffaa00;
-  stroke: #e67700;
-}
-
-.node-IP circle {
-  fill: #ff3333;
-  stroke: #cc0000;
-}
-
-.node-교환 circle {
-  fill: #cc0000;
-  stroke: #990000;
-}
-
-.node-전송 circle {
-  fill: #ff66cc;
-  stroke: #cc0099;
-}
-
-.node-선로 circle {
-  fill: #ff8833;
-  stroke: #cc5500;
-}
-
-.node-무선 circle {
-  fill: #ffcc66;
-  stroke: #cc9933;
-}
-
-/* 국사 노드 스타일 */
-.node-guksa rect {
-  fill: #0056b3;
-  stroke: #000000;
-  /* filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2)); */
-}
-
-.node-guksa:hover rect {
-  /* filter: drop-shadow(0 0 6px rgba(0, 86, 179, 0.6)); */
-  stroke-width: 3px;
-}
-
-/* 장비 연결 기준, 동일 국사 기준 뷰 버튼 */
-.view-btn {
-  background-color: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  padding: 4px 8px;
-  margin: 0 2px;
-  border-radius: 4px;
-  cursor: pointer;
-  color: white;
-  font-size: 12px;
-  font-weight: normal;
-  transition: all 0.2s ease;
-  width: 100px;
-  height: 28px;
-  line-height: 20px;
-  text-align: center;
-}
-
-.view-btn:hover {
-  background-color: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
-}
-
-.view-btn.active {
-  background-color: rgba(255, 255, 255, 0.9);
-  border-color: rgba(255, 255, 255, 1);
-  color: #1976d2;
-  font-weight: 500;
-}
-
-/* 장애 뷰 버튼 스타일 */
-.fault-view-btn {
-  background-color: #0078d4;
-  border: 1px solid #0078d4;
-  padding: 0px 12px;
-
-  margin-top: 3px;
-  margin-bottom: 0px;
-
-  border-radius: 5px;
-  cursor: pointer;
-
-  font-size: 15px !important;
-  color: #ffffff;
-  font-weight: normal !important;
-  /* font-family: Arial, sans-serif !important; */
-
-  transition: all 0.2s ease;
-  width: 150px;
-  min-height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-
-.fault-view-btn:hover {
-  background-color: #0460a7;
-  color: #ffffff;
-}
-
-.fault-view-btn:disabled {
-  background-color: #6c757d;
-  cursor: not-allowed;
-}
-
-/* 체크박스 컨테이너 스타일 */
-#searchSectorContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 15px;
-}
-
-.checkbox-row {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-start;
-}
-
-.checkbox-row label {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  white-space: nowrap;
-  font-size: 14px;
-  font-weight: normal;
-  cursor: pointer;
-  margin-right: 10px;
-  margin-bottom: 0;
-}
-
-/* 좌상단 메인 타이틀: AI Detector 타이틀 */
-.aidetector-title {
-  height: 35px;
-  background-color: #0078d4;
-  color: rgb(255, 255, 255);
-  font-size: 16px;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: -15px -15px 10px -15px; /* 좌우상 여백 제거, 아래만 10px */
-  padding: 0;
-  box-sizing: border-box;
-}
-
-/* 추가: dashboard-summary 내부의 모든 요소들을 흰색으로 강제 설정 */
-.dashboard-summary * {
-  color: #ffffff !important;
 }

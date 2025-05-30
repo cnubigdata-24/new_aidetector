@@ -251,7 +251,7 @@ function addTableSearchFilters(table) {
   filterInput.className = 'filter-input';
   filterInput.id = 'filter-value-input';
   //   filterInput.style.width = '300px';
-  filterInput.placeholder = '검색어 입력...';
+  filterInput.placeholder = '🔍 검색어 입력...';
 
   // 엔터키 이벤트 추가
   filterInput.addEventListener('keydown', function (e) {
@@ -283,16 +283,25 @@ function addTableSearchFilters(table) {
   const ragButton = document.createElement('button');
   ragButton.id = 'rag-view-btn';
   ragButton.className = 'view-btn-rag';
-  ragButton.textContent = 'AI RAG 사례조회';
-  ragButton.style.marginLeft = 'auto'; // 오른쪽 끝으로 배치
-  ragButton.style.marginRight = '10px'; // 오른쪽 여백
-  ragButton.style.cursor = 'pointer'; // 마우스 오버 시 손모양 커서
+  ragButton.textContent = 'AI RAG 유사 장애사례 조회';
   ragButton.addEventListener('click', function () {
     // AI RAG 사례조회 기능 (추후 구현)
     console.log('AI RAG 사례조회 버튼 클릭됨');
     alert('AI RAG 사례조회 기능이 곧 추가될 예정입니다.');
   });
   filterContainer.appendChild(ragButton);
+
+  // Copilot Agent 버튼 추가
+  const copilotAgentButton = document.createElement('button');
+  copilotAgentButton.id = 'copilot-agent-btn';
+  copilotAgentButton.className = 'view-btn-rag';
+  copilotAgentButton.textContent = 'Copilot Agent 챗봇';
+  copilotAgentButton.addEventListener('click', function () {
+    // AI RAG 사례조회 기능 (추후 구현)
+    console.log('Copilot Agent 버튼 클릭됨');
+    alert('AI RAG 사례조회 기능이 곧 추가될 예정입니다.');
+  });
+  filterContainer.appendChild(copilotAgentButton);
 
   // 필터 컨테이너를 테이블 앞에 삽입
   tableContainer.insertBefore(filterContainer, table);
@@ -414,6 +423,13 @@ function applyTableFilter() {
     // 필터 적용 후
     renderPagination(filteredData.length);
 
+    // 페이지네이션 스타일 강제 적용
+    setTimeout(() => {
+      if (typeof forcePaginationStyles === 'function') {
+        forcePaginationStyles();
+      }
+    }, 150);
+
     // 리셋 후
     //renderPagination(sourceData.length); ############## To check list
   } else {
@@ -504,6 +520,13 @@ function updateTableWithFilteredData(data) {
   // 페이지네이션 업데이트 (전체 데이터 개수 기준)
   if (typeof renderPagination === 'function') {
     renderPagination(data.length);
+
+    // 페이지네이션 스타일 강제 적용
+    setTimeout(() => {
+      if (typeof forcePaginationStyles === 'function') {
+        forcePaginationStyles();
+      }
+    }, 150);
   }
 }
 

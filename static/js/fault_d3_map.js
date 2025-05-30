@@ -1202,3 +1202,4 @@ function dragended(event, d, simulation) {
 window.createGuksaTopologyMap = createGuksaTopologyMap;
 window.addMapZoomControlPanel = addMapZoomControlPanel;
 window.GUKSA_MAP_CONFIG = GUKSA_MAP_CONFIG;
+window.COLORS = COLORS;

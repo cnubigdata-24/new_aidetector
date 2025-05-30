@@ -36,13 +36,47 @@ function initDashboard() {
 
   // 가로 배열을 위해 바로 6개 분야를 추가 - 전역 변수 사용
   const sectors = window.SECTORS || ['MW', '선로', '전송', 'IP', '무선', '교환'];
+
+  // 분야별 색상 정보 가져오기 (fault_d3_map.js의 COLORS 상수 사용)
+  const getSectorColor = (sector) => {
+    if (window.COLORS && window.COLORS.SECTOR && window.COLORS.SECTOR[sector]) {
+      return window.COLORS.SECTOR[sector].FILL;
+    }
+    // 기본 색상 정의 (COLORS가 로드되지 않은 경우)
+    const defaultColors = {
+      MW: '#ffaa00',
+      선로: '#ff8833',
+      전송: '#ff66cc',
+      IP: '#ff3333',
+      무선: '#ffcc66',
+      교환: '#cc0000',
+    };
+    return defaultColors[sector] || '#cccccc';
+  };
+
   sectors.forEach((sector) => {
+    const sectorColor = getSectorColor(sector);
+
     dashboard
       .append('div')
       .attr('class', 'dashboard-box draggable')
       .attr('data-sector', sector)
       .attr('draggable', 'true').html(`
-        <h3>${sector} 분야</h3>
+        <h3>
+          <span class="sector-color-indicator" style="
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background-color: ${sectorColor};
+            border: 1px solid #666;
+            margin-right: 6px;
+            vertical-align: baseline;
+            border-radius: 2px;
+            position: relative;
+            top: -1px;
+          "></span>
+          ${sector} 분야
+        </h3>
         <div class="dashboard-content">
           <div>· 경보 장비: <span class="equip-count">0대</span></div>
           <div>· 전체 경보: <span class="alarm-count">0개</span></div>
@@ -667,13 +701,13 @@ function updateAlarmSummary() {
   };
 
   if (elements.equipmentCount) {
-    elements.equipmentCount.textContent = `| 실시간 경보장비 ${formatNumber(
+    elements.equipmentCount.textContent = `| 실시간 경보장비  ${formatNumber(
       totalEquipmentCount
     )}대`;
   }
 
   if (elements.alarmCount) {
-    elements.alarmCount.textContent = `| 전체 경보 ${formatNumber(totalAlarmCount)}개`;
+    elements.alarmCount.textContent = `| 전체 경보  ${formatNumber(totalAlarmCount)}개`;
   }
 
   if (elements.validCount) {
@@ -1289,13 +1323,6 @@ function initAll() {
       console.log('기본 IP 분야 선택 스타일 적용 완료');
     }
   }, 100);
-
-  // ===== 새로 추가된 부분 =====
-  // 장애점 찾기 버튼 이벤트 초기화
-  setTimeout(() => {
-    initFaultPointButton();
-  }, 1000);
-  // ===== 새로 추가된 부분 끝 =====
 
   console.log('초기화 완료');
 }

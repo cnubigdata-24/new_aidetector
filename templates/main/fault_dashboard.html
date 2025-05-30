@@ -4,16 +4,18 @@
     <meta charset="UTF-8" />
     <title>AI Detector Alarm Dashboard</title>
 
-    <!-- simplePagination.js -->
+    <!-- simplePagination.js CSS - 먼저 로드 -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/simplePagination.js/1.6/simplePagination.css"
+    />
+
+    <!-- 커스텀 CSS - 나중에 로드하여 우선순위 확보 -->
     <link rel="stylesheet" href="/static/css/fault_dashboard.css" />
 
     <link
       href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,500;1,500&display=swap"
       rel="stylesheet"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/simplePagination.js/1.6/simplePagination.css"
     />
 
     <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -47,13 +49,13 @@
       <div class="header-right">
         <!-- 전체 현황 요약 라인 -->
         <div class="header-summary">
-          <span id="total-equip-count">| 실시간 경보장비 (0대)</span>
-          <span id="total-alarm-count">| 전체 경보 (0개)</span>
+          <span id="total-equip-count">| 실시간 경보장비 0대</span>
+          <span id="total-alarm-count">| 전체 경보 0개</span>
           <span id="recent-update-time" class="recent-update-time">| 최근 경보</span>
 
           <!-- 우상단에 장비/국사 기준 메뉴 -->
           <div class="header-view-toggle">
-            <span class="summary-title">| 경보 맵 그리기:</span>
+            <span class="summary-title">| 경보 맵 그리기</span>
             <button id="equip-view-btn" class="view-btn active">장비 연결 기준</button>
             <button id="guksa-view-btn" class="view-btn">동일 국사 기준</button>
           </div>
@@ -109,7 +111,7 @@
               type="text"
               id="equipFilterInput"
               class="equip-filter-input"
-              placeholder="장비명 검색..."
+              placeholder="🔍 장비명 검색..."
             />
             <div class="equip-filter-div">
               <button id="equipFilterBtn" class="equip-filter-btn">Filter</button>
