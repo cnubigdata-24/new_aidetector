@@ -1149,7 +1149,7 @@ def get_network_map():
                 )
 
         links_data = links_query.all()
-
+                    
         # 링크 데이터 변환
         edges = []
 

@@ -608,6 +608,19 @@ function addRowsToAlarmTable(alarmDataList) {
       }
     }
   });
+
+  // 테이블 필터 추가 (테이블이 업데이트될 때마다 필터가 있는지 확인하고 없으면 추가)
+  const table = document.getElementById('alarmTable');
+  if (table && typeof addTableSearchFilters === 'function') {
+    // 기존 필터가 있는지 확인
+    const existingFilter = table
+      .closest('.table-container')
+      ?.querySelector('.table-filter-container');
+    if (!existingFilter) {
+      console.log('[TableFilter] 테이블 필터 추가');
+      addTableSearchFilters(table);
+    }
+  }
 }
 
 // 상단 경보 요약 대시보드 업데이트
@@ -655,13 +668,13 @@ function updateAlarmSummary() {
   };
 
   if (elements.equipmentCount) {
-    elements.equipmentCount.textContent = `| 실시간 경보장비: ${formatNumber(
+    elements.equipmentCount.textContent = `| 실시간 경보장비 ${formatNumber(
       totalEquipmentCount
     )}대`;
   }
 
   if (elements.alarmCount) {
-    elements.alarmCount.textContent = `| 전체 경보: ${formatNumber(totalAlarmCount)}개`;
+    elements.alarmCount.textContent = `| 전체 경보 ${formatNumber(totalAlarmCount)}개`;
   }
 
   if (elements.validCount) {

@@ -484,7 +484,7 @@ function updateRecentUpdateTime(recentTime) {
   if (!recentUpdateTimeEl) return;
 
   if (recentTime) {
-    recentUpdateTimeEl.textContent = `| 최근 경보: ${formatDateTime(recentTime)}`;
+    recentUpdateTimeEl.textContent = `| 최근 경보 ${formatDateTime(recentTime)}`;
   } else {
     recentUpdateTimeEl.textContent = `| 최근 경보`;
   }
