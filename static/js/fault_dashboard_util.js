@@ -33,9 +33,9 @@ const LINK_HOVER_OPACITY = 1;
 
 // 맵 관련 상수 (장비 연결 기준)
 const EQUIP_MAP_CONFIG = {
-  MAP_HEIGHT: 500,
+  MAP_HEIGHT: 600,
   MAP_PADDING: 50,
-  MAP_MARGIN_TOP: -50,
+  MAP_MARGIN_TOP: 0,
   HORIZONTAL_SPACING: 400,
   VERTICAL_SPACING: 70,
   ZOOM_MIN_SCALE: 0.3, // 0.8 → 0.3으로 감소하여 더 많이 축소 가능
@@ -1223,12 +1223,12 @@ window.ROOT_CAUSE_STROKE_WIDTH = ROOT_CAUSE_STROKE_WIDTH;
 // 페이지네이션이 렌더링된 후 스타일 적용
 function applyPaginationStylesAfterRender() {
   setTimeout(() => {
-    forceApplyPaginationStyles();
+    forcePaginationStyles();
   }, 100);
 
   // 추가로 500ms 후에도 한 번 더 적용
   setTimeout(() => {
-    forceApplyPaginationStyles();
+    forcePaginationStyles();
   }, 500);
 }
 

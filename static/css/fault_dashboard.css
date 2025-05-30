@@ -1432,8 +1432,8 @@ div#pagination *,
   flex: 1;
   position: relative;
   background-color: #ffffff;
-  overflow: hidden;
-  padding: 5px;
+  overflow: auto; /* hidden에서 auto로 변경 */
+  padding: 2px; /* 5px에서 2px로 줄임 */
 }
 
 /* 대시보드 우측 채팅창 채팅 메시지 스타일 */
@@ -1621,15 +1621,16 @@ div#pagination *,
 /* 동일 국사 기준 => 맵 제목 스타일 */
 .map-title {
   position: absolute;
-  top: 3px;
-  left: 0px;
+  top: 1px; /* 3px에서 1px로 줄임 */
+  left: 1px; /* 0px에서 1px로 조정 */
   font-size: 14px;
   font-weight: bold;
   color: #333;
-  z-index: 20;
-  background-color: rgba(249, 249, 249, 0.8);
-  padding: 5px 10px;
-  border-radius: 4px;
+  z-index: 30; /* 20에서 30으로 증가 */
+  background-color: rgba(249, 249, 249, 0.9); /* 투명도 증가 */
+  padding: 3px 8px; /* 패딩 조정 */
+  border-radius: 3px; /* 둥근 모서리 줄임 */
+  pointer-events: none; /* 마우스 이벤트 방지 */
 }
 
 /* 로딩/메시지 인디케이터 */

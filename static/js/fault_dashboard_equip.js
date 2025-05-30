@@ -190,7 +190,9 @@ function createEquipTopologyMap(data, alarmDataList) {
 
   // SVG 설정 - 맵 크기 증가
   const width = mapContainer.clientWidth || 1000;
-  const height = EQUIP_MAP_CONFIG.MAP_HEIGHT;
+  // 컨테이너의 실제 높이를 계산하되, 여백을 최소화
+  const containerHeight = mapContainer.clientHeight || 0;
+  const height = Math.max(containerHeight - 10, EQUIP_MAP_CONFIG.MAP_HEIGHT); // 30px에서 10px로 여백 축소
 
   // 줌 기능 추가를 위한 전체 그룹 생성
   const svg = d3
@@ -199,10 +201,7 @@ function createEquipTopologyMap(data, alarmDataList) {
     .attr('width', width)
     .attr('height', height)
     .attr('viewBox', [0, 0, width, height])
-    .attr(
-      'style',
-      `max-width: 100%; height: auto; margin-top: ${EQUIP_MAP_CONFIG.MAP_MARGIN_TOP}px;`
-    ); // 위쪽 마진 추가
+    .attr('style', `max-width: 100%; height: 100%; margin-top: 0px; margin-bottom: 0px;`); // 위아래 마진을 0으로 설정
 
   // 줌 동작을 위한 컨테이너 그룹
   const container = svg.append('g');
@@ -290,7 +289,7 @@ function createEquipTopologyMap(data, alarmDataList) {
 
   // 맵 중앙 계산
   const centerX = width / 2;
-  const centerY = height / 2 - 40; //
+  const centerY = height / 2 - 10; // -40에서 -10으로 줄임
 
   // 노드 위치 설정 - 레벨 기반 배치
   function assignNodePositions() {

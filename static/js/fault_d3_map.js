@@ -22,7 +22,7 @@ const GUKSA_MAP_CONFIG = {
 
   // SVG 크기 (고해상도 모니터 지원)
   SVG_WIDTH: 1600,
-  SVG_HEIGHT: 600,
+  SVG_HEIGHT: 700,
 
   // 경계 설정
   BOUNDARY_MARGIN: 30,
@@ -325,7 +325,9 @@ function addEquipNodesToMap(uniqueEquipMap, nodes, links, guksaName) {
 // SVG 설정 및 생성 (반응형 개선)
 function setupSVG(mapContainer) {
   const width = mapContainer.clientWidth || GUKSA_MAP_CONFIG.SVG_WIDTH;
-  const height = GUKSA_MAP_CONFIG.SVG_HEIGHT;
+  // 컨테이너의 실제 높이를 계산하되, 여백을 최소화
+  const containerHeight = mapContainer.clientHeight || 0;
+  const height = Math.max(containerHeight - 10, GUKSA_MAP_CONFIG.SVG_HEIGHT); // 30px에서 10px로 여백 축소
 
   // 고해상도 모니터를 위한 viewBox 최적화
   const viewBoxWidth = Math.max(1400, width); // 최소 1400px 너비 보장
@@ -339,7 +341,9 @@ function setupSVG(mapContainer) {
     .attr('preserveAspectRatio', 'xMinYMid meet') // xMidYMid → xMinYMid (좌측 정렬)
     .style('width', '100%')
     .style('height', '100%')
-    .style('max-width', '100%'); // 최대 너비 제한
+    .style('max-width', '100%')
+    .style('margin-top', '0px')
+    .style('margin-bottom', '0px'); // 상하 마진을 0으로 설정
 
   // 줌 동작을 위한 컨테이너 그룹
   const container = svg.append('g');
