@@ -212,7 +212,7 @@ html {
 
 /* 하단 경보 테이블 총괄 영역 */
 .bottom-div {
-  height: 210px !important; /* 테이블 영역 고정 높이 복원 */
+  height: 195px !important; /* 테이블 영역 고정 높이 복원 */
   flex-shrink: 0; /* 크기 고정 */
   max-width: 100%;
   position: relative;
@@ -772,9 +772,9 @@ select {
 /* 경보 테이블 고정 컬럼 너비 설정 */
 .alarm-table th:nth-child(1),
 .col-guksa {
-  width: 12% !important;
-  min-width: 130px !important;
-  max-width: 130px !important;
+  width: 8% !important;
+  min-width: 80px !important;
+  max-width: 80px !important;
 }
 
 .alarm-table th:nth-child(2),
@@ -786,9 +786,9 @@ select {
 
 .alarm-table th:nth-child(3),
 .col-valid {
-  width: 5% !important;
-  min-width: 55px !important;
-  max-width: 55px !important;
+  width: 4% !important;
+  min-width: 45px !important;
+  max-width: 45px !important;
 }
 
 .alarm-table th:nth-child(4),
@@ -821,8 +821,8 @@ select {
 
 .alarm-table th:nth-child(8),
 .col-alarm-message {
-  width: 25% !important;
-  min-width: 220px !important;
+  width: 30% !important;
+  min-width: 280px !important;
 }
 
 /* 행 호버 효과 */
@@ -962,12 +962,12 @@ div#pagination,
 div#pagination.simple-pagination,
 #pagination,
 #pagination.simple-pagination {
-  height: 32px !important;
-  line-height: 32px !important;
-  min-height: 32px !important;
-  max-height: 32px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
   margin: 0 !important;
-  padding: 5px 0 !important;
+  padding: 2px 0 !important;
   text-align: center !important;
   font-size: 12px !important;
   border-top: 1px solid #dee2e6 !important;
@@ -1038,7 +1038,9 @@ div#pagination .simple-pagination li span,
 div#pagination .simple-pagination ul li a,
 div#pagination .simple-pagination ul li span,
 #pagination .simple-pagination ul li a,
-#pagination .simple-pagination ul li span {
+#pagination .simple-pagination ul li span,
+.simple-pagination li a,
+.simple-pagination li span {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -1052,7 +1054,7 @@ div#pagination .simple-pagination ul li span,
   text-decoration: none !important;
   border: 1px solid #e0e0e0 !important;
   border-radius: 2px !important;
-  background-color: #ffffff !important;
+  background-color: #f8f9fa !important;
   background-image: none !important;
   color: #333333 !important;
   cursor: pointer !important;
@@ -1080,7 +1082,7 @@ div#pagination .simple-pagination ul li.current a,
   background-image: none !important;
   border-color: #6c757d !important;
   color: white !important;
-  font-weight: 700 !important;
+  font-weight: normal !important;
   text-shadow: none !important;
   box-shadow: none !important;
 }
@@ -1912,4 +1914,61 @@ div#pagination *,
 }
 
 .control-btn:active {
+}
+
+/* 페이지네이션 버튼 스타일 강제 적용 - 최고 우선순위 */
+body div#pagination .simple-pagination li a,
+body div#pagination .simple-pagination li span,
+body #pagination .simple-pagination li a,
+body #pagination .simple-pagination li span,
+body div#pagination .simple-pagination ul li a,
+body div#pagination .simple-pagination ul li span,
+body #pagination .simple-pagination ul li a,
+body #pagination .simple-pagination ul li span,
+body .simple-pagination li a,
+body .simple-pagination li span {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 24px !important;
+  width: auto !important;
+  height: 22px !important;
+  padding: 1px 4px !important;
+  margin: 0 !important;
+  font-size: 13px !important;
+  font-weight: normal !important;
+  text-decoration: none !important;
+  border: 1px solid #e0e0e0 !important;
+  border-radius: 2px !important;
+  background-color: #f8f9fa !important;
+  background-image: none !important;
+  color: #333333 !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  line-height: 20px !important;
+  vertical-align: middle !important;
+  float: none !important;
+}
+
+/* 현재 페이지 버튼 스타일 강제 적용 */
+body div#pagination .simple-pagination li.current span,
+body div#pagination .simple-pagination li.current a,
+body #pagination .simple-pagination li.current span,
+body #pagination .simple-pagination li.current a,
+body div#pagination .simple-pagination ul li.current span,
+body div#pagination .simple-pagination ul li.current a,
+body #pagination .simple-pagination ul li.current span,
+body #pagination .simple-pagination ul li.current a,
+body .simple-pagination .light-theme .current,
+body .light-theme .current,
+body .simple-pagination li.current span,
+body .simple-pagination li.current a {
+  background: #6c757d !important;
+  background-image: none !important;
+  border-color: #6c757d !important;
+  color: white !important;
+  font-weight: normal !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
 }

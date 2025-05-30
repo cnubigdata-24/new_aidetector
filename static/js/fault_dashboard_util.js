@@ -314,18 +314,11 @@ function renderPagination(totalItems) {
     },
   });
 
-  // 페이지네이션 초기화 후 강제로 커스텀 스타일 적용 - 여러 번 시도
-  setTimeout(() => {
-    forcePaginationStyles();
-  }, 100);
+  // 페이지네이션 스타일 강제 적용
+  forcePaginationStyles();
 
-  setTimeout(() => {
-    forcePaginationStyles();
-  }, 300);
-
-  setTimeout(() => {
-    forcePaginationStyles();
-  }, 500);
+  // 추가 스타일 적용
+  applyPaginationStylesAfterRender();
 }
 
 // 페이지네이션 스타일 강제 적용 함수
@@ -338,12 +331,12 @@ function forcePaginationStyles() {
 
   // 컨테이너 스타일 강제 적용 - cssText로 모든 스타일 덮어쓰기
   paginationContainer.style.cssText = `
-    height: 32px !important;
-    line-height: 32px !important;
-    min-height: 32px !important;
-    max-height: 32px !important;
+    height: 28px !important;
+    line-height: 28px !important;
+    min-height: 28px !important;
+    max-height: 28px !important;
     margin: 0 !important;
-    padding: 5px 0 !important;
+    padding: 2px 0 !important;
     text-align: center !important;
     font-size: 12px !important;
     border-top: 1px solid #dee2e6 !important;
@@ -418,19 +411,21 @@ function forcePaginationStyles() {
         // a, span 요소에 강제 스타일 적용
         const links = li.querySelectorAll('a, span');
         links.forEach((link) => {
-          // 상태별 스타일 결정
-          const isCurrentPage = li.classList.contains('current');
-          const isDisabled = li.classList.contains('disabled');
+          const isCurrentPage =
+            link.classList.contains('current') || link.parentElement.classList.contains('current');
+          const isDisabled =
+            link.classList.contains('disabled') ||
+            link.parentElement.classList.contains('disabled');
 
-          let backgroundColor = '#ffffff';
+          let backgroundColor = '#f8f9fa'; // 페이지네이션 버튼 배경색 변경
           let borderColor = '#e0e0e0';
           let color = '#333333';
           let fontWeight = 'normal';
           let cursor = 'pointer';
 
           if (isCurrentPage) {
-            backgroundColor = '#6c757d';
-            borderColor = '#6c757d';
+            backgroundColor = '#b9b9b9';
+            borderColor = '#b9b9b9';
             color = 'white';
           } else if (isDisabled) {
             backgroundColor = '#f8f9fa';
@@ -439,32 +434,30 @@ function forcePaginationStyles() {
             cursor = 'not-allowed';
           }
 
-          link.style.cssText = `
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            min-width: 24px !important;
-            width: auto !important;
-            height: 22px !important;
-            padding: 1px 4px !important;
-            margin: 0 !important;
-            font-size: 13px !important;
-            fontWeight = 'normal' !important;
-            text-decoration: none !important;
-            border: 1px solid ${borderColor} !important;
-            border-radius: 2px !important;
-            background-color: ${backgroundColor} !important;
-            background-image: none !important;
-            color: ${color} !important;
-            cursor: ${cursor} !important;
-            box-shadow: none !important;
-            text-shadow: none !important;
-            line-height: 20px !important;
-            vertical-align: middle !important;
-            float: none !important;
-            visibility: visible !important;
-            position: static !important;
-          `;
+          // 개별 CSS 속성을 강제로 설정
+          link.style.setProperty('display', 'inline-flex', 'important');
+          link.style.setProperty('align-items', 'center', 'important');
+          link.style.setProperty('justify-content', 'center', 'important');
+          link.style.setProperty('min-width', '24px', 'important');
+          link.style.setProperty('width', 'auto', 'important');
+          link.style.setProperty('height', '22px', 'important');
+          link.style.setProperty('padding', '1px 4px', 'important');
+          link.style.setProperty('margin', '0', 'important');
+          link.style.setProperty('font-size', '13px', 'important');
+          link.style.setProperty('font-weight', 'normal', 'important');
+          link.style.setProperty('text-decoration', 'none', 'important');
+          link.style.setProperty('border', `1px solid ${borderColor}`, 'important');
+          link.style.setProperty('border-radius', '2px', 'important');
+          link.style.setProperty('background-color', backgroundColor, 'important');
+          link.style.setProperty('background-image', 'none', 'important');
+          link.style.setProperty('color', color, 'important');
+          link.style.setProperty('cursor', cursor, 'important');
+          link.style.setProperty('box-shadow', 'none', 'important');
+          link.style.setProperty('text-shadow', 'none', 'important');
+          link.style.setProperty('line-height', '20px', 'important');
+          link.style.setProperty('vertical-align', 'middle', 'important');
+          link.style.setProperty('float', 'none', 'important');
+          link.style.setProperty('visibility', 'visible', 'important');
 
           // 호버 이벤트 추가 (비활성화되지 않은 일반 버튼만)
           if (!isDisabled && !isCurrentPage) {
@@ -499,7 +492,7 @@ function adjustTableHeight(totalPages) {
 
   if (totalPages > 1) {
     // 페이지네이션이 필요한 경우, 테이블 컨테이너 높이 조정
-    tableContainer.style.height = 'calc(100% - 50px)';
+    tableContainer.style.height = 'calc(100% - 46px)';
   } else {
     // 페이지네이션이 필요 없는 경우
     tableContainer.style.height = '100%';
@@ -1226,3 +1219,15 @@ window.LINK_STROKE_WIDTH = LINK_STROKE_WIDTH;
 window.TOOLTIP_DURATION = TOOLTIP_DURATION;
 window.ROOT_CAUSE_HIGHLIGHT_COLOR = ROOT_CAUSE_HIGHLIGHT_COLOR;
 window.ROOT_CAUSE_STROKE_WIDTH = ROOT_CAUSE_STROKE_WIDTH;
+
+// 페이지네이션이 렌더링된 후 스타일 적용
+function applyPaginationStylesAfterRender() {
+  setTimeout(() => {
+    forceApplyPaginationStyles();
+  }, 100);
+
+  // 추가로 500ms 후에도 한 번 더 적용
+  setTimeout(() => {
+    forceApplyPaginationStyles();
+  }, 500);
+}
