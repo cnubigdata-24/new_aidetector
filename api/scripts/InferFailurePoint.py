@@ -373,7 +373,7 @@ class InferFailurePoint:
                     'type': 'node',
                     'id': node['id'],
                     'name': node_name,
-                    'failure_type': '전송 LOS 장애',
+                    'failure_type': '전송 LOS 경보',
                     'inference_detail': '대항국 장비 장애 또는 광선로 단선',
                     'alarms': los_alarms,
                     'confidence': 0.9

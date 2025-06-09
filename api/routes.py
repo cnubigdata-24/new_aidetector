@@ -144,13 +144,13 @@ def get_failure_point_status():
             'success': True,
             'analyzer_available': True,
             'supported_failure_types': [
-                '링크 장애',
+                '선로 장애',
                 '상위 노드 장애',
-                '교환 A1395 장애',
-                '교환 A1930 단독장애',
-                '교환 A1930 상위장애',
-                '전송 LOS 장애',
-                '전송 LOF 장애'
+                '교환 A1395 경보',
+                '교환 A1930 단독 장애',
+                '교환 A1930 상위 장애',
+                '전송 LOS 경보',
+                '전송 LOF 경보'
             ],
             'version': '1.0.0'
         }), 200
