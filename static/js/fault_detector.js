@@ -603,7 +603,7 @@
       if (confirm('모든 대화 내용을 초기화하시겠습니까?')) {
         DOMUtils.getElement('response-box').innerHTML = '';
         DOMUtils.getElement('summary-list').innerHTML = '';
-        DOMUtils.getElement('prompt-input').value = '';
+        // DOMUtils.getElement('prompt-input').value = ''; // 프롬프트는 유지
         AppState.responseCount = 0;
 
         // 타임스탬프 초기화

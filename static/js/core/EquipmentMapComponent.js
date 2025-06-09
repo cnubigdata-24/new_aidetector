@@ -202,7 +202,7 @@ export class EquipmentMapComponent {
       '✔️ 네트워크 토폴로지 맵을 생성합니다.',
       this.container
     );
-    MessageManager?.addAnalyzingMessage?.('✔️ 네트워크 토폴로지 맵을 생성합니다.');
+    MessageManager?.addAnalyzingMessage?.('✔️ NW 토폴로지 MAP을 생성합니다.');
   }
 
   //타겟 장비 검색 - 경보 데이터 또는 장비 데이터에서 조회

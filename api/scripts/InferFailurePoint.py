@@ -218,7 +218,7 @@ class InferFailurePoint:
                         'id': node['id'],
                         'name': node_name,
                         'failure_type': '상위 노드 장애',
-                        'inference_detail': '상위 노드 장애점 추정',
+                        'inference_detail': '하위 장비 모두 경보 발생',
                         'alarms': node_alarms,
                         'confidence': 0.8
                     })

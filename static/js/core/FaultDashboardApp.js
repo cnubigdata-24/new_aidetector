@@ -1978,7 +1978,9 @@ ${alarmDetails}`;
       // 팝업 생성
       this.createFaultDetectorModal(postData);
 
-      MessageManager.addSuccessMessage?.(`🤖 ${baseNode.name} 장비 기준 AI 장애분석을 시작합니다.`);
+      MessageManager.addAnalyzingMessage?.(
+        `🔍 현재 MAP의 모든 경보들과 유사한 사례를 분석합니다. <br><br> • 기준 장비: ${baseNode.name} <br> • 전체 경보 수: ${mapAlarms.length} 건`
+      );
     } catch (error) {
       console.error('❌ AI 장애분석 팝업 열기 실패:', error);
       this.handleError('AI 장애분석 시작 실패', error);

@@ -548,7 +548,7 @@ class DashboardComponent {
       }
 
       if (this.headerElements.recentTime && recentAlarm) {
-        const recentTime = new Date(recentAlarm.occur_datetime).toLocaleString('ko-KR');
+        const recentTime = CommonUtils.formatDateTime(recentAlarm.occur_datetime);
         this.headerElements.recentTime.textContent = `${recentTime}`;
       } else {
         console.warn('recentTimeEl 요소를 찾을 수 없습니다.');
