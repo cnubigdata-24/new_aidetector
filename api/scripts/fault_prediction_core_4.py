@@ -39,6 +39,22 @@ from .fault_prediction_constants import (
 # 상수 정의 - 파일 최상단에 추가
 ERROR_DB_ACCESS = "VECTOR_DB_ACCESS_ERROR"
 
+# 분야 매핑 상수 추가
+FIELD_MAPPING = {
+    "전송": ["전송"],
+    "MW": ["MW", "M/W", "마이크로 웨이브", "마이크로웨이브"],
+    "IP": ["IP"],
+    "교환": ["교환"],
+    "무선": ["무선"],
+    "선로": ["선로", "케이블"]
+}
+
+# 역방향 매핑 (chroma db의 분야 -> 표준 분야)
+DB_FIELD_TO_STANDARD = {}
+for standard_field, variants in FIELD_MAPPING.items():
+    for variant in variants:
+        DB_FIELD_TO_STANDARD[variant] = standard_field
+
 # 로깅 설정
 logging.basicConfig(
     level=logging.INFO,
@@ -76,6 +92,56 @@ def get_guksa_id():
     """국사 ID 조회 함수"""
     global _guksa_id
     return _guksa_id
+
+
+def extract_fields_from_query(query):
+    """경보 내역에서 분야를 추출하는 함수"""
+    found_fields = set()
+    query_lower = query.lower()
+
+    # 각 분야의 키워드들을 확인
+    for standard_field, variants in FIELD_MAPPING.items():
+        for variant in variants:
+            if variant.lower() in query_lower:
+                found_fields.add(standard_field)
+                break  # 해당 분야에서 하나라도 찾으면 다음 분야로
+
+    # FIELD_KEYWORDS도 활용하여 추가 검색
+    for field, keywords in FIELD_KEYWORDS.items():
+        if field in FIELD_MAPPING:  # 매핑된 분야만 처리
+            for keyword in keywords:
+                if keyword.lower() in query_lower:
+                    found_fields.add(field)
+                    break
+
+    return list(found_fields)
+
+
+def create_field_filter(detected_fields):
+    """감지된 분야들에 대한 chroma db 필터 조건 생성"""
+    if not detected_fields:
+        return None
+
+    # 각 분야의 모든 변형을 포함하는 필터 조건 생성
+    all_field_variants = set()
+    for field in detected_fields:
+        if field in FIELD_MAPPING:
+            all_field_variants.update(FIELD_MAPPING[field])
+
+    # chroma db 필터 조건 생성 (OR 조건)
+    if len(all_field_variants) == 1:
+        return {"장애분야": {"$eq": list(all_field_variants)[0]}}
+    else:
+        return {"장애분야": {"$in": list(all_field_variants)}}
+
+
+def log_field_filtering_info(query, detected_fields, filter_condition):
+    """분야 필터링 정보를 로깅"""
+    if detected_fields:
+        logger.info(f"경보 내역에서 감지된 분야: {', '.join(detected_fields)}")
+        logger.info(f"chroma db 필터 조건: {filter_condition}")
+    else:
+        logger.info("경보 내역에서 특정 분야가 감지되지 않아 전체 사례를 검색합니다.")
 
 # 비동기 외부 API 통신 함수들
 
@@ -886,8 +952,17 @@ def analyze_fault_alert_correlation(top_results):
 
 async def hybrid_search_async(query, collection, top_k=5):
     """벡터 유사도와 키워드/패턴 매칭을 결합한 하이브리드 검색 구현 (비동기 버전)"""
-    # 캐시 키 생성
-    cache_key = hash(query)
+    # 1. 경보 내역에서 분야 추출
+    detected_fields = extract_fields_from_query(query)
+
+    # 2. 분야 기반 필터 조건 생성
+    field_filter = create_field_filter(detected_fields)
+
+    # 3. 필터링 정보 로깅
+    log_field_filtering_info(query, detected_fields, field_filter)
+
+    # 캐시 키 생성 (필터 조건도 포함)
+    cache_key = hash(query + str(field_filter))
     current_time = time.time()
 
     # 캐시에 있고 만료되지 않았으면 캐시된 결과 반환
@@ -896,14 +971,22 @@ async def hybrid_search_async(query, collection, top_k=5):
         if current_time - cached_item['timestamp'] < _VECTOR_CACHE_EXPIRY:
             return cached_item['results'], cached_item['search_results']
 
-    # 벡터 검색 실행
-    search_results = collection.query(
-        query_texts=[query],
-        n_results=min(top_k * 3, 15),
-        include=["documents", "metadatas", "distances"],
-    )
+    # 벡터 검색 실행 (분야 필터 적용)
+    search_params = {
+        "query_texts": [query],
+        "n_results": min(top_k * 3, 15),
+        "include": ["documents", "metadatas", "distances"]
+    }
+
+    # 분야 필터가 있으면 추가
+    if field_filter:
+        search_params["where"] = field_filter
+        logger.info(f"분야 필터링 적용: {detected_fields}")
+
+    search_results = collection.query(**search_params)
 
     if not search_results.get("documents") or not search_results["documents"][0]:
+        logger.warning(f"검색 결과 없음. 필터 조건: {field_filter}")
         return [], search_results
 
     seen_fault_numbers = set()
@@ -926,6 +1009,8 @@ async def hybrid_search_async(query, collection, top_k=5):
             "document": doc,
             "distance": distance,
         })
+
+    logger.info(f"필터링 후 문서 수: {len(documents_info)}")
 
     # 유사도 계산 (텍스트 매칭 강화)
     similarity_scores = await calculate_hybrid_similarities(query, documents_info)
