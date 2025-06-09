@@ -10,35 +10,14 @@
   const AppState = {
     requestTime: null,
     responseCount: 0,
-    guksa_id: new URLSearchParams(window.location.search).get('guksa_id'),
     isDragging: false,
     isSidebarVisible: true,
-
-    init() {
-      console.log('쿼리스트링으로 받은 guksa_id:', this.guksa_id);
-    },
   };
 
-  // HTML 생성 모듈 - 복잡한 HTML 구조 생성
+  // HTML 생성 모듈
   const HTMLGenerator = {
     // 파싱된 JSON 데이터 저장 변수
     parsedData: null,
-
-    // 채팅 모드 응답 HTML 생성
-    ChatModeResponseHTML(input, response) {
-      try {
-        return `
-          <details open>
-            <summary><b>📌 응답 펼치기/접기</b></summary>
-            <div><b>[질문]</b> <br>${input}</div> <br>
-            <div><b>[응답]</b> <br>${response.replace(/\n/g, '<br>')}</div>
-          </details>
-        `;
-      } catch (e) {
-        console.error('채팅 응답 생성 오류:', e);
-        return `<div class="error-message">응답 처리 중 오류가 발생했습니다: ${e.message}</div>`;
-      }
-    },
 
     // 장애점 추론 정보 표시 HTML 생성
     OpinionSectionHTML() {
@@ -109,7 +88,7 @@
       `;
     },
 
-    // 요약 표 HTML 생성
+    // 장애점 추정 요약 테이블 HTML 생성
     SummarySectionHTML() {
       // 오류가 있거나 summary 데이터가 없는 경우
       if (
@@ -150,7 +129,7 @@
       return tableHTML;
     },
 
-    // 세부 내역 섹션 HTML 생성
+    // 장애점 유사 사례별 세부 내역 섹션 HTML 생성
     DetailsSectionHTML() {
       // 오류가 있거나 details 데이터가 없는 경우
       if (
@@ -442,68 +421,6 @@
 
   // API 호출 모듈
   const APIService = {
-    // 실시간 경보 조회
-    getRealTimeAlarmList() {
-      Utils.toggleButtonsDuringFetch(true);
-
-      // 전역 AppState에서 guksa_id 가져오기
-      const guksa_id = AppState.guksa_id;
-      console.log('경보 조회 요청, guksa_id:', guksa_id);
-
-      // URL에 guksa_id 쿼리 파라미터 추가
-      const url = guksa_id
-        ? `/api/latest_alarms?guksa_id=${encodeURIComponent(guksa_id)}`
-        : '/api/latest_alarms';
-
-      console.log('API 호출 URL:', url);
-
-      return Utils.fetchAPI(url)
-        .then((data) => {
-          console.log('경보 데이터 수신:', data);
-
-          // 데이터가 있을 경우 prompt-input에 설정하고 사용자에게 알림
-          if (data.alarms) {
-            DOMUtils.getElement('prompt-input').value = '경보수집 내역입니다.\n\n' + data.alarms;
-
-            // 데이터 수신 알림 메시지 추가
-            DOMRenderer.addBotMessage(
-              `
-              <div class="notification">
-                <p>✅ 경보 데이터가 성공적으로 수신되었습니다.</p>
-                <p>총 <b>${data.alarms.split('\n').length}건의 경보</b>를 확인했습니다.<br>
-                아래 프롬프트의 경보 내역을 확인하고 장애 증상을 추가 입력해서 분석을 요청하세요.</p>
-              </div>
-            `,
-              'bot-msg msg-info'
-            );
-          } else {
-            // 데이터가 없는 경우 알림
-            DOMRenderer.addBotMessage(
-              `
-              <div class="notification">
-                <p>ℹ️ 해당 국사에 대한 경보 데이터가 없습니다.</p>
-                <p>다른 국사를 선택하거나 시스템 관리자에게 문의하세요.</p>
-              </div>
-            `,
-              'bot-msg msg-info'
-            );
-          }
-
-          return data;
-        })
-        .catch((err) => {
-          console.error('❌ 경보 데이터 로딩 실패:', err);
-
-          // 오류 메시지 출력
-          DOMRenderer.addErrorMessage(`경보 데이터 로딩 실패: ${err.message}`);
-
-          throw err;
-        })
-        .finally(() => {
-          Utils.toggleButtonsDuringFetch(false);
-        });
-    },
-
     // 광케이블 선로 장애정보 수집
     getDrCableInfo() {
       return Utils.fetchAPI(`/api/cable_status?guksa_id=${AppState.guksa_id}`)
@@ -540,27 +457,6 @@
           throw err;
         });
     },
-
-    // 국사명 가져오기
-    getGuksaName() {
-      if (!AppState.guksa_id) {
-        DOMUtils.getElement('guksa_name').innerText = '없음';
-        return Promise.resolve();
-      }
-
-      return Utils.fetchAPI(`/api/guksa_name?guksa_id=${AppState.guksa_id}`)
-        .then((data) => {
-          if (data.guksa_name) {
-            DOMUtils.getElement('guksa_name').innerText = data.guksa_name;
-          } else {
-            DOMUtils.getElement('guksa_name').innerText = '알 수 없음';
-          }
-        })
-        .catch((err) => {
-          console.error('국사명 조회 실패:', err);
-          DOMUtils.getElement('guksa_name').innerText = '조회 실패';
-        });
-    },
   };
 
   // UI 컨트롤러 모듈 - 사용자 액션 처리 함수
@@ -575,7 +471,8 @@
         return;
       }
 
-      const mode = DOMUtils.querySelector('input[name="queryMode"]:checked').value;
+      // chat 모드 사용 안 할 예정임.
+      const mode = 'fixed'; //DOMUtils.querySelector('input[name="queryMode"]:checked').value;
       Utils.toggleButtonsDuringFetch(true);
 
       const requestTimeObj = new Date();
@@ -600,11 +497,7 @@
               data.error || '알 수 없는 오류'
             }</div>`;
           } else {
-            if (mode === 'chat') {
-              htmlContent = HTMLGenerator.ChatModeResponseHTML(input, data.details);
-            } else {
-              htmlContent = HTMLGenerator.AllSectionHTML(data);
-            }
+            htmlContent = HTMLGenerator.AllSectionHTML(data);
           }
 
           DOMRenderer.addBotMessage(htmlContent);
@@ -623,11 +516,6 @@
           promptInput.value = '';
           DOMRenderer.updatePlaceholder();
         });
-    },
-
-    // 실시간 경보 목록 가져오기
-    getRealTimeAlarmList() {
-      APIService.getRealTimeAlarmList();
     },
 
     // Dr. Cable에서 광케이블 선로 피해정보 수집
@@ -718,15 +606,6 @@
         DOMUtils.getElement('prompt-input').value = '';
         AppState.responseCount = 0;
 
-        // 서버에 대화 초기화 요청 - API 응답 확인 없이 실행
-        try {
-          Utils.fetchAPI('/api/clear_conversation', 'POST', { clear: true })
-            .then(() => console.log('대화 초기화 성공'))
-            .catch((err) => console.log('대화 초기화 API 오류 (무시됨):', err));
-        } catch (e) {
-          console.log('대화 초기화 요청 오류 (무시됨):', e);
-        }
-
         // 타임스탬프 초기화
         const timestamp = DOMUtils.getElement('timestamp');
         if (timestamp) {
@@ -734,9 +613,7 @@
         }
 
         // 로컬 스토리지 초기화
-        localStorage.removeItem('nw-rag-conversation');
-        localStorage.removeItem('nw-rag-summary');
-        localStorage.removeItem('nw-rag-count');
+        StorageService.removeConversation();
       }
     },
 
@@ -786,34 +663,11 @@
       }
     },
 
-    // 대화 내용 초기화
-    clearConversation() {
-      if (confirm('모든 대화 내용을 초기화하시겠습니까?')) {
-        DOMUtils.getElement('response-box').innerHTML = '';
-        DOMUtils.getElement('summary-list').innerHTML = '';
-        DOMUtils.getElement('prompt-input').value = '';
-        AppState.responseCount = 0;
-
-        // 서버에 대화 초기화 요청 - API 응답 확인 없이 실행
-        try {
-          Utils.fetchAPI('/api/clear_conversation', 'POST', { clear: true })
-            .then(() => console.log('대화 초기화 성공'))
-            .catch((err) => console.log('대화 초기화 API 오류 (무시됨):', err));
-        } catch (e) {
-          console.log('대화 초기화 요청 오류 (무시됨):', e);
-        }
-
-        // 타임스탬프 초기화
-        const timestamp = DOMUtils.getElement('timestamp');
-        if (timestamp) {
-          timestamp.textContent = '';
-        }
-
-        // 로컬 스토리지 초기화
-        localStorage.removeItem('nw-rag-conversation');
-        localStorage.removeItem('nw-rag-summary');
-        localStorage.removeItem('nw-rag-count');
-      }
+    // 로컬 스토리지 초기화
+    removeConversation() {
+      localStorage.removeItem('nw-rag-conversation');
+      localStorage.removeItem('nw-rag-summary');
+      localStorage.removeItem('nw-rag-count');
     },
   };
 
@@ -922,16 +776,12 @@
 
     // 쿼리 모드에 따른 placeholder 업데이트
     updatePlaceholder() {
-      const mode = DOMUtils.querySelector('input[name="queryMode"]:checked').value;
+      //       const mode = DOMUtils.querySelector('input[name="queryMode"]:checked').value;
       const promptInput = DOMUtils.getElement('prompt-input');
 
-      if (mode === 'fixed') {
-        promptInput.placeholder =
-          'NW 장애발생 시 장애점을 찾을 수 있도록 분야별 세부 경보내역을 입력해 주세요!\n\n[장애점 추론] 외부 환경(정전/페이딩/선로장애) + 경보내역 + 장애증상과 유사한 장애사례를 기준으로 추론 \n[유사 장애사례 추출] 입력된 경보내역 등을 바탕으로 유사도가 높은 사례 3건 추출';
-      } else {
-        promptInput.placeholder =
-          '장애에 대해 자유롭게 질문하세요:\n- 이 장애의 원인은 무엇인가요?\n- 어떤 조치가 필요한가요?\n 유사한 장애 사례가 있었나요?';
-      }
+      //       if (mode === 'fixed') {
+      promptInput.placeholder =
+        'NW 장애발생 시 장애점을 찾을 수 있도록 분야별 세부 경보내역을 입력해 주세요!\n\n[장애점 추론] 외부 환경(정전/페이딩/선로장애) + 경보내역 + 장애증상과 유사한 장애사례를 기준으로 추론 \n[유사 장애사례 추출] 입력된 경보내역 등을 바탕으로 유사도가 높은 사례 3건 추출';
     },
   };
 
@@ -1142,10 +992,78 @@
     toggleBtn.addEventListener('click', UIController.toggleSidebar);
   }
 
+  // Prompt 경보 데이터 초기화
+  function initializeWithAlarmData() {
+    console.log('🎯 initializeWithAlarmData 함수 시작');
+    console.log('🌐 window.faultData:', window.faultData);
+
+    const faultData = window.faultData;
+
+    if (!faultData) {
+      console.error('❌ window.faultData가 없습니다!');
+      return;
+    }
+
+    if (!faultData.alarms || faultData.alarms.length === 0) {
+      console.warn('⚠️ faultData.alarms가 없거나 빈 배열입니다:', faultData.alarms);
+      // 경보가 없는 경우 간단한 텍스트만 설정
+      const promptInput = DOMUtils.getElement('prompt-input');
+      promptInput.value = '현재 경보가 없는 상태입니다. 네트워크 상태를 분석해 주세요.';
+      console.log('✅ 경보 없는 상태로 프롬프트 초기화 완료');
+      return;
+    }
+
+    const promptInput = DOMUtils.getElement('prompt-input');
+    const alarms = faultData.alarms;
+
+    console.log('📊 데이터 확인:');
+    console.log('  - alarms 개수:', alarms.length);
+    console.log('  - 첫 번째 경보:', alarms[0]);
+
+    // 분야별로 경보 그룹화
+    const alarmsBySector = {};
+    alarms.forEach((alarm) => {
+      const sector = alarm.sector || '기타';
+      if (!alarmsBySector[sector]) {
+        alarmsBySector[sector] = [];
+      }
+      alarmsBySector[sector].push(alarm);
+    });
+
+    console.log('🏷️ 분야별 경보 그룹화:', alarmsBySector);
+
+    // 경보 텍스트 생성 (간소화)
+    let alarmText = '';
+
+    // Prompt에 전달할 순수 분야별 경보 추가
+    Object.entries(alarmsBySector).forEach(([sector, sectorAlarms]) => {
+      alarmText += `[${sector} 분야 경보]\n`;
+      sectorAlarms.forEach((alarm) => {
+        alarmText += `- ${alarm.alarm_message}\n`;
+      });
+      alarmText += '\n';
+    });
+
+    alarmText += '위 경보들을 종합하여 네트워크 장애점을 분석해 주세요.';
+
+    promptInput.value = alarmText;
+    console.log('✅ 프롬프트 초기화 완료, 텍스트 길이:', alarmText.length);
+  }
+
   // 초기화 및 이벤트 리스너 설정
   function initApp() {
-    // 앱 상태 초기화
-    AppState.init();
+    console.log('🚀 fault_detector.js initApp 시작');
+
+    // 전달받은 데이터로 초기화
+    if (window.faultData && window.faultData.alarms && window.faultData.alarms.length > 0) {
+      console.log('📊 경보 데이터가 있어서 initializeWithAlarmData 호출');
+      initializeWithAlarmData();
+    } else if (window.faultData) {
+      console.log('📊 경보 데이터는 없지만 faultData가 있어서 initializeWithAlarmData 호출');
+      initializeWithAlarmData();
+    } else {
+      console.warn('⚠️ window.faultData가 없습니다!');
+    }
 
     // 로컬 스토리지에서 대화 이력 로드
     StorageService.loadConversation();
@@ -1153,20 +1071,10 @@
     // 플레이스홀더 업데이트
     DOMRenderer.updatePlaceholder();
 
-    // 라디오 버튼 변경 이벤트 리스너
-    DOMUtils.querySelectorAll('input[name="queryMode"]').forEach((radio) => {
-      radio.addEventListener('change', DOMRenderer.updatePlaceholder);
-    });
-
     // 버튼 이벤트 리스너 설정
-    DOMUtils.getElement('getAlarmBtn').addEventListener('click', UIController.getRealTimeAlarmList);
-
     DOMUtils.getElement('getCableBtn').addEventListener('click', UIController.getDrCableInfo);
-
     DOMUtils.getElement('getMWInfoBtn').addEventListener('click', UIController.getMWInfoFromSNMP);
-
     DOMUtils.getElement('clearChatBtn').addEventListener('click', UIController.clearConversation);
-
     DOMUtils.getElement('sendBtn').addEventListener('click', UIController.handlePrompt);
 
     // 엔터 키 이벤트 처리
@@ -1177,17 +1085,13 @@
       }
     });
 
-    // 초기 데이터 로드
-    APIService.getRealTimeAlarmList();
-
-    // 국사명 가져오기
-    APIService.getGuksaName();
-
     // 자동 저장 타이머 설정
     setInterval(() => StorageService.saveConversation(), 60000);
 
     // 사이드바 드래그 설정
     setupSidebarDrag();
+
+    console.log('✅ fault_detector.js 초기화 완료');
   }
 
   // 페이지 로드 시 앱 초기화

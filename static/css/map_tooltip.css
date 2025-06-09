@@ -1,0 +1,304 @@
+/* ===============================================
+ * 툴팁 스타일
+ * =============================================== */
+/* 기존 .map-tooltip, .equip-map-tooltip을 확장하여 TooltipManager와 통합 */
+.map-tooltip,
+.equip-map-tooltip,
+.tooltip-manager-container {
+  position: absolute;
+  background-color: transparent; /* 배경색을 투명으로 변경 */
+  border: none;
+  border-radius: var(--border-radius-md);
+  padding: 0; /* 패딩 완전 제거 */
+  pointer-events: none;
+  font-size: var(--font-sm);
+  z-index: 9999;
+  line-height: 1.4;
+  box-shadow: none;
+  opacity: 0;
+  transition: opacity 0.1s ease-out, transform 0.1s ease-out;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #ccc var(--border-light);
+
+  max-width: 380px;
+  max-height: 280px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #333;
+  filter: none;
+  transform: scale(0.9);
+}
+
+.tooltip-manager-container {
+  position: fixed; /* absolute에서 fixed로 변경 */
+  top: 0;
+  left: 0;
+}
+
+/* * TooltipManager 툴팁 내용 스타일 */
+.tooltip-content {
+  background: transparent; /* 배경 제거하여 헤더/바디만 표시 */
+  backdrop-filter: none; /* 블러 효과 제거 */
+  border-radius: 8px;
+  border: none;
+  overflow: hidden;
+  position: relative;
+}
+.tooltip-header {
+  padding: 8px 12px;
+  background: #4a90e2;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 32px;
+  border: 1px solid #d3d3d3; /* 옅은 회색 테두리 추가 */
+  border-bottom: none; /* 바디와 연결 부분은 테두리 제거 */
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.tooltip-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.tooltip-field-badge,
+.tooltip-type-badge,
+.tooltip-validity {
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+/* * 툴팁 바디 스타일 */
+.tooltip-body {
+  padding: 10px 12px;
+  background: rgba(252, 252, 252, 0.95);
+  border: 1px solid #d3d3d3; /* 옅은 회색 테두리 추가 */
+  border-top: none; /* 헤더와 연결 부분은 테두리 제거 */
+  border-bottom-left-radius: 8px; /* 하단 모서리 라운드 */
+  border-bottom-right-radius: 8px; /* 하단 모서리 라운드 */
+}
+
+.tooltip-info-row {
+  display: flex;
+  margin-bottom: 6px;
+  align-items: flex-start;
+}
+
+.tooltip-info-row:last-child {
+  margin-bottom: 0;
+}
+
+.tooltip-label {
+  font-weight: 500;
+  color: #555;
+  min-width: 50px;
+  margin-right: 8px;
+  font-size: 12px;
+}
+
+.tooltip-value {
+  color: #333;
+  flex: 1;
+  word-break: break-word;
+  font-size: 12px;
+}
+
+/* * 경보 섹션 스타일 */
+.tooltip-alarm-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.tooltip-section-title {
+  font-weight: 600;
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 6px;
+}
+
+.tooltip-alarm-list {
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.tooltip-alarm-item {
+  padding: 4px 6px;
+  margin: 2px 0;
+  border-radius: 4px;
+  font-size: 12px;
+  border-left: 3px solid transparent;
+}
+
+.tooltip-alarm-item.valid-alarm {
+  background: rgba(231, 76, 60, 0.1);
+  border-left-color: #e74c3c;
+}
+
+.tooltip-alarm-item.invalid-alarm {
+  background: rgba(149, 165, 166, 0.1);
+  border-left-color: #95a5a6;
+}
+
+.tooltip-alarm-time {
+  font-weight: 500;
+  color: #666;
+  font-size: 11px;
+}
+
+.tooltip-alarm-message {
+  color: #444;
+  margin-top: 1px;
+  line-height: 1.3;
+}
+
+.tooltip-alarm-more {
+  text-align: center;
+  font-size: 11px;
+  color: #666;
+  font-style: italic;
+  margin-top: 4px;
+  padding: 2px;
+}
+
+.tooltip-no-alarms {
+  font-size: 12px;
+  color: #888;
+  font-style: italic;
+  text-align: center;
+  padding: 4px;
+}
+
+/* 툴팁 타입별 특별 스타일  */
+/* 링크 툴팁 전용 스타일 */
+.link-tooltip .tooltip-header {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.9) 0%, rgba(41, 128, 185, 0.9) 100%);
+}
+
+.link-tooltip .tooltip-type-badge {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* 국사 툴팁 전용 스타일 */
+.guksa-tooltip .tooltip-header {
+  background: linear-gradient(135deg, rgba(142, 68, 173, 0.9) 0%, rgba(125, 60, 152, 0.9) 100%);
+}
+
+/* 경보 툴팁 전용 스타일 */
+.alarm-tooltip .tooltip-header {
+  background: linear-gradient(135deg, rgba(231, 76, 60, 0.9) 0%, rgba(192, 57, 43, 0.9) 100%);
+}
+
+.alarm-tooltip.invalid-alarm .tooltip-header {
+  background: linear-gradient(135deg, rgba(149, 165, 166, 0.9) 0%, rgba(127, 140, 141, 0.9) 100%);
+}
+
+/* * 툴팁 애니메이션 상태 */
+.tooltip-manager-container.showing {
+  opacity: 0.95 !important;
+  transform: scale(1) !important;
+}
+
+.tooltip-manager-container.hiding {
+  opacity: 0 !important;
+  transform: scale(0.9) !important;
+}
+
+/* * 툴팁 스크롤바 스타일 (기존과 통합) */
+.tooltip-alarm-list::-webkit-scrollbar,
+.map-tooltip::-webkit-scrollbar,
+.equip-map-tooltip::-webkit-scrollbar,
+.tooltip-manager-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tooltip-alarm-list::-webkit-scrollbar-track,
+.map-tooltip::-webkit-scrollbar-track,
+.equip-map-tooltip::-webkit-scrollbar-track,
+.tooltip-manager-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+
+.tooltip-alarm-list::-webkit-scrollbar-thumb,
+.map-tooltip::-webkit-scrollbar-thumb,
+.equip-map-tooltip::-webkit-scrollbar-thumb,
+.tooltip-manager-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 2px;
+}
+
+.tooltip-alarm-list::-webkit-scrollbar-thumb:hover,
+.map-tooltip::-webkit-scrollbar-thumb:hover,
+.equip-map-tooltip::-webkit-scrollbar-thumb:hover,
+.tooltip-manager-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.equip-map-tooltip .tooltip-info {
+  margin-top: var(--spacing-sm);
+}
+
+.equip-map-tooltip .tooltip-label {
+  font-weight: bold;
+  color: #555;
+}
+
+.map-tooltip ul,
+.equip-map-tooltip ul {
+  margin: var(--spacing-sm) 0;
+  padding-left: 20px;
+  list-style-type: disc;
+}
+
+.map-tooltip li,
+.equip-map-tooltip li {
+  margin-bottom: 5px;
+}
+
+/* ===============================================
+ * 기존 툴팁 전용 스타일 유지 (하위 호환성)
+ * =============================================== */
+
+/* 기존 equip-map-tooltip 고유 스타일 유지 */
+.equip-map-tooltip .tooltip-title {
+  font-weight: bold;
+  font-size: var(--font-lg);
+  color: var(--text-primary);
+  margin-bottom: 5px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: var(--spacing-sm);
+}
+
+.equip-map-tooltip .tooltip-info {
+  margin-top: var(--spacing-sm);
+}
+
+.equip-map-tooltip .tooltip-label {
+  font-weight: bold;
+  color: #555;
+}
+
+/* 기존 리스트 스타일 유지 */
+.map-tooltip ul,
+.equip-map-tooltip ul {
+  margin: var(--spacing-sm) 0;
+  padding-left: 20px;
+  list-style-type: disc;
+}
+
+.map-tooltip li,
+.equip-map-tooltip li {
+  margin-bottom: 5px;
+}

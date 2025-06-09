@@ -1,9 +1,12 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, render_template
 import logging
 
 from db.models import *
 from db.models import db, TblAlarmAllLast, TblSubLink, TblGuksa
-from sqlalchemy import desc, case, or_, func, asc, select
+from sqlalchemy import desc, case, or_, func, asc, select, text
+
+# InferFailurePoint 클래스 import
+from .scripts.InferFailurePoint import InferFailurePoint
 
 
 import numpy as np
@@ -14,6 +17,8 @@ import random
 
 import subprocess
 import json
+import base64
+from urllib.parse import unquote
 import time
 
 import hashlib
@@ -50,6 +55,156 @@ api_bp = Blueprint("api", __name__, url_prefix="/api")
 MW_SOCKET_SERVER = "tcp://10.58.241.61:5555"
 context = zmq.Context()
 zmq_socket = context.socket(zmq.REQ)
+
+# 장애점 추정 API
+
+
+@api_bp.route("/infer_failure_point", methods=["POST"])
+def infer_failure_point():
+    """
+    장애점 추정 API
+    POST 요청으로 노드, 링크, 경보 데이터를 받아 장애점을 분석하고 결과를 JSON으로 반환
+    """
+    try:
+        # 요청 데이터 검증
+        if not request.is_json:
+            return jsonify({
+                'success': False,
+                'error': 'Content-Type이 application/json이어야 합니다.'
+            }), 400
+
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': '요청 데이터가 없습니다.'
+            }), 400
+
+        # 입력 데이터 추출
+        nodes = data.get('nodes', [])
+        links = data.get('links', [])
+        alarms = data.get('alarms', [])
+
+        # 기본 데이터 검증
+        if not isinstance(nodes, list) or not isinstance(links, list) or not isinstance(alarms, list):
+            return jsonify({
+                'success': False,
+                'error': '입력 데이터 형식이 올바르지 않습니다. (nodes, links, alarms는 배열이어야 함)'
+            }), 400
+
+        logging.info(
+            f"장애점 분석 요청: 노드 {len(nodes)}개, 링크 {len(links)}개, 경보 {len(alarms)}건")
+
+        # InferFailurePoint 인스턴스 생성 및 분석 실행
+        analyzer = InferFailurePoint()
+        result = analyzer.analyze(nodes, links, alarms)
+
+        # 분석 결과 로깅
+        if result.get('success'):
+            failure_count = result.get('summary', {}).get(
+                'total_failure_points', 0)
+            logging.info(f"장애점 분석 완료: {failure_count}개 장애점 발견")
+        else:
+            logging.error(f"장애점 분석 실패: {result.get('error', '알 수 없는 오류')}")
+
+        # 결과 반환
+        return jsonify(result), 200
+
+    except Exception as e:
+        # 예외 처리
+        error_message = f"장애점 분석 중 서버 오류 발생: {str(e)}"
+        logging.error(error_message)
+        logging.error(traceback.format_exc())
+
+        return jsonify({
+            'success': False,
+            'error': error_message,
+            'failure_points': [],
+            'summary': {
+                'total_failure_points': 0,
+                'node_failures': 0,
+                'link_failures': 0,
+                'upper_node_failures': 0,
+                'exchange_failures': 0,
+                'transmission_failures': 0
+            }
+        }), 500
+
+# 추가적인 헬퍼 API (선택사항)
+
+
+@api_bp.route("/failure_point_status", methods=["GET"])
+def get_failure_point_status():
+    """
+    장애점 분석 상태 조회 API
+    """
+    try:
+        # 현재 시스템 상태 반환
+        return jsonify({
+            'success': True,
+            'analyzer_available': True,
+            'supported_failure_types': [
+                '링크 장애',
+                '상위 노드 장애',
+                '교환 A1395 장애',
+                '교환 A1930 단독장애',
+                '교환 A1930 상위장애',
+                '전송 LOS 장애',
+                '전송 LOF 장애'
+            ],
+            'version': '1.0.0'
+        }), 200
+
+    except Exception as e:
+        logging.error(f"장애점 분석 상태 조회 실패: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+# AI RAG 장애사례 조회 팝업창을 위한 데이터 전달용 API
+@api_bp.route('/fault-detector', methods=['POST'])
+def fault_detector_api():
+    try:
+        print("🚀 /api/fault-detector POST 요청 받음")
+
+        # JSON 요청만 처리
+        data = request.get_json()
+        print(f"📤 받은 데이터: {data}")
+
+        if not data:
+            print("❌ 데이터 없음")
+            return {'error': 'No data provided'}, 400
+
+        fault_data = {
+            'baseNode': data.get('baseNode', {}),
+            'alarms': data.get('alarms', []),
+            'alarm_count': len(data.get('alarms', []))
+        }
+
+        print(f"📊 처리된 fault_data:")
+        print(f"  - baseNode: {fault_data['baseNode']}")
+        print(f"  - alarms 개수: {fault_data['alarm_count']}")
+        if fault_data['alarms']:
+            print(f"  - 첫 번째 경보: {fault_data['alarms'][0]}")
+
+        print(f"🎯 템플릿 변수들: {fault_data}")
+        print(f"✅ fault_detector.html 템플릿 렌더링 시작")
+
+        return render_template('main/fault_detector.html',
+                               equip_id=fault_data['baseNode']['equip_id'],
+                               equip_name=fault_data['baseNode']['equip_name'],
+                               sector=fault_data['baseNode']['sector'],
+                               guksa_name=fault_data['baseNode']['guksa_name'],
+                               alarm_count=fault_data['alarm_count'],
+                               fault_data=fault_data)
+
+    except Exception as e:
+        print(f"❌ 데이터 처리 오류: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {'error': f'데이터 처리 오류: {str(e)}'}, 500
 
 
 def connect_zmq():
@@ -160,7 +315,7 @@ def get_mwinfo_snmp():
 
     #         if snmp_record.guksa_id not in guksa_name_cache:
     #             guksa = db.session.query(guksa).filter(guksa.guksa_id == snmp_record.guksa_id).first()
-    #             guksa_name_cache[snmp_record.guksa_id] = guksa.guksa_name if guksa else "Unknown"
+    #             guksa_name_cache[snmp_record.guksa_id] = guksa.guksa if guksa else "Unknown"
 
     #         guksa_name = guksa_name_cache[snmp_record.guksa_id]
 
@@ -261,7 +416,7 @@ def get_topology(guksa_name):
                 guksa_id=remote_guksa.guksa_id
             ).all()
             remote_equipments = [
-                f"{eq.equip_type}-{eq.equi_name} ({eq.equip_model})"
+                f"{eq.equip_type}-{eq.equip_name} ({eq.equip_model})"
                 for eq in remote_equips
             ]
 
@@ -501,16 +656,6 @@ async def rag_query():
             ),
             500,
         )
-
-
-@api_bp.route("/clear_conversation", methods=["POST"])
-def clear_conversation():
-    """사용자 대화 이력을 초기화하는 엔드포인트"""
-    try:
-        # conversation_history 관련 코드 제거, 성공 응답만 반환
-        return jsonify({"success": True, "message": "대화 기록이 초기화되었습니다."})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @api_bp.route("/latest_alarms")
@@ -970,7 +1115,7 @@ def get_equipment_details(n):
         if not guksa:
             # 국사를 찾을 수 없는 경우, 장비 이름으로 검색
             equipment = TblEquipment.query.filter(
-                TblEquipment.equipment_name.like(f'%{n}%')).first()
+                TblEquipment.equip_name.like(f'%{n}%')).first()
             if equipment:
                 guksa = TblGuksa.query.filter_by(
                     guksa_id=equipment.guksa_id).first()
@@ -985,12 +1130,12 @@ def get_equipment_details(n):
 
         for eq in equipments:
             eq_data = {
-                "equip_id": eq.id,
-                "equip_name": eq.equipment_name,
-                "equip_type": eq.equipment_type,
+                "equip_id": eq.equip_id,
+                "equip_name": eq.equip_name,
+                "equip_type": eq.equip_type,
                 "equip_model": eq.equip_model,
-                "equip_field": eq.equip_field,
-                "ip_address": eq.ip_address if hasattr(eq, 'ip_address') else None,
+                "sector": eq.sector,
+                "ip_address": getattr(eq, 'ip_address', None),
             }
             equipment_list.append(eq_data)
 
@@ -1092,9 +1237,9 @@ def get_network_map():
             # 분야별 장비 수 카운트
             sector_counts = {}
             for eq in equipments:
-                if eq.equip_field:
-                    sector_counts[eq.equip_field] = sector_counts.get(
-                        eq.equip_field, 0) + 1
+                if eq.sector:
+                    sector_counts[eq.sector] = sector_counts.get(
+                        eq.sector, 0) + 1
 
             # 가장 많은 장비가 있는 분야 선택
             main_sector = max(sector_counts.items(), key=lambda x: x[1])[
@@ -1121,16 +1266,16 @@ def get_network_map():
 
                 if sector:
                     equip_query = equip_query.filter(
-                        TblEquipment.equip_field == sector)
+                        TblEquipment.sector == sector)
 
                 equip_nodes = equip_query.all()
 
                 for eq in equip_nodes:
                     equip_node = {
                         "id": f"e{eq.id}",  # 장비 ID가 국사 ID와 겹치지 않도록 접두어 추가
-                        "label": eq.equipment_name,
+                        "label": eq.equip_name,
                         "type": "equipment",
-                        "field": eq.equip_field,
+                        "field": eq.sector,
                         "parent": guksa.guksa_id,
                         "equip_model": eq.equip_model
                     }
@@ -1149,7 +1294,7 @@ def get_network_map():
                 )
 
         links_data = links_query.all()
-                    
+
         # 링크 데이터 변환
         edges = []
 
@@ -1250,6 +1395,144 @@ def equipment_by_sector():
         return jsonify({"error": str(e)}), 500
 
 
+@api_bp.route('/get_equipment_data', methods=['POST'])
+def get_equipment_data():
+    """
+    장비 데이터 조회 API
+    JavaScript에서 호출하는 엔드포인트
+    """
+    try:
+        # POST 방식으로 받은 JSON 데이터 파싱
+        data = request.get_json()
+
+        sector = data.get('sector', 'all')
+
+        print("get_equipment_data 요청 파라미터:", data)  # 디버깅용
+
+        # 기본 쿼리 객체 생성 - TblEquipment 테이블에서 장비 정보 조회
+        query = TblEquipment.query
+
+        # 섹터 필터 적용
+        if sector and sector != 'all':
+            query = query.filter(TblEquipment.sector == sector)
+
+        # 데이터 조회 실행
+        equipments = query.all()
+        print(f"조회된 장비 개수: {len(equipments) if equipments else 0}")
+
+        # 데이터가 없는 경우
+        if not equipments or len(equipments) == 0:
+            print("조회된 장비가 없습니다.")
+            return jsonify({
+                'equipments': []
+            })
+
+        # 결과를 딕셔너리 목록으로 변환
+        result = []
+        for equip in equipments:
+            # 국사 정보 조회
+            guksa = TblGuksa.query.filter_by(guksa_id=equip.guksa_id).first()
+            guksa_name = guksa.guksa if guksa else ''
+
+            equipment_data = {
+                'id': equip.id or '',  # JavaScript에서 필요한 id 필드 추가
+                'equip_id': equip.equip_id or '',
+                # equip_name이 없으면 equip_id 사용
+                'equip_name': equip.equip_name or equip.equip_id or '',
+                'equip_type': equip.equip_type or '',
+                'sector': equip.sector or '',
+                'equip_field': equip.sector or '',  # JavaScript에서 사용하는 equip_field 추가
+                'guksa_id': equip.guksa_id or '',
+                'equip_model': equip.equip_model or '',
+                'guksa_name': guksa_name
+            }
+            result.append(equipment_data)
+
+        # 응답 데이터 구성
+        response_data = {
+            'equipments': result
+        }
+
+        return jsonify(response_data)
+
+    except Exception as e:
+        print("장비 데이터 조회 중 오류 발생:", str(e))
+        traceback.print_exc()
+
+        # 에러 발생 시 빈 응답 반환
+        return jsonify({
+            'equipments': [],
+            'error': str(e)
+        })
+
+
+@api_bp.route('/get_guksa_data', methods=['POST'])
+def get_guksa_data():
+    """
+    국사 데이터 조회 API
+    JavaScript에서 호출하는 엔드포인트
+    """
+    try:
+        # POST 방식으로 받은 JSON 데이터 파싱
+        data = request.get_json()
+
+        print("get_guksa_data 요청 파라미터:", data)  # 디버깅용
+
+        # 국사 데이터 조회
+        guksas = TblGuksa.query.all()
+        print(f"조회된 국사 개수: {len(guksas) if guksas else 0}")
+
+        # 데이터가 없는 경우
+        if not guksas or len(guksas) == 0:
+            print("조회된 국사가 없습니다.")
+            return jsonify({
+                'guksas': []
+            })
+
+        # 결과를 딕셔너리 목록으로 변환
+        result = []
+        for guksa in guksas:
+            # 국사명 결정 로직
+            if guksa.is_mokuk == 1 or guksa.is_mokuk == "1":
+                guksa_name = guksa.guksa or ''
+            else:
+                # guksa_t 값이 있으면 사용, 없으면 guksa_e 사용, 둘 다 없으면 guksa 사용
+                if hasattr(guksa, 'guksa_t') and guksa.guksa_t:
+                    guksa_name = guksa.guksa_t
+                elif hasattr(guksa, 'guksa_e') and guksa.guksa_e:
+                    guksa_name = guksa.guksa_e
+                else:
+                    guksa_name = guksa.guksa or ''
+
+            guksa_data = {
+                'id': guksa.guksa_id or '',  # JavaScript에서 필요한 id 필드 추가
+                'guksa_id': guksa.guksa_id or '',
+                'guksa': guksa.guksa or '',  # 원본 guksa 필드도 유지
+                'guksa_t': guksa.guksa_t or '',
+                'guksa_e': guksa.guksa_e or '',
+
+                'is_mokuk': guksa.is_mokuk or 0
+            }
+            result.append(guksa_data)
+
+        # 응답 데이터 구성
+        response_data = {
+            'guksas': result
+        }
+
+        return jsonify(response_data)
+
+    except Exception as e:
+        print("국사 데이터 조회 중 오류 발생:", str(e))
+        traceback.print_exc()
+
+        # 에러 발생 시 빈 응답 반환
+        return jsonify({
+            'guksas': [],
+            'error': str(e)
+        })
+
+
 @api_bp.route('/guksa_list', methods=['GET'])
 def get_guksa_list():
     try:
@@ -1296,119 +1579,263 @@ def get_guksa_list():
         return jsonify({"error": str(e)}), 500
 
 
-# 메인 라우트 함수
-
-
-@api_bp.route('/alarm_dashboard_equip', methods=['POST'])
-def alarm_dashboard_equip():
-    # POST 방식으로 받은 JSON 데이터 파싱
-    data = request.get_json()
-
-    guksa_id = data.get('guksa_id')
-    sectors = data.get('sectors', [])  # 배열로 받음
-    equip_name = data.get('equip_name')
-    equip_id = data.get('equip_id', '')  # 장비 ID 추가
-
-    print("장비 네트워크 맵 요청 파라미터:", data)  # 디버깅용
-    print(f"수신한 장비 ID: {equip_id}")  # 장비 ID 디버깅 출력
-
+@api_bp.route('/get_alarm_data', methods=['POST'])
+def get_alarm_data():
+    """
+    알람 데이터 조회 API
+    JavaScript에서 호출하는 엔드포인트
+    """
     try:
-        # 국사 정보 조회
-        guksa_info, guksa_name = get_guksa_info(guksa_id)
-        str_guksa_id = str(guksa_id).strip() if guksa_id else ""
-        str_equip_id = str(equip_id).strip() if equip_id else ""
+        # POST 방식으로 받은 JSON 데이터 파싱
+        data = request.get_json()
 
-        # 장비 ID로 국사 ID 조회 (없는 경우)
-        if str_equip_id and not str_guksa_id:
-            alarm_info = TblAlarmAllLast.query.filter_by(
-                equip_id=str_equip_id).first()
-            if alarm_info:
-                str_guksa_id = alarm_info.guksa_id
-                guksa_info, guksa_name = get_guksa_info(str_guksa_id)
-                print(f"장비 ID {str_equip_id}에서 조회한 국사 ID: {str_guksa_id}")
+        time_filter = data.get('time_filter')
+        max_count = data.get('max_count', 10000)
 
-        # 장비 네트워크 정보 조회
-        equipment_dict = {}
-        processed_links = set()
+        print("get_alarm_data 요청 파라미터:", data)  # 디버깅용
 
-        # 특정 장비 기준으로 연결 정보 조회
-        if str_equip_id:
-            # 장비 ID에 해당하는 국사 이름으로 링크맵 먼저 로드
-            if guksa_name:
-                link_map = load_links_by_guksa(guksa_name)
-                equipment_dict, processed_links = find_all_connected_equip(
-                    str_equip_id, link_map)
-            else:
-                # 국사 정보가 없는 경우 처리
-                print(f"[ERROR] 장비 ID {str_equip_id}에 대한 국사 정보를 찾을 수 없습니다.")
-                # 기본 빈 값 설정
-                equipment_dict = {}
-                processed_links = set()
-        # 국사 기준으로 장비 조회
-        elif str_guksa_id and guksa_info:
-            try:
-                # 국사 기준 링크 전체 캐싱
-                link_map = load_links_by_guksa(guksa_name)
+        # 기본 쿼리 객체 생성
+        query = TblAlarmAllLast.query
 
-                # 장비 연결 그래프 탐색
-                visited = set()
-                equipment_dict = {}
-                processed_links = set()
+#         # 시간 필터 적용 (옵션) ############## TO DO: 추후 사용 예정
+#         if time_filter:
+#             try:
+#                 minutes = int(time_filter)
+#                 time_threshold = datetime.now() - timedelta(minutes=minutes)
+#                 time_threshold_str = time_threshold.strftime(
+#                     "%Y-%m-%d %H:%M:%S")
+#                 query = query.filter(
+#                     TblAlarmAllLast.occur_datetime >= time_threshold_str)
+#             except (ValueError, TypeError):
+#                 print(f"잘못된 time_filter 값: {time_filter}")
 
-                for node_id in link_map.keys():
-                    sub_dict, sub_links = find_all_connected_equip(
-                        node_id, link_map, visited)
-                    equipment_dict.update(sub_dict)
-                    processed_links.update(sub_links)
+        # 정렬 기준: recover_datetime이 NULL이거나 빈 문자열인 항목 우선, 그 후 최근 발생 순
+        query = query.order_by(
+            func.coalesce(TblAlarmAllLast.recover_datetime,
+                          '').asc(),  # NULL 또는 빈 문자열 우선
+            desc(TblAlarmAllLast.occur_datetime)  # 최근 발생순
+        )
 
-                print(
-                    f"[INFO] 탐색 완료 - 장비 {len(equipment_dict)}개, 링크 {len(processed_links)}개")
+        # 최대 개수 제한
+        if max_count:
+            query = query.limit(max_count)
 
-            except Exception as e:
-                print(f"[ERROR] 국사 기준 장비 탐색 실패: {str(e)}")
+        print("실행 쿼리:", str(query))  # SQL 쿼리 확인용
 
-        # 링크 정보 변환
-        links = []
-        for link_key in processed_links:
-            # 안전한 파싱: link_name이 없는 경우 처리
-            parts = link_key.split(':::')
-            if len(parts) >= 3:
-                source, target, link_name = parts[0], parts[1], parts[2]
-            elif len(parts) == 2:
-                source, target = parts[0], parts[1]
-                link_name = f"링크-{source}-{target}"  # 기본 링크명 생성
-            else:
-                continue  # 잘못된 형식은 건너뛰기
+        # 데이터 조회 실행
+        alarms = query.all()
+        print(f"조회된 결과 개수: {len(alarms) if alarms else 0}")
 
-            links.append({
-                "source": source,
-                "target": target,
-                "link_name": link_name
+        # 데이터가 없는 경우
+        if not alarms or len(alarms) == 0:
+            print("조회된 결과가 없습니다.")
+            return jsonify({
+                'alarms': []
             })
 
-        # 분야 필터링 적용
-        equipment_list, links = apply_sector_filter(
-            equipment_dict, links, sectors)
+        # 결과를 딕셔너리 목록으로 변환
+        result = []
+        for a in alarms:
+            # NULL 값 방어적 처리
+            recover_datetime_str = str(
+                a.recover_datetime) if a.recover_datetime else None
 
-        # 응답 구성
+            # 각 필드를 안전하게 처리하여 딕셔너리로 변환
+            alarm_data = {
+                'guksa_id': a.guksa_id or '',
+                'guksa_name': a.guksa_name or '',
+                'sector': a.sector or '',
+                'equip_id': a.equip_id or '',
+                'equip_type': a.equip_type or '',
+                'equip_name': a.equip_name or '',
+                'alarm_message': a.alarm_message or '',
+                'alarm_grade': a.alarm_grade or '',
+                'occur_datetime': str(a.occur_datetime) if a.occur_datetime else None,
+                'fault_reason': a.fault_reason or '',
+                'valid_yn': a.valid_yn or '',
+                'insert_datetime': str(a.insert_datetime) if a.insert_datetime else None,
+                'recover_datetime': recover_datetime_str
+            }
+            result.append(alarm_data)
+
+        # 응답 데이터 구성
         response_data = {
-            "guksa_id": str_guksa_id,
-            "guksa_name": guksa_name,
-            "equipment_list": equipment_list,
-            "links": links,
-            "equip_id": str_equip_id
+            'alarms': result
         }
 
         return jsonify(response_data)
 
     except Exception as e:
-        print("장비 네트워크 맵 데이터 생성 중 오류 발생:", str(e))
-        traceback.print_exc()  # 상세 에러 출력
+        print("알람 데이터 조회 중 오류 발생:", str(e))
+        traceback.print_exc()
 
-        _, guksa_name = get_guksa_info(guksa_id)
-        response_data = None
+        # 에러 발생 시 빈 응답 반환
+        return jsonify({
+            'alarms': [],
+            'error': str(e)
+        })
 
-        return jsonify(response_data)
+# 메인 라우트 함수
+
+
+@api_bp.route('/alarm_dashboard_equip', methods=['POST'])
+def alarm_dashboard_equip():
+    """POST 방식으로 받은 JSON 데이터 파싱"""
+    print(f"🚀🚀🚀🚀🚀 [NEW VERSION] alarm_dashboard_equip API 호출!!!")
+    print(f"🚀🚀🚀🚀🚀 [NEW VERSION] 요청 메소드: {request.method}")
+    print(f"🚀🚀🚀🚀🚀 [NEW VERSION] Content-Type: {request.content_type}")
+
+    try:
+        data = request.get_json()
+        print(f"🚀🚀🚀🚀🚀 [NEW VERSION] 받은 JSON 데이터: {data}")
+
+        if not data:
+            return jsonify({"error": "JSON 데이터가 필요합니다"}), 400
+
+        equip_id = data.get('equip_id')
+        guksa_name = data.get('guksa_name')
+
+        print(
+            f"🚀🚀🚀🚀🚀 [NEW VERSION] 요청 파라미터: equip_id={equip_id}, guksa_name={guksa_name}")
+
+        if not equip_id:
+            return jsonify({"error": "equip_id가 필요합니다"}), 400
+
+        # 1. 국사명이 없으면 알람 데이터에서 추출
+        if not guksa_name:
+            print(f"[DEBUG] 국사명이 없어서 알람 데이터에서 추출 시도")
+            alarm = TblAlarmAllLast.query.filter_by(equip_id=equip_id).first()
+            if alarm:
+                guksa_name = alarm.guksa_name
+                print(f"[DEBUG] 알람에서 국사명 추출: {guksa_name}")
+            else:
+                print(f"[DEBUG] 알람 데이터에서 국사명을 찾을 수 없음")
+                return jsonify({"error": "국사명을 찾을 수 없습니다"}), 400
+
+        # 2. 국사별 링크 맵 로딩
+        link_map = load_links_by_guksa(guksa_name)
+
+        # 3. 연결된 장비 탐색
+        connected_links = find_all_connected_equip(equip_id, link_map)
+
+        print(f"[DEBUG] 연결된 링크 수: {len(connected_links)}")
+
+        # 4. 연결된 장비가 없는 경우 중앙 노드만 반환
+        if not connected_links:
+            print(f"[DEBUG] 연결된 장비가 없음. 중앙 노드만 반환")
+
+            # 알람 데이터에서 중앙 노드 정보 조회
+            alarm = TblAlarmAllLast.query.filter_by(equip_id=equip_id).first()
+            if not alarm:
+                return jsonify({"error": "알람 데이터를 찾을 수 없습니다"}), 404
+
+            single_equipment = {
+                equip_id: {
+                    "id": 1,
+                    "equip_id": equip_id,
+                    "equip_type": alarm.equip_type or "UNKNOWN",
+                    "equip_name": alarm.equip_name or equip_id,
+                    "equip_field": alarm.sector or "UNKNOWN",
+                    "guksa_name": guksa_name or "UNKNOWN",
+                    "up_down": "center"  # 중앙 노드 표시
+                }
+            }
+
+            return jsonify({
+                "equipment": single_equipment,
+                "links": [],
+                "message": "연결된 장비가 없습니다. 중앙 노드만 표시됩니다."
+            })
+
+        # 5. 연결된 장비들의 정보 수집
+        equipment_dict = {}
+        link_list = []
+
+        # 중앙 노드 추가
+        alarm = TblAlarmAllLast.query.filter_by(equip_id=equip_id).first()
+        if alarm:
+            equipment_dict[equip_id] = {
+                "id": 1,
+                "equip_id": equip_id,
+                "equip_type": alarm.equip_type or "UNKNOWN",
+                "equip_name": alarm.equip_name or equip_id,
+                "equip_field": alarm.sector or "UNKNOWN",
+                "guksa_name": guksa_name or "UNKNOWN",
+                "up_down": "center"  # 중앙 노드
+            }
+
+        # 연결된 장비들 추가
+        equipment_ids = set()
+        for link_key, link_info in connected_links.items():
+            source_id = link_info['source']
+            target_id = link_info['target']
+            up_down = link_info['up_down']
+
+            equipment_ids.add(source_id)
+            equipment_ids.add(target_id)
+
+            print(
+                f"[DEBUG] 링크에서 장비 추가: {source_id} -> {target_id} (up_down: {up_down})")
+
+            # 링크 정보 추가
+            link_list.append(link_key)
+
+        print(f"[DEBUG] 연결 링크에서 추출된 장비 ID 목록: {list(equipment_ids)}")
+
+        # 장비 정보 조회 및 추가
+        for eq_id in equipment_ids:
+            if eq_id not in equipment_dict:
+                print(f"[DEBUG] 장비 정보 조회 중: {eq_id}")
+                # TblSubLink에서 장비 정보 조회
+                link_info = TblSubLink.query.filter(
+                    or_(TblSubLink.equip_id == eq_id,
+                        TblSubLink.link_equip_id == eq_id)
+                ).first()
+
+                if link_info:
+                    # 해당 장비가 source인지 target인지 확인하여 정보 설정
+                    if link_info.equip_id == eq_id:
+                        equipment_dict[eq_id] = {
+                            "id": len(equipment_dict) + 1,
+                            "equip_id": eq_id,
+                            "equip_type": link_info.equip_type or "UNKNOWN",
+                            "equip_name": link_info.equip_name or eq_id,
+                            "equip_field": link_info.equip_field or "UNKNOWN",
+                            "guksa_name": link_info.guksa_name or "UNKNOWN",
+                            "up_down": link_info.up_down or "unknown"
+                        }
+                        print(
+                            f"[DEBUG] 장비 정보 추가 (source): {eq_id} -> {equipment_dict[eq_id]}")
+                    else:
+                        equipment_dict[eq_id] = {
+                            "id": len(equipment_dict) + 1,
+                            "equip_id": eq_id,
+                            "equip_type": link_info.link_equip_type or "UNKNOWN",
+                            "equip_name": link_info.link_equip_name or eq_id,
+                            "equip_field": link_info.link_equip_field or "UNKNOWN",
+                            "guksa_name": link_info.link_guksa_name or "UNKNOWN",
+                            "up_down": "down" if link_info.up_down == "up" else "up"  # 반대 관계
+                        }
+                        print(
+                            f"[DEBUG] 장비 정보 추가 (target): {eq_id} -> {equipment_dict[eq_id]}")
+                else:
+                    print(f"[DEBUG] 장비 정보를 찾을 수 없음: {eq_id}")
+
+        print(f"[DEBUG] 최종 장비 목록:")
+        for eq_id, eq_info in equipment_dict.items():
+            print(
+                f"[DEBUG]   {eq_id}: {eq_info['equip_name']} (up_down: {eq_info.get('up_down', 'unknown')})")
+
+        return jsonify({
+            "equipment": equipment_dict,
+            "links": link_list
+        })
+
+    except Exception as e:
+        print(f"[ERROR] alarm_dashboard_equip 오류: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"서버 오류: {str(e)}"}), 500
 
 
 # MW-MW 구간 페이딩 체크 API
@@ -1462,9 +1889,8 @@ def check_mw_fading():
             'result_msg': f'SNMP 데이터 수집 실패: {str(e)}'
         }), 500
 
+
 # MW 장비 한전 정전 체크 API
-
-
 @api_bp.route('/check_mw_power', methods=['POST'])
 def check_mw_power():
     """
@@ -1516,6 +1942,270 @@ def check_mw_power():
         }), 500
 
 
+# 분야 필터링 적용 함수
+def apply_sector_filter(equipment_dict, links, sectors):
+    sector_filter = None
+    if sectors and sectors != 'all':
+        if isinstance(sectors, list) and 'all' not in sectors:
+            sector_filter = sectors
+        elif isinstance(sectors, str) and sectors != 'all':
+            sector_filter = [sectors]
+
+    # 분야 필터링 적용 (선택적)
+    if sector_filter:
+        print(f"분야 필터링 적용: {sector_filter}")
+        # 필터링된 장비 ID 목록
+        filtered_equip_ids = {
+            equip_id for equip_id, equip in equipment_dict.items()
+            if equip['equip_field'] in sector_filter
+        }
+
+        # 필터링된 장비만 포함하는 링크 필터링
+        filtered_links = []
+        for link in links:
+            if link['source'] in filtered_equip_ids or link['target'] in filtered_equip_ids:
+                filtered_links.append(link)
+
+        # 필터링된 링크에 포함된 모든 장비 ID 수집
+        all_connected_ids = set()
+        for link in filtered_links:
+            all_connected_ids.add(link['source'])
+            all_connected_ids.add(link['target'])
+
+        # 필터링된 장비 목록
+        filtered_equipment = [
+            equip for equip_id, equip in equipment_dict.items()
+            if equip_id in all_connected_ids
+        ]
+
+        return filtered_equipment, filtered_links
+    else:
+        # 필터링 없이 모든 장비 사용
+        return list(equipment_dict.values()), links
+
+
+# 국사 정보 조회 함수: 국사 정보 조회
+def get_guksa_info(guksa_id):
+    if not guksa_id:
+        return None, "def get_guksa_info >> guksa_id가 없습니다."
+
+    str_guksa_id = str(guksa_id).strip()
+
+    try:
+        guksa_info = db.session.query(TblGuksa).filter(
+            TblGuksa.guksa_id == str_guksa_id).first()
+        if guksa_info:
+            # is_mokuk이 1 또는 "1"인 경우 guksa_info.guksa 사용
+            if guksa_info.is_mokuk == 1 or guksa_info.is_mokuk == "1":
+                return guksa_info, guksa_info.guksa
+            else:
+                # guksa_t 값이 있으면 사용, 없으면 guksa_e 사용
+                if hasattr(guksa_info, 'guksa_t') and guksa_info.guksa_t:
+                    return guksa_info, guksa_info.guksa_t
+                elif hasattr(guksa_info, 'guksa_e') and guksa_info.guksa_e:
+                    return guksa_info, guksa_info.guksa_e
+                else:
+                    # 둘 다 없는 경우 기본값으로 guksa 사용
+                    return guksa_info, guksa_info.guksa
+        else:
+            return None, f"국사 {str_guksa_id}"
+    except Exception as e:
+        print(f"국사 정보 조회 중 오류 발생: {str(e)}")
+        return None, f"국사 {str_guksa_id}"
+
+
+# TblSubLink에서 국사명으로 전체 링크 정보 메모리 로딩
+def load_links_by_guksa(guksa_name):
+    """국사별 링크 정보를 로드 (중복 제거)"""
+    print(f"[DEBUG] load_links_by_guksa 호출: guksa_name={guksa_name}")
+
+    try:
+        # TblSubLink에서 해당 국사의 모든 링크 조회
+        links = TblSubLink.query.filter(
+            or_(
+                TblSubLink.guksa_name == guksa_name,
+                TblSubLink.link_guksa_name == guksa_name
+            )
+        ).all()
+
+        print(f"[DEBUG] TblSubLink에서 조회된 링크 수: {len(links)}")
+
+        # 중복 제거를 위한 세트
+        processed_pairs = set()
+        link_map = {}
+
+        for link in links:
+            # 중복 링크 방지를 위한 유니크 키 생성 (장비 ID 정렬 + 링크명)
+            equip_pair = tuple(sorted([link.equip_id, link.link_equip_id]))
+            pair_key = f"{equip_pair[0]}:::{equip_pair[1]}:::{link.link_name}"
+
+            # 이미 처리된 링크 쌍인지 확인
+            if pair_key in processed_pairs:
+                print(
+                    f"[DEBUG] 중복 링크 제거: {link.equip_id} <-> {link.link_equip_id} ({link.link_name})")
+                continue
+
+            # 처리된 링크 쌍으로 표시
+            processed_pairs.add(pair_key)
+
+            print(
+                f"[DEBUG] 링크 처리: {link.equip_id} -> {link.link_equip_id}, up_down: {link.up_down}")
+
+            # 양방향 링크 생성 (중복 제거 후)
+            if link.equip_id not in link_map:
+                link_map[link.equip_id] = []
+            if link.link_equip_id not in link_map:
+                link_map[link.link_equip_id] = []
+
+            # 원본 방향
+            link_map[link.equip_id].append({
+                'target_equip_id': link.link_equip_id,
+                'up_down': link.up_down,
+                'link_name': link.link_name
+            })
+            print(
+                f"[DEBUG] 원본 방향 추가: {link.equip_id} -> {link.link_equip_id} (up_down: {link.up_down})")
+
+            # 역방향 (up_down 반대로)
+            reverse_up_down = 'down' if link.up_down == 'up' else 'up'
+            link_map[link.link_equip_id].append({
+                'target_equip_id': link.equip_id,
+                'up_down': reverse_up_down,
+                'link_name': link.link_name
+            })
+            print(
+                f"[DEBUG] 역방향 추가: {link.link_equip_id} -> {link.equip_id} (up_down: {reverse_up_down})")
+
+        print(f"[DEBUG] 중복 제거 후 링크 쌍 수: {len(processed_pairs)}")
+        print(f"[DEBUG] 생성된 link_map 키 수: {len(link_map)}")
+
+        for equip_id, connections in link_map.items():
+            print(f"[DEBUG] {equip_id}: {len(connections)}개 연결")
+            for conn in connections:
+                print(
+                    f"[DEBUG]   -> {conn['target_equip_id']} (up_down: {conn['up_down']})")
+
+        return link_map
+
+    except Exception as e:
+        print(f"[ERROR] load_links_by_guksa 오류: {str(e)}")
+        return {}
+
+
+# 모든 상/하위 장비 찾기: 장비 ID로 연결된 모든 장비들을 재귀적으로 찾기
+# (load_links_by_guksa에서 link_map에 중복 이미 제거됨)
+def find_all_connected_equip(equip_id, link_map):
+    try:
+        print(
+            f"[DEBUG] find_all_connected_equip 호출: equip_id={equip_id} (중앙노드)")
+
+        result = {}
+        visited = set()  # 중복 방문 방지
+
+        # 재귀적으로 연결된 장비들 탐색
+        def traverse_connections(current_equip_id, depth=0, parent_equip_id=None):
+            # 무한 루프 방지 (최대 50까지 링크 정보 탐색)
+            if current_equip_id in visited or depth > 50:
+                return
+
+            visited.add(current_equip_id)
+
+            if current_equip_id in link_map:
+                connections = link_map[current_equip_id]
+                print(
+                    f"[DEBUG] {current_equip_id}의 연결 수: {len(connections)} (깊이: {depth})")
+
+                for connection in connections:
+                    target_equip_id = connection['target_equip_id']
+                    up_down = connection['up_down']
+                    link_name = connection['link_name']
+
+                    # 부모 노드로의 역방향 연결은 건너뛰기 (무한 루프 방지)
+                    if target_equip_id == parent_equip_id:
+                        print(
+                            f"[DEBUG] 부모 노드로의 역방향 연결 건너뛰기: {current_equip_id} -> {target_equip_id}")
+                        continue
+
+                    print(
+                        f"[DEBUG] 연결 처리: {current_equip_id} -> {target_equip_id}, up_down: {up_down}, link: {link_name}")
+
+                    # 중앙 노드를 기준으로 한 up_down 결정
+                    if depth == 0:
+                        # 중앙 노드에서 직접 연결된 경우
+                        final_up_down = up_down
+                    else:
+                        # 재귀적으로 찾은 경우 (depth > 0)
+                        # 중앙 노드로부터의 방향성을 유지
+                        final_up_down = up_down
+
+                    # 링크 키 생성 (source:::target:::link_name:::up_down 형식)
+                    link_key = f"{current_equip_id}:::{target_equip_id}:::{link_name}:::{final_up_down}"
+
+                    # 이미 같은 링크가 있는지 확인 (다른 방향으로)
+                    reverse_key = f"{target_equip_id}:::{current_equip_id}:::{link_name}:::"
+                    reverse_found = False
+                    for existing_key in result.keys():
+                        if existing_key.startswith(reverse_key):
+                            print(f"[DEBUG] 역방향 링크 이미 존재, 건너뛰기: {link_key}")
+                            reverse_found = True
+                            break
+
+                    if not reverse_found:
+                        result[link_key] = {
+                            'source': current_equip_id,
+                            'target': target_equip_id,
+                            'link_name': link_name,
+                            'up_down': final_up_down
+                        }
+
+                    # 재귀적으로 하위 노드들 탐색 (현재 노드를 부모로 전달)
+                    traverse_connections(
+                        target_equip_id, depth + 1, current_equip_id)
+
+        # 시작 장비부터 재귀 탐색 시작
+        traverse_connections(equip_id)
+
+        print(
+            f"[DEBUG] find_all_connected_equip 결과: {len(result)}개 연결된 링크 (방문한 노드: {len(visited)}개)")
+
+        # 결과 확인을 위한 로그
+        if len(result) > 0:
+            print(f"[DEBUG] 최종 링크 목록:")
+            for key, value in result.items():
+                print(f"  - {key}")
+
+        return result
+
+    except Exception as e:
+        print(f"[ERROR] find_all_connected_equip 오류: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {}
+
+
+# 장비 경보 정보 조회
+def get_equip_info_from_alarm_all_last(equip_id):
+    try:
+        # 데이터베이스에서 장비 정보 조회
+        alarm_all_last = TblAlarmAllLast.query.filter_by(
+            equip_id=equip_id).first()
+
+        if alarm_all_last:
+            return {
+                'equip_id': alarm_all_last.equip_id,
+                'equip_name': alarm_all_last.equip_name,
+                'equip_type': alarm_all_last.sector,
+                'guksa_id': alarm_all_last.guksa_id,
+                'ip_address': getattr(alarm_all_last, 'ip_address', None)
+            }
+
+        return None
+
+    except Exception as e:
+        print(f"장비 정보 조회 오류: {str(e)}")
+        return None
+
+
 # MW-MW 링크 페이딩 분석 함수
 def analyze_mw_fading(source_equip_id, target_equip_id):
     """
@@ -1530,8 +2220,8 @@ def analyze_mw_fading(source_equip_id, target_equip_id):
         print(f"페이딩 분석 시작: {source_equip_id} -> {target_equip_id}")
 
         # 1. 장비 정보 조회
-        source_equip = get_equipment_info(source_equip_id)
-        target_equip = get_equipment_info(target_equip_id)
+        source_equip = get_equip_info_from_alarm_all_last(source_equip_id)
+        target_equip = get_equip_info_from_alarm_all_last(target_equip_id)
 
         if not source_equip or not target_equip:
             return {
@@ -1591,9 +2281,8 @@ def analyze_mw_fading(source_equip_id, target_equip_id):
             'result_msg': f'페이딩 분석 중 오류 발생: {str(e)}'
         }
 
+
 # MW 장비 전원 상태 분석 함수
-
-
 def analyze_mw_power_status(equip_id, guksa_name=None):
     """
     Args:
@@ -1607,7 +2296,7 @@ def analyze_mw_power_status(equip_id, guksa_name=None):
         print(f"전원 상태 분석 시작: {equip_id}")
 
         # 1. 장비 정보 조회
-        equip_info = get_equipment_info(equip_id)
+        equip_info = get_equip_info_from_alarm_all_last(equip_id)
 
         if not equip_info:
             return {
@@ -1662,32 +2351,8 @@ def analyze_mw_power_status(equip_id, guksa_name=None):
             'result_msg': f'전원 상태 분석 중 오류 발생: {str(e)}'
         }
 
-# 장비 경보 정보 조회
-
-
-def get_equipment_info(equip_id):
-    try:
-        # 데이터베이스에서 장비 정보 조회
-        equip_info = TblAlarmAllLast.query.filter_by(equip_id=equip_id).first()
-
-        if equip_info:
-            return {
-                'equip_id': equip_info.equip_id,
-                'equip_name': equip_info.equip_name,
-                'equip_type': equip_info.equip_type,
-                'guksa_id': equip_info.guksa_id,
-                'ip_address': getattr(equip_info, 'ip_address', None)
-            }
-
-        return None
-
-    except Exception as e:
-        print(f"장비 정보 조회 오류: {str(e)}")
-        return None
 
 # MW 장비의 SNMP 데이터 수집 (SNR, BER)
-
-
 def collect_mw_snmp_data(equip_id):
     """
     Args:
@@ -1701,7 +2366,7 @@ def collect_mw_snmp_data(equip_id):
         # 예시: pysnmp 또는 easysnmp 사용
 
         # 장비 정보 조회
-        equip_info = get_equipment_info(equip_id)
+        equip_info = get_equip_info_from_alarm_all_last(equip_id)
         if not equip_info or not equip_info.get('ip_address'):
             print(f"장비 {equip_id}의 IP 주소를 찾을 수 없습니다.")
             return None
@@ -1743,9 +2408,8 @@ def collect_mw_snmp_data(equip_id):
         print(f"SNMP 데이터 수집 오류 ({equip_id}): {str(e)}")
         return None
 
+
 # MW 장비의 전원 데이터 수집
-
-
 def collect_mw_power_data(equip_id):
     """
     Args:
@@ -1756,7 +2420,7 @@ def collect_mw_power_data(equip_id):
     """
     try:
         # 장비 정보 조회
-        equip_info = get_equipment_info(equip_id)
+        equip_info = get_equip_info_from_alarm_all_last(equip_id)
         if not equip_info or not equip_info.get('ip_address'):
             print(f"장비 {equip_id}의 IP 주소를 찾을 수 없습니다.")
             return None
@@ -1793,9 +2457,8 @@ def collect_mw_power_data(equip_id):
         print(f"전원 데이터 수집 오류 ({equip_id}): {str(e)}")
         return None
 
+
 # MW-MW 링크 페이딩 분석
-
-
 def perform_fading_analysis(source_data, target_data):
     """
     Args:
@@ -1869,9 +2532,8 @@ def perform_fading_analysis(source_data, target_data):
             'ber_status': '분석 실패'
         }
 
+
 # MW 장비 전원 상태 분석
-
-
 def perform_power_analysis(power_data):
     try:
         input_voltage = power_data.get('input_voltage', 0)
@@ -1903,160 +2565,6 @@ def perform_power_analysis(power_data):
             'input_voltage': 0,
             'threshold_voltage': 200
         }
-
-
-# 분야 필터링 적용 함수
-def apply_sector_filter(equipment_dict, links, sectors):
-    sector_filter = None
-    if sectors and sectors != 'all':
-        if isinstance(sectors, list) and 'all' not in sectors:
-            sector_filter = sectors
-        elif isinstance(sectors, str) and sectors != 'all':
-            sector_filter = [sectors]
-
-    # 분야 필터링 적용 (선택적)
-    if sector_filter:
-        print(f"분야 필터링 적용: {sector_filter}")
-        # 필터링된 장비 ID 목록
-        filtered_equip_ids = {
-            equip_id for equip_id, equip in equipment_dict.items()
-            if equip['equip_field'] in sector_filter
-        }
-
-        # 필터링된 장비만 포함하는 링크 필터링
-        filtered_links = []
-        for link in links:
-            if link['source'] in filtered_equip_ids or link['target'] in filtered_equip_ids:
-                filtered_links.append(link)
-
-        # 필터링된 링크에 포함된 모든 장비 ID 수집
-        all_connected_ids = set()
-        for link in filtered_links:
-            all_connected_ids.add(link['source'])
-            all_connected_ids.add(link['target'])
-
-        # 필터링된 장비 목록
-        filtered_equipment = [
-            equip for equip_id, equip in equipment_dict.items()
-            if equip_id in all_connected_ids
-        ]
-
-        return filtered_equipment, filtered_links
-    else:
-        # 필터링 없이 모든 장비 사용
-        return list(equipment_dict.values()), links
-
-# 국사 정보 조회 함수: 국사 정보 조회
-
-
-def get_guksa_info(guksa_id):
-    if not guksa_id:
-        return None, "def get_guksa_info >> guksa_id가 없습니다."
-
-    str_guksa_id = str(guksa_id).strip()
-
-    try:
-        guksa_info = db.session.query(TblGuksa).filter(
-            TblGuksa.guksa_id == str_guksa_id).first()
-        if guksa_info:
-            # is_mokuk이 1 또는 "1"인 경우 guksa_info.guksa 사용
-            if guksa_info.is_mokuk == 1 or guksa_info.is_mokuk == "1":
-                return guksa_info, guksa_info.guksa
-            else:
-                # guksa_t 값이 있으면 사용, 없으면 guksa_e 사용
-                if hasattr(guksa_info, 'guksa_t') and guksa_info.guksa_t:
-                    return guksa_info, guksa_info.guksa_t
-                elif hasattr(guksa_info, 'guksa_e') and guksa_info.guksa_e:
-                    return guksa_info, guksa_info.guksa_e
-                else:
-                    # 둘 다 없는 경우 기본값으로 guksa 사용
-                    return guksa_info, guksa_info.guksa
-        else:
-            return None, f"국사 {str_guksa_id}"
-    except Exception as e:
-        print(f"국사 정보 조회 중 오류 발생: {str(e)}")
-        return None, f"국사 {str_guksa_id}"
-
-
-# 1. 국사 기반 링크 전체 메모리 로딩
-def load_links_by_guksa(guksa_name):
-    links = db.session.query(TblSubLink).filter(
-        TblSubLink.guksa_name == guksa_name
-    ).all()
-
-    link_map = {}
-
-    for link in links:
-        id1 = str(link.equip_id).strip()
-        id2 = str(link.link_equip_id).strip()
-
-        # 양방향 그래프 구성
-        link_map.setdefault(id1, []).append(link)
-        link_map.setdefault(id2, []).append(link)
-
-    return link_map
-
-
-# 2. 인메모리 DFS 기반 장비 연결 탐색
-def find_all_connected_equip(equip_id, link_map, visited=None, depth=0, max_depth=5):
-    if visited is None:
-        visited = set()
-
-    equip_id = str(equip_id)
-    if equip_id in visited or depth >= max_depth:
-        return {}, set()
-
-    visited.add(equip_id)
-
-    equipment_dict = {}
-    processed_links = set()
-    neighbors = link_map.get(equip_id, [])
-
-    for link in neighbors:
-        id1 = str(link.equip_id)
-        id2 = str(link.link_equip_id)
-
-        # 링크 이름 추가
-        link_name = link.link_name
-
-        # 장비 정보 등록 (소스)
-        if id1 not in equipment_dict:
-            equipment_dict[id1] = {
-                "id": link.id,
-                "equip_id": id1,
-                "equip_type": link.equip_type,
-                "equip_name": link.equip_name,
-                "equip_field": link.equip_field,
-                "guksa_name": link.guksa_name,
-                "up_down": link.up_down
-            }
-
-        # 장비 정보 등록 (타겟)
-        if id2 not in equipment_dict:
-            equipment_dict[id2] = {
-                "id": link.id + 10000,
-                "equip_id": id2,
-                "equip_type": link.link_equip_type,
-                "equip_name": link.link_equip_name,
-                "equip_field": link.link_equip_field,
-                "guksa_name": link.link_guksa_name,
-                "up_down": "unknown"
-            }
-
-        # 링크 중복 없이 저장 (link_name 포함)
-        key1 = f"{id1}:::{id2}:::{link_name}"
-        key2 = f"{id2}:::{id1}:::{link_name}"
-        if key1 not in processed_links and key2 not in processed_links:
-            processed_links.add(key1)
-
-            # 다음 노드 DFS 재귀
-            next_id = id2 if equip_id == id1 else id1
-            sub_dict, sub_links = find_all_connected_equip(
-                next_id, link_map, visited, depth + 1, max_depth)
-            equipment_dict.update(sub_dict)
-            processed_links.update(sub_links)
-
-    return equipment_dict, processed_links
 
 
 # puresnmp를 사용한 여러 OID 값을 가져오는 함수

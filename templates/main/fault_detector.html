@@ -1,24 +1,15 @@
+<!-- fault_detector.html 수정 -->
 <!DOCTYPE html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <title>AI Detector A-RAG</title>
     <link rel="stylesheet" href="/static/css/fault_detector.css" />
-    <!-- <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR&display=swap"
-      rel="stylesheet"
-    /> -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> -->
     <script src="/static/js/marked.min.js"></script>
     <script src="/static/js/fault_detector.js" defer></script>
   </head>
 
   <body>
-    <div class="header">
-      <span class="header-title">NW 장애점 분석/탐지&nbsp; (Advanced RAG)</span>
-      <div class="timestamp" id="timestamp"></div>
-    </div>
-
     <div class="container">
       <div class="sidebar" id="summary-list">
         <!-- 질문 요약 항목이 여기에 동적으로 추가됨 -->
@@ -36,30 +27,21 @@
         <div class="input-container">
           <div class="input-top">
             <div style="flex-shrink: 0">
-              [ A-RAG Prompt ] 현재 선택된 국사명:
-              <span id="guksa_name">{{ kuksa_id or '없음' }}</span>
+              • 선택 장비:
+              <span id="equip_id">[{{ sector }}] {{ equip_id }} (국사:{{ guksa_name }})</span>
             </div>
 
             <div style="display: flex; align-items: center; gap: 10px">
-              <label
-                ><input type="radio" name="queryMode" value="fixed" checked /> 장애점 추론</label
-              >
-              <label><input type="radio" name="queryMode" value="chat" /> 대화 모드</label>
-
-              <button class="button-getalarm" id="getAlarmBtn">장애 종합정보 수집</button>
-              <button class="button-getcable" id="getCableBtn">선로 장애 확인</button>
-              <button class="button-getmwinfo" id="getMWInfoBtn">정전과 페이딩 확인</button>
-              <button class="button-initchat" id="clearChatBtn">대화 초기화</button>
+              <button class="fault-view-btn" id="getCableBtn">선로장애 확인</button>
+              <button class="fault-view-btn" id="getMWInfoBtn">정전/페이딩 확인</button>
+              <button class="fault-view-btn" id="clearChatBtn">대화 초기화</button>
             </div>
           </div>
 
           <div>
             <textarea
               id="prompt-input"
-              placeholder="장애점을 찾을 수 있도록 현재 장애 증상과 분야별 경보를 입력해 주세요 !!!
-    1. [장애점 조회] 장애 증상이나 경보 정보를 입력하면 유사한 과거 사례를 조회해 드립니다.
-    2. [상세 검색] 구체적인 경보 코드나 증상을 입력할수록 더 정확한 결과를 얻을 수 있습니다.
-    3. [필터 검색] '전송 분야', 'IP 분야', '교환 분야'와 같은 특정 분야를 포함하여 검색할 수 있습니다."
+              placeholder="장애점을 찾을 수 있도록 현재 장애 증상과 분야별 경보를 입력해 주세요..."
             >
             </textarea>
 
@@ -68,5 +50,11 @@
         </div>
       </div>
     </div>
+
+    <script>
+      // 서버에서 전달받은 경보 데이터
+      window.faultData = {{ fault_data | tojson | safe }};
+      console.log("🎯 window.faultData 설정 완료:", window.faultData);
+    </script>
   </body>
 </html>

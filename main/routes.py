@@ -11,7 +11,9 @@ import numpy as np
 
 from flask import send_from_directory, current_app
 import os
-
+import json
+import base64
+from urllib.parse import unquote
 
 main_bp = Blueprint("main", __name__, template_folder="../templates/main")
 
@@ -100,9 +102,25 @@ def index():
     return render_template("main/index.html", guksas=guksas, url=url)
 
 
+# AI RAG 장애사례 조회 팝업: routes.py에서 fault_detector 라우트 수정
 @main_bp.route('/fault-detector')
 def fault_detector():
-    return render_template('main/fault_detector.html')
+    # 기본 페이지 렌더링만
+    default_fault_data = {
+        'baseNode': {'equip_id': '-', 'equip_name': '-', 'sector': '', 'guksa_name': '-'},
+        'alarms': [],
+        'alarm_count': 0
+    }
+
+    fault_data_json = json.dumps(default_fault_data, ensure_ascii=False)
+
+    return render_template('main/fault_detector.html',
+                           equip_id='-',
+                           equip_name='-',
+                           sector='',
+                           guksa_name='-',
+                           alarm_count=0,
+                           fault_data_json=fault_data_json)
 
 
 @main_bp.route('/fault-dashboard')

@@ -2,6 +2,10 @@
  * 하단 경보 테이블 컬럼 리사이저 - 바닐라 자바스크립트 구현
  * 하단 경보 테이블 헤더 리사이즈 핸들 추가, 드래그 컬럼 너비 조정, 컬럼 필터 기능
  */
+
+// StringMatcher 모듈 import
+import StringMatcher from '../utils/StringMatcher.js';
+
 // 테이블 컬럼 리사이저 기능
 (function () {
   'use strict';
@@ -241,7 +245,8 @@ function addTableSearchFilters(table) {
   console.log('[TableSearch] 테이블 검색 필터 추가 완료');
 }
 
-// 테이블 필터 적용 함수
+// 경보 테이블 필터 적용 함수
+// 고급 필터링 적용: StringMatcher 모듈 import
 function applyTableFilter() {
   // 선택된 컬럼과 검색 값 가져오기
   const columnSelect = document.getElementById('filter-column-select');
@@ -253,14 +258,12 @@ function applyTableFilter() {
   }
 
   const columnIndex = columnSelect.value;
-  const filterValue = filterInput.value.toLowerCase().trim();
+  const filterValue = filterInput.value.trim();
 
   // 필터 값이 없으면 전체 데이터 표시
   if (filterValue === '') {
-    // **여기서 장비 select를 강제로 전체로 초기화**
     document.getElementById('searchEquipName').value = '';
-
-    resetTableFilter(); // 원본 데이터 다시 로드
+    resetTableFilter();
     return;
   }
 
@@ -270,11 +273,10 @@ function applyTableFilter() {
   const table = document.getElementById('alarmTable');
   if (!table) return;
 
-  // 원본 데이터 참조 - 전역변수 _totalAlarmDataList 직접 사용
+  // 원본 데이터 참조
   let sourceData = [];
 
   try {
-    // 전역 변수에서 데이터 가져오기
     if (typeof _totalAlarmDataList !== 'undefined' && typeof _selectedSector !== 'undefined') {
       sourceData = _totalAlarmDataList.filter(
         (item) => item && item.sector && item.sector.toLowerCase() === _selectedSector.toLowerCase()
@@ -291,22 +293,18 @@ function applyTableFilter() {
     return;
   }
 
-  // 첫 번째 데이터 항목만 로깅 (디버깅용)
-  if (sourceData.length > 0) {
-    console.log('[TableSearch] 데이터 샘플:', sourceData[0]);
-  }
-
   // 데이터 필터링
   let filteredData;
 
   if (columnIndex === '') {
-    // 전체 컬럼 검색 (모든 필드에서 검색)
+    // 전체 컬럼 검색
     filteredData = sourceData.filter((item) => {
-      // 모든 필드 값을 문자열로 합쳐서 검색 (null/undefined 안전하게 처리)
       const allValues = Object.values(item || {})
-        .map((val) => (val === null || val === undefined ? '' : String(val).toLowerCase()))
+        .map((val) => (val === null || val === undefined ? '' : String(val)))
         .join(' ');
-      return allValues.includes(filterValue);
+
+      // StringMatcher로 간단한 매칭
+      return StringMatcher.simpleMatch(allValues, filterValue);
     });
   } else {
     // 특정 컬럼 검색
@@ -318,54 +316,40 @@ function applyTableFilter() {
       return;
     }
 
-    console.log(`[TableSearch] 필드명으로 필터링: ${fieldName}`);
-
     filteredData = sourceData.filter((item) => {
       if (!item) return false;
 
-      // 필드 접근 방식 개선 (item[fieldName] 또는 항목에 다른 방식으로 접근)
       let fieldValue = '';
-
       if (item[fieldName] !== undefined) {
-        // 직접 필드 접근
-        fieldValue = String(item[fieldName] || '').toLowerCase();
+        fieldValue = String(item[fieldName] || '');
       } else if (item.hasOwnProperty(fieldName)) {
-        // hasOwnProperty로 확인
-        fieldValue = String(item[fieldName] || '').toLowerCase();
+        fieldValue = String(item[fieldName] || '');
       } else {
-        // 컬럼 인덱스로 직접 값 접근 시도
         const values = Object.values(item);
         if (colIdx < values.length) {
-          fieldValue = String(values[colIdx] || '').toLowerCase();
+          fieldValue = String(values[colIdx] || '');
         }
       }
 
-      return fieldValue.includes(filterValue);
+      // StringMatcher로 간단한 매칭
+      return StringMatcher.simpleMatch(fieldValue, filterValue);
     });
   }
 
   console.log(`[TableSearch] 필터링 결과: ${filteredData.length}개 행 일치`);
 
-  // 필터링된 데이터가 있는 경우 경보 테이블 업데이트
+  // 결과 처리
   if (filteredData.length > 0) {
     window.currentSortedData = filteredData;
-
     updateTableWithFilteredData(filteredData);
-
-    // 필터 적용 후
     renderPagination(filteredData.length);
 
-    // 페이지네이션 스타일 강제 적용
     setTimeout(() => {
       if (typeof forcePaginationStyles === 'function') {
         forcePaginationStyles();
       }
     }, 150);
-
-    // 리셋 후
-    //renderPagination(sourceData.length); ############## To check list
   } else {
-    // 결과가 없는 경우 메시지 표시
     const tbody = table.querySelector('tbody');
     if (tbody) {
       tbody.innerHTML =

@@ -1,3 +1,5 @@
+import { colorManager as ColorManager } from './ColorManager.js'; // 싱글톤
+
 // 국사 기준 맵 관련 상수 정의
 const GUKSA_MAP_CONFIG = {
   // 국사-장비 간 기본 간격
@@ -19,6 +21,9 @@ const GUKSA_MAP_CONFIG = {
   NODE_HORIZONTAL_SPACING: 60,
   NODES_PER_COLUMN: 8,
   NODES_PER_ROW: 3,
+
+  // 노드 레이블 최대 길이
+  NODE_LABE_MAX_LENGTH: 100,
 
   // SVG 크기 (고해상도 모니터 지원)
   SVG_WIDTH: 1600,
@@ -42,12 +47,12 @@ const COLORS = {
     BORDER: '#003366',
   },
   SECTOR: {
-    MW: { FILL: '#ffaa00', BORDER: '#e67700' },
-    선로: { FILL: '#ff8833', BORDER: '#cc5500' },
-    전송: { FILL: '#ff66cc', BORDER: '#cc0099' },
-    IP: { FILL: '#ff3333', BORDER: '#cc0000' },
-    무선: { FILL: '#ffcc66', BORDER: '#cc9933' },
-    교환: { FILL: '#cc0000', BORDER: '#990000' },
+    MW: { FILL: ColorManager.fieldColors['MW'], BORDER: '#e67700' },
+    선로: { FILL: ColorManager.fieldColors['선로'], BORDER: '#cc5500' },
+    전송: { FILL: ColorManager.fieldColors['전송'], BORDER: '#cc0099' },
+    IP: { FILL: ColorManager.fieldColors['IP'], BORDER: '#cc0000' },
+    무선: { FILL: ColorManager.fieldColors['무선'], BORDER: '#cc9933' },
+    교환: { FILL: ColorManager.fieldColors['교환'], BORDER: '#990000' },
   },
 };
 
@@ -263,18 +268,9 @@ function createEquipNodes(equipList) {
 
     // 동일 장비 처리 - 장비명으로 그룹화
     if (uniqueEquipMap.has(equip.equip_name)) {
-      // 이미 존재하는 장비면 알람 메시지 추가
-      const existingEquip = uniqueEquipMap.get(equip.equip_name);
-      if (equip.alarm_message) {
-        if (!existingEquip.alarmMessages) {
-          existingEquip.alarmMessages = [];
-          // 기존 alarmMessage가 있으면 배열의 첫 항목으로 추가
-          if (existingEquip.alarmMessage) {
-            existingEquip.alarmMessages.push(existingEquip.alarmMessage);
-          }
-        }
-        existingEquip.alarmMessages.push(equip.alarm_message);
-      }
+      // 🔧 이미 존재하는 장비: 경보 로직 제거 - StateManager가 모든 경보 처리
+      // 중복 처리 없음 - StateManager.enrichMapDataWithAlarms에서 equip_id 기준으로 모든 경보 통합
+      console.log(`📝 중복 장비 발견: ${equip.equip_name} - StateManager에서 경보 통합 처리`);
     } else {
       // 최초 발견된 장비 처리
       const sector = equip.sector || '알 수 없음';
@@ -289,15 +285,17 @@ function createEquipNodes(equipList) {
       // 분야에 따른 색상 설정
       const colorSet = COLORS.SECTOR[sector] || COLORS.DEFAULT;
 
-      // 새 장비 정보 저장
+      // 🎯 새 장비 정보 저장: 경보 관련 로직 완전 제거
       const newEquip = {
         id: equip.equip_name,
+        equip_id: equip.equip_id, // 🔑 StateManager 매칭용 ID 추가
         type: 'equip',
         sector: sector,
         sectorIndex: sectorCounts[sector],
-        alarmMessage: equip.alarm_message || '',
         color: colorSet.FILL,
         borderColor: colorSet.BORDER,
+        // 🚫 경보 관련 필드 모두 제거: StateManager.enrichMapDataWithAlarms에서 일원화 처리
+        // alarmMessage, alarmMessages, originalAlarmMessage 등 모두 제거
       };
 
       // 장비 맵에 저장
@@ -305,6 +303,9 @@ function createEquipNodes(equipList) {
     }
   });
 
+  console.log(
+    `✅ createEquipNodes 완료: ${uniqueEquipMap.size}개 장비 (경보는 StateManager에서 처리)`
+  );
   return uniqueEquipMap;
 }
 
@@ -360,8 +361,10 @@ function setupSVG(mapContainer) {
       currentZoom = event.transform;
     });
 
-  // SVG에 줌 기능 적용 (마우스 휠 줌 비활성화)
-  svg.call(zoom).on('wheel.zoom', null);
+  // SVG에 줌 기능 적용하고, 마우스 휠 줌은 비활성화합니다.
+  //svg.call(zoom).on('wheel.zoom', null);
+  svg.call(zoom);
+  svg.on('wheel.zoom', null);
 
   return { svg, container, currentZoom, width, height, zoom };
 }
@@ -843,14 +846,24 @@ function createTooltip() {
     .style('border', '1px solid #ddd')
     .style('border-radius', '4px')
     .style('padding', '8px')
-    .style('pointer-events', 'none')
+    .style('pointer-events', 'auto') // 마우스 이벤트 활성화
     .style('font-size', '12px')
     .style('z-index', 10)
     .style('max-width', '350px')
     .style('overflow-y', 'auto')
     .style('scrollbar-width', 'thin')
     .style('scrollbar-color', '#ccc #f1f1f1')
-    .style('max-height', '300px');
+    .style('max-height', '300px')
+    .on('mouseenter', function () {
+      // 툴팁에 마우스가 들어왔을 때 숨김 방지
+      if (window.d3TooltipHideTimer) {
+        clearTimeout(window.d3TooltipHideTimer);
+        window.d3TooltipHideTimer = null;
+      }
+    })
+    .on('mouseleave', function () {
+      // 툴팁 숨김 제거 - 마우스 이동으로는 툴팁이 사라지지 않음
+    });
 }
 
 // 장비가 많을 때 사용할 원형 배치 함수 (기존 구조 유지)
@@ -1072,20 +1085,31 @@ function createNodes(container, nodes, simulation, tooltip, dynamicLayout) {
     }
   });
 
-  // 경보 개수 표시 배지 추가
-  node
-    .filter((d) => d.type === 'equip' && d.alarmMessages && d.alarmMessages.length > 1)
+  // 🔴 경보 배지 생성 (최적화 및 안정성 강화)
+  console.log('🔴 === 배지 생성 시작 ===');
+
+  // 경보가 있는 노드만 필터링
+  const equipNodesWithAlarms = node.filter((d) => {
+    const hasAlarms = d.type === 'equip' && d.alarmMessages && d.alarmMessages.length > 0;
+    if (hasAlarms) {
+      console.log(`🔴 배지 생성: ${d.id} (${d.alarmMessages.length}건)`);
+    }
+    return hasAlarms;
+  });
+
+  console.log(`🔴 총 ${equipNodesWithAlarms.size()}개 노드에 배지 생성`);
+
+  // 경보 배지 원형 추가
+  equipNodesWithAlarms
     .append('circle')
-    .attr('class', 'alarm-badge-guksa')
+    .attr('class', 'alarm-badge-equip')
     .attr('cx', (d) => {
-      // 노드 크기에 맞춰 배지 위치 조정 (노드 우상단에 적절히 겹치도록)
       const nodeRadius = dynamicLayout.NODE_RADIUS;
-      return nodeRadius * 0.7; // 노드 반지름의 70% 지점
+      return nodeRadius * 0.7;
     })
     .attr('cy', (d) => {
-      // 노드 크기에 맞춰 배지 위치 조정 (노드 우상단에 적절히 겹치도록)
       const nodeRadius = dynamicLayout.NODE_RADIUS;
-      return -nodeRadius * 0.7; // 노드 반지름의 70% 지점 (위쪽)
+      return -nodeRadius * 0.7;
     })
     .attr('r', dynamicLayout.BADGE_RADIUS)
     .attr('fill', '#f7f7f7')
@@ -1093,17 +1117,14 @@ function createNodes(container, nodes, simulation, tooltip, dynamicLayout) {
     .attr('stroke-width', 1.5);
 
   // 경보 개수 텍스트 추가
-  node
-    .filter((d) => d.type === 'equip' && d.alarmMessages && d.alarmMessages.length > 1)
+  equipNodesWithAlarms
     .append('text')
-    .attr('class', 'alarm-count-guksa')
+    .attr('class', 'alarm-count-equip')
     .attr('x', (d) => {
-      // 배지와 동일한 위치
       const nodeRadius = dynamicLayout.NODE_RADIUS;
       return nodeRadius * 0.7;
     })
     .attr('y', (d) => {
-      // 배지와 동일한 위치 (약간 아래로 조정하여 중앙 정렬)
       const nodeRadius = dynamicLayout.NODE_RADIUS;
       return -nodeRadius * 0.7 + 1;
     })
@@ -1112,7 +1133,13 @@ function createNodes(container, nodes, simulation, tooltip, dynamicLayout) {
     .attr('fill', 'black')
     .attr('font-size', dynamicLayout.FONT_SIZE.BADGE)
     .attr('font-weight', 'bold')
-    .text((d) => d.alarmMessages.length);
+    .text((d) => {
+      const count = d.alarmMessages ? d.alarmMessages.length : 0;
+      console.log(`🔴 배지 텍스트: ${d.id} → ${count}건`);
+      return count;
+    });
+
+  console.log('🔴 === 배지 생성 완료 ===');
 
   // 노드 내부 텍스트 추가
   node
@@ -1134,7 +1161,7 @@ function createNodes(container, nodes, simulation, tooltip, dynamicLayout) {
     .append('text')
     .text((d) => {
       if (d.type === 'guksa') return '';
-      const maxLength = 15;
+      const maxLength = GUKSA_MAP_CONFIG.NODE_LABE_MAX_LENGTH;
       return d.id.length > maxLength ? d.id.slice(0, maxLength) + '...' : d.id;
     })
     .attr('text-anchor', 'middle')
@@ -1158,17 +1185,111 @@ function createNodes(container, nodes, simulation, tooltip, dynamicLayout) {
   // 마우스 이벤트 추가
   node
     .on('mouseover', function (event, d) {
+      // 기존 타이머 정리
+      if (window.d3TooltipHideTimer) {
+        clearTimeout(window.d3TooltipHideTimer);
+        window.d3TooltipHideTimer = null;
+      }
+
       handleMouseOver(this, event, d, tooltip);
     })
     .on('mouseout', function (event, d) {
-      handleMouseOut(this, tooltip);
+      // 툴팁 없이 마우스 아웃 처리 (노드 크기만 복원)
+      handleMouseOutNoTooltip(this);
+    })
+    .on('click', function (event, d) {
+      // 기존 타이머 정리
+      if (window.d3TooltipHideTimer) {
+        clearTimeout(window.d3TooltipHideTimer);
+        window.d3TooltipHideTimer = null;
+      }
+
+      // 다른 노드 클릭 시 이전 툴팁 숨김
+      if (window.currentD3TooltipData && window.currentD3TooltipData !== d) {
+        hideD3Tooltip(tooltip);
+      }
+      handleMouseOver(this, event, d, tooltip);
     });
+
+  // 경보 배지 크기 조정
+  d3.select(this)
+    .select('.alarm-badge-guksa')
+    .transition()
+    .duration(200)
+    .attr('r', dynamicLayout.BADGE_RADIUS_HOVER)
+    .attr('cx', (d) => {
+      // 호버 시에도 노드 크기에 맞춰 위치 조정
+      const nodeRadius = dynamicLayout.NODE_RADIUS_HOVER || dynamicLayout.NODE_RADIUS;
+      return nodeRadius * 0.7;
+    })
+    .attr('cy', (d) => {
+      // 호버 시에도 노드 크기에 맞춰 위치 조정
+      const nodeRadius = dynamicLayout.NODE_RADIUS_HOVER || dynamicLayout.NODE_RADIUS;
+      return -nodeRadius * 0.7;
+    });
+
+  d3.select(this)
+    .select('.alarm-count-guksa')
+    .transition()
+    .duration(200)
+    .attr('x', (d) => {
+      // 호버 시에도 배지와 동일한 위치
+      const nodeRadius = dynamicLayout.NODE_RADIUS_HOVER || dynamicLayout.NODE_RADIUS;
+      return nodeRadius * 0.7;
+    })
+    .attr('y', (d) => {
+      // 호버 시에도 배지와 동일한 위치
+      const nodeRadius = dynamicLayout.NODE_RADIUS_HOVER || dynamicLayout.NODE_RADIUS;
+      return -nodeRadius * 0.7 + 1;
+    })
+    .attr('font-size', dynamicLayout.FONT_SIZE.BADGE_HOVER);
+
+  // 장비 노드 경보 배지 크기 조정 (추가)
+  d3.select(this)
+    .select('.alarm-badge-equip')
+    .transition()
+    .duration(200)
+    .attr('r', dynamicLayout.BADGE_RADIUS_HOVER)
+    .attr('cx', (d) => {
+      // 호버 시에도 노드 크기에 맞춰 위치 조정
+      const nodeRadius = dynamicLayout.NODE_RADIUS_HOVER || dynamicLayout.NODE_RADIUS;
+      return nodeRadius * 0.7;
+    })
+    .attr('cy', (d) => {
+      // 호버 시에도 노드 크기에 맞춰 위치 조정
+      const nodeRadius = dynamicLayout.NODE_RADIUS_HOVER || dynamicLayout.NODE_RADIUS;
+      return -nodeRadius * 0.7;
+    });
+
+  d3.select(this)
+    .select('.alarm-count-equip')
+    .transition()
+    .duration(200)
+    .attr('x', (d) => {
+      // 호버 시에도 배지와 동일한 위치
+      const nodeRadius = dynamicLayout.NODE_RADIUS_HOVER || dynamicLayout.NODE_RADIUS;
+      return nodeRadius * 0.7;
+    })
+    .attr('y', (d) => {
+      // 호버 시에도 배지와 동일한 위치
+      const nodeRadius = dynamicLayout.NODE_RADIUS_HOVER || dynamicLayout.NODE_RADIUS;
+      return -nodeRadius * 0.7 + 1;
+    })
+    .attr('font-size', dynamicLayout.FONT_SIZE.BADGE_HOVER);
 
   return node;
 }
 
 // 마우스 오버 처리 (기존 유지)
 function handleMouseOver(element, event, d, tooltip) {
+  // 다른 노드가 선택되었으면 기존 툴팁 숨김
+  if (window.currentD3TooltipData && window.currentD3TooltipData !== d) {
+    hideD3Tooltip(tooltip);
+  }
+
+  // 현재 툴팁 데이터 저장
+  window.currentD3TooltipData = d;
+
   // 전역 동적 레이아웃 사용 (기본값 설정)
   const layout = window.currentDynamicLayout || {
     GUKSA_WIDTH_HOVER: LAYOUT.GUKSA_WIDTH_HOVER,
@@ -1181,24 +1302,24 @@ function handleMouseOver(element, event, d, tooltip) {
   let tooltipContent = '';
 
   if (d.type === 'guksa') {
-    tooltipContent = `<strong>국사:</strong> ${d.id}<br><strong>장비 수:</strong> ${
+    tooltipContent = `<strong>• 국사:</strong> ${d.id}<br><strong>• 장비 수:</strong> ${
       d.nodeCount || '알 수 없음'
     }`;
   } else {
     tooltipContent = `
-      <strong>장비:</strong> ${d.id}<br>
-      <strong>분야:</strong> ${d.sector}<br>
+      <strong>• 장비:</strong> ${d.id}<br>
+      <strong>• 분야:</strong> ${d.sector}<br>
     `;
 
     if (d.alarmMessages && d.alarmMessages.length > 0) {
-      tooltipContent += `<strong>경보 (${d.alarmMessages.length}개):</strong><br>`;
+      tooltipContent += `<strong>• 경보 (${d.alarmMessages.length} 건):</strong><br>`;
       tooltipContent += '<ul style="margin: 2px 0; padding-left: 15px; list-style-type: disc;">';
       d.alarmMessages.forEach((msg, index) => {
         tooltipContent += `<li style="margin-bottom: 3px;">${index + 1}. ${msg}</li>`;
       });
       tooltipContent += '</ul>';
     } else if (d.alarmMessage) {
-      tooltipContent += `<strong>경보:</strong> ${d.alarmMessage}`;
+      tooltipContent += `<strong>• 경보:</strong> ${d.alarmMessage}`;
     }
   }
 
@@ -1229,41 +1350,32 @@ function handleMouseOver(element, event, d, tooltip) {
   }
 
   // 경보 배지 크기 조정
-  d3.select(element)
-    .select('.alarm-badge-guksa')
-    .transition()
-    .duration(200)
-    .attr('r', layout.BADGE_RADIUS_HOVER)
-    .attr('cx', (d) => {
-      // 호버 시에도 노드 크기에 맞춰 위치 조정
-      const nodeRadius = layout.NODE_RADIUS_HOVER || layout.NODE_RADIUS;
-      return nodeRadius * 0.7;
-    })
-    .attr('cy', (d) => {
-      // 호버 시에도 노드 크기에 맞춰 위치 조정
-      const nodeRadius = layout.NODE_RADIUS_HOVER || layout.NODE_RADIUS;
-      return -nodeRadius * 0.7;
-    });
+  // 간소화: 모든 배지를 한 번에 처리
+  const hoverNodeRadius = layout.NODE_RADIUS_HOVER || layout.NODE_RADIUS;
+  const allBadges = d3.select(element).selectAll('.alarm-badge-guksa, .alarm-badge-equip');
+  if (!allBadges.empty()) {
+    allBadges
+      .transition()
+      .duration(200)
+      .attr('r', layout.BADGE_RADIUS_HOVER)
+      .attr('cx', hoverNodeRadius * 0.7)
+      .attr('cy', -hoverNodeRadius * 0.7);
+  }
 
-  d3.select(element)
-    .select('.alarm-count-guksa')
-    .transition()
-    .duration(200)
-    .attr('x', (d) => {
-      // 호버 시에도 배지와 동일한 위치
-      const nodeRadius = layout.NODE_RADIUS_HOVER || layout.NODE_RADIUS;
-      return nodeRadius * 0.7;
-    })
-    .attr('y', (d) => {
-      // 호버 시에도 배지와 동일한 위치
-      const nodeRadius = layout.NODE_RADIUS_HOVER || layout.NODE_RADIUS;
-      return -nodeRadius * 0.7 + 1;
-    })
-    .attr('font-size', layout.FONT_SIZE.BADGE_HOVER);
+  // 간소화: 모든 카운트를 한 번에 처리
+  const allCounts = d3.select(element).selectAll('.alarm-count-guksa, .alarm-count-equip');
+  if (!allCounts.empty()) {
+    allCounts
+      .transition()
+      .duration(200)
+      .attr('x', hoverNodeRadius * 0.7)
+      .attr('y', -hoverNodeRadius * 0.7 + 1)
+      .attr('font-size', layout.FONT_SIZE.BADGE_HOVER);
+  }
 }
 
-// 마우스 아웃 처리 (기존 유지)
-function handleMouseOut(element, tooltip) {
+// 툴팁 없이 마우스 아웃 처리 (노드 크기만 복원)
+function handleMouseOutNoTooltip(element) {
   // 전역 동적 레이아웃 사용 (기본값 설정)
   const layout = window.currentDynamicLayout || {
     GUKSA_WIDTH: LAYOUT.GUKSA_WIDTH,
@@ -1273,50 +1385,57 @@ function handleMouseOut(element, tooltip) {
     FONT_SIZE: STYLE.FONT_SIZE,
   };
 
+  // 국사 노드 복원
+  const rectSelection = d3.select(element).select('rect');
+  if (!rectSelection.empty()) {
+    rectSelection
+      .transition()
+      .duration(200)
+      .attr('width', layout.GUKSA_WIDTH)
+      .attr('height', layout.GUKSA_HEIGHT)
+      .attr('x', -layout.GUKSA_WIDTH / 2)
+      .attr('y', -layout.GUKSA_HEIGHT / 2);
+  }
+
+  // 일반 노드(circle) 복원
+  const circleSelection = d3.select(element).select('circle');
+  if (!circleSelection.empty()) {
+    circleSelection.transition().duration(200).attr('r', layout.NODE_RADIUS);
+  }
+
+  // 모든 배지 요소 복원 (국사 + 장비)
+  const allBadges = d3.select(element).selectAll('.alarm-badge-guksa, .alarm-badge-equip');
+  if (!allBadges.empty()) {
+    allBadges
+      .transition()
+      .duration(200)
+      .attr('r', layout.BADGE_RADIUS)
+      .attr('cx', layout.NODE_RADIUS * 0.7)
+      .attr('cy', -layout.NODE_RADIUS * 0.7);
+  }
+
+  // 모든 카운트 요소 복원 (국사 + 장비)
+  const allCounts = d3.select(element).selectAll('.alarm-count-guksa, .alarm-count-equip');
+  if (!allCounts.empty()) {
+    allCounts
+      .transition()
+      .duration(200)
+      .attr('x', layout.NODE_RADIUS * 0.7)
+      .attr('y', -layout.NODE_RADIUS * 0.7 + 1)
+      .attr('font-size', layout.FONT_SIZE.BADGE);
+  }
+}
+
+// D3 툴팁 숨김 함수
+function hideD3Tooltip(tooltip) {
+  // 타이머 정리
+  if (window.d3TooltipHideTimer) {
+    clearTimeout(window.d3TooltipHideTimer);
+    window.d3TooltipHideTimer = null;
+  }
+
   tooltip.transition().duration(500).style('opacity', 0);
-
-  d3.select(element)
-    .select('rect')
-    .transition()
-    .duration(200)
-    .attr('width', layout.GUKSA_WIDTH)
-    .attr('height', layout.GUKSA_HEIGHT)
-    .attr('x', -layout.GUKSA_WIDTH / 2)
-    .attr('y', -layout.GUKSA_HEIGHT / 2);
-
-  d3.select(element).select('circle').transition().duration(200).attr('r', layout.NODE_RADIUS);
-
-  d3.select(element)
-    .select('.alarm-badge-guksa')
-    .transition()
-    .duration(200)
-    .attr('r', layout.BADGE_RADIUS)
-    .attr('cx', (d) => {
-      // 일반 상태에서도 노드 크기에 맞춰 위치 조정
-      const nodeRadius = layout.NODE_RADIUS;
-      return nodeRadius * 0.7;
-    })
-    .attr('cy', (d) => {
-      // 일반 상태에서도 노드 크기에 맞춰 위치 조정
-      const nodeRadius = layout.NODE_RADIUS;
-      return -nodeRadius * 0.7;
-    });
-
-  d3.select(element)
-    .select('.alarm-count-guksa')
-    .transition()
-    .duration(200)
-    .attr('x', (d) => {
-      // 일반 상태에서도 배지와 동일한 위치
-      const nodeRadius = layout.NODE_RADIUS;
-      return nodeRadius * 0.7;
-    })
-    .attr('y', (d) => {
-      // 일반 상태에서도 배지와 동일한 위치
-      const nodeRadius = layout.NODE_RADIUS;
-      return -nodeRadius * 0.7 + 1;
-    })
-    .attr('font-size', layout.FONT_SIZE.BADGE);
+  window.currentD3TooltipData = null;
 }
 
 // 시뮬레이션 설정 (경계 개선)
@@ -1348,6 +1467,12 @@ function setupSimulation(simulation, nodes, link, node) {
 
 // 드래그 시작 함수 (기존 유지)
 function dragstarted(event, d, simulation) {
+  // 드래그 시작 시 툴팁 숨김
+  const tooltip = d3.select('body').select('.d3-tooltip');
+  if (!tooltip.empty()) {
+    hideD3Tooltip(tooltip);
+  }
+
   if (!event.active) simulation.alphaTarget(0.3).restart();
   d.fx = d.x;
   d.fy = d.y;

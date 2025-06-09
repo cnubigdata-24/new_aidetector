@@ -4,33 +4,73 @@
     <meta charset="UTF-8" />
     <title>AI Detector Alarm Dashboard</title>
 
-    <!-- simplePagination.js CSS - 먼저 로드 -->
+    <!-- CSS 파일들 -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/simplePagination.js/1.6/simplePagination.css"
     />
-
-    <!-- 커스텀 CSS - 나중에 로드하여 우선순위 확보 -->
     <link rel="stylesheet" href="/static/css/fault_dashboard.css" />
+    <link rel="stylesheet" href="/static/css/fault_dashboard_equip.css" />
+    <link rel="stylesheet" href="/static/css/map_tooltip.css" />
 
     <link
       href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,500;1,500&display=swap"
       rel="stylesheet"
     />
 
+    <!-- D3.js 먼저 로드 (동기) -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
 
-    <script src="/static/js/fault_d3_map.js" defer></script>
-    <script src="/static/js/fault_dashboard_util.js" defer></script>
-    <script src="/static/js/fault_dashboard.js" defer></script>
-    <script src="/static/js/fault_dashboard_equip.js" defer></script>
-    <script src="/static/js/fault_dashboard_analyzer.js" defer></script>
-
-    <script src="/static/js/table-resizer.js" defer></script>
-
-    <!-- jQuery -->
+    <!-- jQuery 로드 (동기) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/simplePagination.js/1.6/jquery.simplePagination.min.js"></script>
+
+    <!-- AI Detector 모듈 시스템 -->
+    <script type="module">
+      console.log('🚀 AI Detector 모듈 시스템 시작...');
+
+      // 순차적 모듈 로딩
+      async function initializeSystemSafely() {
+        try {
+          const dashboardContainer = document.getElementById('dashboard');
+          if (dashboardContainer) {
+            dashboardContainer.classList.add('loading');
+          }
+
+          console.log('메인 애플리케이션 FaultDashboardApp 로딩...');
+          const { faultDashboardApp } = await import('/static/js/core/FaultDashboardApp.js');
+
+          // ✅ 추가: 초기화 전 대시보드 상태 준비
+          if (dashboardContainer) {
+            dashboardContainer.classList.remove('loading');
+          }
+
+          // 초기화
+          await faultDashboardApp.initialize();
+
+          console.log('✅ 메인 애플리케이션 FaultDashboardApp 초기화 완료');
+        } catch (error) {
+          console.error('❌ 메인 애플리케이션 FaultDashboardApp 초기화 실패:', error);
+
+          // 상세 오류 정보
+          console.error('오류 상세:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+          });
+
+          // 사용자 알림
+          alert(`시스템 초기화 실패: ${error.message}\n\n페이지를 새로고침해주세요.`);
+        }
+      }
+
+      // DOM 로드 후 초기화
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeSystemSafely);
+      } else {
+        initializeSystemSafely();
+      }
+    </script>
   </head>
   <body>
     <!-- 상단 헤더 영역 -->
@@ -49,9 +89,9 @@
       <div class="header-right">
         <!-- 전체 현황 요약 라인 -->
         <div class="header-summary">
-          <span id="total-equip-count">| 실시간 경보장비 0대</span>
-          <span id="total-alarm-count">| 전체 경보 0개</span>
-          <span id="recent-update-time" class="recent-update-time">| 최근 경보</span>
+          <span>실시간 경보장비</span><span id="realtime-alarm-equip-count">0 대</span>
+          <span>| &nbsp;전체 경보</span><span id="total-alarm-count">0 건</span>
+          <span>| &nbsp;최근 경보</span><span id="recent-alarm-update-time"> -</span>
 
           <!-- 우상단에 장비/국사 기준 메뉴 -->
           <div class="header-view-toggle">
@@ -68,7 +108,9 @@
         <div>
           <div style="display: flex; justify-content: space-between; align-items: center">
             <span class="default-title">대상 국사 </span>
-            <span style="cursor: pointer; font-size: 10pt" onclick="refreshPage()">Refresh ⟳</span>
+            <span style="cursor: pointer; font-size: 10pt" onclick="location.reload();"
+              >Refresh ⟳</span
+            >
           </div>
           <div>
             <select id="searchGuksa">
@@ -114,14 +156,14 @@
               placeholder="🔍 장비명 검색..."
             />
             <div class="equip-filter-div">
-              <button id="equipFilterBtn" class="equip-filter-btn">Filter</button>
-              <button id="equipResetBtn" class="equip-filter-btn">Reset</button>
+              <button id="equipFilterBtn" class="filter-btn">Filter</button>
+              <button id="equipResetBtn" class="filter-btn">Reset</button>
             </div>
           </div>
 
           <!-- 경보발생 장비 목록 -->
           <div>
-            <select id="searchEquipName" class="equip-select" size="15"></select>
+            <select id="searchEquipName" class="equip-select" size="15" tabindex="0"></select>
           </div>
         </div>
         <br /><br />
@@ -133,7 +175,7 @@
         <div class="top-dashboard">
           <div
             id="dashboard"
-            class="draggable-container"
+            class="draggable-container loading"
             style="display: flex; flex-direction: row; flex-wrap: nowrap; overflow-x: auto"
           ></div>
         </div>
@@ -142,9 +184,6 @@
         <div class="horizontal-split-area">
           <!-- 좌측: 맵 영역 -->
           <div class="left-map-panel">
-            <!-- <div class="panel-header">
-              <span class="panel-title">맵 영역</span>
-            </div> -->
             <div class="new-map-container" id="map-container">
               <!-- 여기에 d3.js 맵이 추가될 예정 -->
             </div>
@@ -152,11 +191,7 @@
 
           <!-- 우측: 채팅 결과 영역 -->
           <div class="right-chat-panel">
-            <!-- <div class="panel-header">
-              <span class="panel-title">채팅 결과 영역</span>
-              <button id="chat-clear-btn" class="header-btn">Clear</button>
-            </div> -->
-            <div class="chat-messages-container" id="chat-messages-area">
+            <div class="chat-messages-container" id="chat-messages-area" tabindex="0">
               <div class="chat-message system">
                 <div class="message-content">
                   💡 장애점 찾기를 클릭하면 AI 분석 결과가 여기에 표시됩니다.
@@ -173,7 +208,7 @@
 
         <!-- 테이블 영역 (기존 유지) -->
         <div class="bottom-div">
-          <div class="table-container">
+          <div class="table-container" tabindex="0">
             <table id="alarmTable" class="alarm-table">
               <thead>
                 <tr>
@@ -190,9 +225,29 @@
               <tbody id="alarmTableBody"></tbody>
             </table>
           </div>
-          <div id="pagination"></div>
+          <!-- <div id="pagination"></div> -->
         </div>
       </div>
     </div>
+
+    <!-- 기본 이벤트 리스너 설정 -->
+    <script>
+      // 오류 추적 및 디버깅
+      window.addEventListener('error', function (e) {
+        console.error('🚨 전역 오류 감지:', {
+          message: e.message,
+          filename: e.filename,
+          lineno: e.lineno,
+          colno: e.colno,
+          error: e.error,
+        });
+      });
+
+      window.addEventListener('unhandledrejection', function (e) {
+        console.error('🚨 처리되지 않은 Promise 거부:', e.reason);
+      });
+
+      console.log('📋 기본 스크립트 로드 완료');
+    </script>
   </body>
 </html>
