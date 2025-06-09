@@ -4,6 +4,7 @@
 
 import CommonUtils from '../utils/CommonUtils.js';
 import MessageManager from '../utils/MessageManager.js';
+import { stateManager as StateManager } from './StateManager.js';
 
 class FailurePointManager {
   constructor() {
@@ -667,8 +668,7 @@ class FailurePointManager {
   getAllAlarmData() {
     try {
       // StateManager를 통해 전체 경보 데이터 가져오기
-      const alarmData =
-        window.StateManager?.get('totalAlarmDataList') || window._totalAlarmDataList || [];
+      const alarmData = StateManager.get('totalAlarmDataList', []);
 
       console.log(`📊 전체 경보 데이터 조회: ${alarmData.length}건`);
       return Array.isArray(alarmData) ? alarmData : [];

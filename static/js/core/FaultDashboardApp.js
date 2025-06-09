@@ -180,7 +180,6 @@ export class FaultDashboardApp {
       );
 
       this.currentSelectedSector = selectedSector;
-      window._selectedSector = selectedSector;
 
       // UI와 데이터 동기화
       this.syncSectorSelection(selectedSector);
@@ -435,7 +434,6 @@ export class FaultDashboardApp {
 
       this.updateDataCache({ alarmData, equipmentData, guksaData });
       this.updateStateManager(alarmData, equipmentData, guksaData);
-      this.updateGlobalVariables(alarmData, equipmentData, guksaData);
       this.updateUI(alarmData);
 
       MessageManager.addSuccessMessage('✅ 분야별 전체 최신 경보 데이터 수집을 완료했습니다.');
@@ -496,16 +494,6 @@ export class FaultDashboardApp {
     StateManager.setAlarmData(alarmData);
     StateManager.setEquipmentData(equipmentData);
     StateManager.set('guksaDataList', guksaData);
-  }
-
-  // 전역 변수 설정 (기존 코드 호환성을 위한 전역 변수 설정)
-  updateGlobalVariables(alarmData, equipmentData, guksaData) {
-    Object.assign(window, {
-      _totalAlarmDataList: alarmData,
-      _equipmentDataList: equipmentData,
-      _guksaDataList: guksaData,
-      _selectedSector: CONFIG.DEFAULT_VIEW.SECTOR,
-    });
   }
 
   // UI 업데이트 (국사 정보, 사이드바 장비 정보, 경보 테이블, 디폴트 분야 Sector 선택)
@@ -608,6 +596,57 @@ export class FaultDashboardApp {
     }
   }
 
+  // syncSectorSelection 메서드 수정 - 청킹 처리 추가
+  syncSectorSelection(selectedSector) {
+    try {
+      // 라디오 버튼은 즉시 처리 (단일 요소)
+      const sectorRadio = document.querySelector(`input[name="sector"][value="${selectedSector}"]`);
+      if (sectorRadio && !sectorRadio.checked) {
+        sectorRadio.checked = true;
+      }
+
+      // 🔧 대시보드 박스들은 청킹 처리로 비동기 업데이트
+      const dashboardBoxes = document.querySelectorAll('.dashboard-box');
+      this.updateDashboardBoxesAsync(dashboardBoxes, selectedSector);
+
+      console.log(`🔄 분야 선택 동기화 시작: ${selectedSector}`);
+    } catch (error) {
+      console.error('분야 선택 동기화 실패:', error);
+    }
+  }
+
+  // 분야 sector 변경 시 대시보드 박스 비동기 업데이트
+  updateDashboardBoxesAsync(boxes, selectedSector) {
+    const CHUNK_SIZE = 5; // 한 번에 5개씩 처리
+    let index = 0;
+
+    const processChunk = () => {
+      const endIndex = Math.min(index + CHUNK_SIZE, boxes.length);
+
+      for (let i = index; i < endIndex; i++) {
+        const box = boxes[i];
+        box.classList.remove('selected');
+        const boxTitle = box.querySelector('h3')?.textContent?.trim();
+        if (boxTitle === selectedSector) {
+          box.classList.add('selected');
+        }
+      }
+
+      index = endIndex;
+
+      if (index < boxes.length) {
+        // 다음 청크를 다음 프레임에서 처리
+        requestAnimationFrame(processChunk);
+      } else {
+        console.log(`✅ 분야 선택 동기화 완료: ${selectedSector}`);
+      }
+    };
+
+    if (boxes.length > 0) {
+      requestAnimationFrame(processChunk);
+    }
+  }
+
   // 분야 Sector 변경 후 데이터 업데이트 (사이드바 장비 목록, 경보 테이블)
   updateDataAfterSectorChange() {
     // 순차적 업데이트를 비동기로 처리
@@ -692,7 +731,7 @@ export class FaultDashboardApp {
       this.equipMapComponent = new EquipmentMapComponent('map-container');
 
       const alarmData = StateManager.get('totalAlarmDataList', []);
-      const equipmentData = StateManager.get('allEquipmentData', []);
+      const equipmentData = StateManager.get('allEquipmentList', []);
 
       await this.equipMapComponent.renderEquipmentTopology(equipId, equipmentData, [], {
         showProgress: true,
@@ -777,7 +816,7 @@ export class FaultDashboardApp {
       const filteredList = this.getFilteredEquipmentList(stats, filterData);
 
       this.renderEquipmentSelect(filteredList, filterData.selectedSector, filterData.selectedGuksa);
-      this.updateGlobalEquipmentList(filteredList);
+      this.setFilteredEquipmentList(filteredList);
 
       console.log(`✅ 사이드바 장비 목록 업데이트 완료: ${filteredList.length}개`);
     } catch (error) {
@@ -883,8 +922,8 @@ export class FaultDashboardApp {
   }
 
   // 전역 장비 목록 업데이트
-  updateGlobalEquipmentList(filteredList) {
-    window._currentEquipmentList = filteredList;
+  setFilteredEquipmentList(filteredList) {
+    StateManager.set('filteredEquipmentList', filteredList);
   }
 
   // 공통 에러 처리
@@ -904,25 +943,31 @@ export class FaultDashboardApp {
   }
 
   // 기타 필수 메서드들
-  syncSectorSelection(selectedSector) {
-    try {
-      const sectorRadio = document.querySelector(`input[name="sector"][value="${selectedSector}"]`);
-      if (sectorRadio && !sectorRadio.checked) {
-        sectorRadio.checked = true;
+  setupStateListeners() {
+    StateManager.on('selectedSector', (data) => {
+      const { value: selectedSector, oldValue: previousSector, source } = data;
+
+      if (selectedSector === previousSector) {
+        return;
       }
 
-      document.querySelectorAll('.dashboard-box').forEach((box) => {
-        box.classList.remove('selected');
-        const boxTitle = box.querySelector('h3')?.textContent?.trim();
-        if (boxTitle === selectedSector) {
-          box.classList.add('selected');
+      console.log(
+        `[State Listener] 분야 변경 감지: ${previousSector} -> ${selectedSector} (source: ${source})`
+      );
+
+      this.currentSelectedSector = selectedSector;
+
+      // 🔧 모든 UI 업데이트를 비동기로 처리
+      requestAnimationFrame(() => {
+        this.syncSectorSelection(selectedSector);
+
+        if (typeof CommonUtils?.showMapSectorChangeMessage === 'function') {
+          CommonUtils.showMapSectorChangeMessage(selectedSector);
         }
       });
 
-      console.log(`🔄 분야 선택 동기화 완료: ${selectedSector}`);
-    } catch (error) {
-      console.error('분야 선택 동기화 실패:', error);
-    }
+      setTimeout(() => this.updateDataAfterSectorChange(), CONFIG.SECTOR_CHANGE_DELAY);
+    });
   }
 
   // 국사 목록 업데이트
@@ -1149,7 +1194,6 @@ export class FaultDashboardApp {
     try {
       const selectedGuksa = event.target.value;
       StateManager.set('selectedGuksa', selectedGuksa);
-      window._selectedGuksa = selectedGuksa;
 
       this.updateSidebarEquipmentList();
       this.updateAlarmTable();
@@ -1564,13 +1608,14 @@ ${alarmDetails}`;
 
   // 사이드바 장비 검색 필터 적용
   applyEquipmentFilter(searchTerm) {
-    const currentEquipmentList = window._currentEquipmentList;
-    if (!Array.isArray(currentEquipmentList)) {
+    const filteredEquipmentList = StateManager.get('filteredEquipmentList', []);
+
+    if (!Array.isArray(filteredEquipmentList)) {
       this.updateSidebarEquipmentList();
       return;
     }
 
-    const filteredEquipments = currentEquipmentList.filter((equipment) =>
+    const filteredEquipments = filteredEquipmentList.filter((equipment) =>
       equipment?.equip_name?.toLowerCase().includes(searchTerm)
     );
 

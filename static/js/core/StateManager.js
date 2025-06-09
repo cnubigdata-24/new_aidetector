@@ -27,7 +27,6 @@ const DEFAULT_STATE = {
   filteredAlarmData: [],
 
   // 장비 관련 데이터
-  allEquipmentData: [],
   allEquipmentList: [],
   filteredEquipmentList: [],
 
@@ -276,7 +275,11 @@ class StateManager {
       if (SECTORS.includes(sector)) {
         this.set('selectedSector', sector, { source });
         this.set('currentPage', 1, { source: 'sector-change' }); // 페이지 초기화
-        this.updateFilteredAlarmData();
+
+        // 🔧 비동기로 처리하여 메인 스레드 블로킹 방지
+        requestAnimationFrame(() => {
+          this.updateFilteredAlarmData();
+        });
       } else {
         console.warn(`잘못된 분야: ${sector}. 유효한 분야: ${SECTORS.join(', ')}`);
       }
@@ -317,15 +320,6 @@ class StateManager {
 
       let data = equipmentData;
 
-      this.setState(
-        {
-          allEquipmentData: Array.isArray(equipmentData) ? [...equipmentData] : [],
-          allEquipmentList: Array.isArray(equipmentData) ? [...equipmentData] : [],
-          filteredEquipmentList: Array.isArray(equipmentData) ? [...equipmentData] : [],
-        },
-        { source }
-      );
-
       // ✅ 추가: 데이터 검증
       if (!data) {
         console.warn('StateManager: 장비 데이터가 null/undefined입니다. 빈 배열로 설정합니다.');
@@ -337,8 +331,15 @@ class StateManager {
         data = [];
       }
 
+      this.setState(
+        {
+          allEquipmentList: [...data],
+          filteredEquipmentList: [...data], // 초기에는 전체 목록과 동일
+        },
+        { source }
+      );
+
       console.log(`🔧 StateManager: 장비 데이터 설정 - ${data.length}개 항목`);
-      this.setState({ allEquipmentData: data });
 
       return this;
     } catch (error) {
@@ -746,7 +747,7 @@ class StateManager {
         _selectedView: 'selectedView',
         _currentPage: 'currentPage',
         _summaryAlarmData: 'summaryAlarmData',
-        _allEquipmentData: 'allEquipmentData',
+        _allEquipmentList: 'allEquipmentList',
       };
 
       // 안전한 Proxy 설정
@@ -794,10 +795,12 @@ class StateManager {
         selectedView: '_selectedView',
         currentPage: '_currentPage',
         summaryAlarmData: '_summaryAlarmData',
-        allEquipmentData: '_allEquipmentData',
+        allEquipmentList: '_allEquipmentList',
+        filteredEquipmentList: '_filteredEquipmentList',
       };
 
       const globalVar = reverseMapping[key];
+
       if (globalVar) {
         // 순환 참조 방지
         this.syncInProgress = true;

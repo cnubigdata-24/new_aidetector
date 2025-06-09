@@ -148,7 +148,10 @@ class DashboardComponent {
 
     // 선택된 분야 변경 시 하이라이트 업데이트
     StateManager.on('selectedSector', (data) => {
-      this.updateSelectedSectorHighlight(data.value, data.oldValue);
+      // 🔧 비동기 처리로 메인 스레드 블로킹 방지
+      requestAnimationFrame(() => {
+        this.updateSelectedSectorHighlight(data.value, data.oldValue);
+      });
     });
 
     // 경보 테이블 페이지 변경 시 통계 업데이트

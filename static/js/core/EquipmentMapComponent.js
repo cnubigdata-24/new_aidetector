@@ -1,5 +1,5 @@
 /**
- * 장비 토폴로지 맵 구성 컴포넌트 - 최적화된 버전
+ * 장비 토폴로지 맵 구성 컴포넌트
  */
 
 import { stateManager as StateManager } from './StateManager.js';
@@ -80,12 +80,6 @@ export class EquipmentMapComponent {
       if (typeof d3 !== 'undefined') {
         this.setupSVG();
         this.setupZoom();
-      }
-
-      // 전역 이벤트 위임은 한 번만 설정
-      if (!window._faultButtonEventDelegationSetup) {
-        this.setupGlobalEventDelegation();
-        window._faultButtonEventDelegationSetup = true;
       }
 
       this.isInitialized = true;
@@ -221,7 +215,7 @@ export class EquipmentMapComponent {
 
   //경보 데이터에서 타겟 장비 검색 및 경보 정보 수집
   searchInAlarmData(equipId) {
-    const alarmData = this.getAlarmData();
+    const alarmData = StateManager.get('totalAlarmDataList', []);
     const matchingAlarm = alarmData.find((alarm) => alarm && alarm.equip_id === equipId);
 
     if (!matchingAlarm) return null;
@@ -336,7 +330,7 @@ export class EquipmentMapComponent {
   //API 결과를 기반으로 장비 맵 데이터 구조 생성
   buildEquipmentMap(apiResult, targetEquip) {
     const { equipment: apiEquipment } = apiResult;
-    const alarmData = this.getAlarmData();
+    const alarmData = StateManager.get('totalAlarmDataList', []);
     const equipmentMap = new Map();
 
     if (apiEquipment) {
@@ -461,14 +455,6 @@ export class EquipmentMapComponent {
 
     this.nodes = nodes;
     this.links = links;
-
-    // 전역 변수에도 저장
-    window._currentTopologyData = {
-      nodes: nodes,
-      links: links,
-      targetEquip: targetEquip,
-      timestamp: Date.now(),
-    };
 
     console.log(`🗺️ 맵 데이터 준비 완료: 노드 ${nodes.length}개, 링크 ${links.length}개`);
     return { nodes, links };
@@ -1646,14 +1632,6 @@ export class EquipmentMapComponent {
     } catch (error) {
       console.error('❌ 에러 맵 표시 중 오류:', error);
     }
-  }
-
-  // 유틸리티 메서드들
-  getAlarmData() {
-    if (StateManager?.get) {
-      return StateManager.get('totalAlarmDataList', []);
-    }
-    return window._totalAlarmDataList || [];
   }
 
   // 맵 정리
