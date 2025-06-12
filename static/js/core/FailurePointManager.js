@@ -280,25 +280,26 @@ class FailurePointManager {
    */
   showSummaryMessage(summary) {
     try {
-      // summary 객체 안전성 확보
-      const safeSummary = summary || {};
+      // 실제 장애점 데이터를 기반으로 정확한 카운팅 수행
+      const analysisResults = this.calculateFailurePointSummary();
 
       const message = `
-        📌 장애점 분석/추론이 완료되었습니다.<br><br>
-        • 장애점 추정 결과: 총 ${safeSummary.total_failure_points || 0}개<br>
+        <span style="color: red; font-weight: bold;">📌 장애점 분석/추론이 완료되었습니다.</span><br><br>
+
+        • 장애점 추정 결과: 총 ${analysisResults.total_failure_points}개<br>
         ----------------------------------------------------<br>
-        • 1단계) 선로 장애점: ${safeSummary.link_failures || 0}개<br>
-        • 2단계) MW 장애점: ${safeSummary.mw_equipment_failures || 0}개 (페이딩: ${
-        safeSummary.mw_fading_failures || 0
-      }개, 전압: ${safeSummary.mw_voltage_failures || 0}개)<br>
-        • 3단계) 상위 노드 장애점: ${safeSummary.upper_node_failures || 0}개<br>
-        • 4단계) 교환 장애점: ${safeSummary.exchange_failures || 0}개<br>
-        • 5단계) 전송 장애점: ${safeSummary.transmission_failures || 0}개
+        • 1단계) 선로 장애점: ${analysisResults.link_failures}개<br>
+        • 2단계) MW 장애점: ${analysisResults.mw_equipment_failures}개 (페이딩: ${analysisResults.mw_fading_failures}개, 전압: ${analysisResults.mw_voltage_failures}개)<br>
+        • 3단계) 상위 장비 장애점: ${analysisResults.upper_node_failures}개<br>
+        • 4단계) 교환 장애점: ${analysisResults.exchange_failures}개<br>
+        • 5단계) 전송 장애점: ${analysisResults.transmission_failures}개
       `;
 
       MessageManager.addErrorMessage(message, { type: 'error' });
 
-      console.log('📋 장애점 분석 요약 메시지 표시 완료');
+      // 디버깅을 위한 상세 로그
+      console.log('📋 장애점 분석 요약 결과:', analysisResults);
+      console.log('📋 장애점 상세 데이터:', this.currentFailurePoints);
     } catch (error) {
       console.error('❌ 요약 메시지 표시 중 오류:', error);
 
@@ -310,6 +311,79 @@ class FailurePointManager {
         console.error('❌ 폴백 메시지도 실패:', fallbackError);
       }
     }
+  }
+
+  /**
+   * 실제 장애점 데이터를 기반으로 카운팅 수행
+   */
+  calculateFailurePointSummary() {
+    const summary = {
+      total_failure_points: 0,
+      link_failures: 0,
+      mw_equipment_failures: 0,
+      mw_fading_failures: 0,
+      mw_voltage_failures: 0,
+      upper_node_failures: 0,
+      exchange_failures: 0,
+      transmission_failures: 0,
+    };
+
+    if (!this.currentFailurePoints || this.currentFailurePoints.length === 0) {
+      return summary;
+    }
+
+    summary.total_failure_points = this.currentFailurePoints.length;
+
+    this.currentFailurePoints.forEach((failurePoint) => {
+      const failureType = failurePoint.failure_type || '';
+      const field = failurePoint.field || '';
+      const type = failurePoint.type || '';
+
+      // 링크 장애점 (1단계)
+      if (type === 'link' || failureType.includes('링크') || failureType.includes('선로')) {
+        summary.link_failures++;
+      }
+      // MW 장애점 (2단계)
+      else if (
+        field === 'MW' ||
+        failureType.includes('MW') ||
+        failureType.includes('페이딩') ||
+        failureType.includes('전압')
+      ) {
+        summary.mw_equipment_failures++;
+
+        // MW 세부 분류
+        if (failureType.includes('페이딩')) {
+          summary.mw_fading_failures++;
+        }
+        if (failureType.includes('전압')) {
+          summary.mw_voltage_failures++;
+        }
+      }
+      // 상위 장비 장애점 (3단계)
+      else if (
+        failureType.includes('상위 노드') ||
+        failureType.includes('상위 장비') ||
+        (type === 'node' &&
+          (field === 'IP' ||
+            field === '전송' ||
+            field === '교환' ||
+            field === 'MW' ||
+            field === '무선'))
+      ) {
+        summary.upper_node_failures++;
+      }
+      // 교환 장애점 (4단계)
+      else if (field === '교환' || failureType.includes('교환')) {
+        summary.exchange_failures++;
+      }
+      // 전송 장애점 (5단계)
+      else if (field === '전송' || failureType.includes('전송')) {
+        summary.transmission_failures++;
+      }
+    });
+
+    return summary;
   }
 
   /**
@@ -663,7 +737,7 @@ class FailurePointManager {
             .ease(d3.easeQuadInOut) // 또는 .ease(d3.easeLinear)
 
             .attr('stroke', '#ff6b6b')
-            .attr('stroke-width', '4px')
+            .attr('stroke-width', '3px')
             .attr('stroke-opacity', '0.8')
             .on('end', () => {
               if (isAnimating) {
@@ -748,13 +822,13 @@ class FailurePointManager {
       const alarmListHtml = this.generateAlarmListHTML(relatedAlarms);
 
       const message = `
-      📌 <strong style="color: red;">장애점 #${index + 1} <br><br> ${
+      📌 <strong style="color: red;">장애점 #${index + 1} <br><br> [${failurePoint.sector}] ${
         failurePoint.name
       }</strong><br><br>
       • 유형: ${failurePoint.failure_type}<br>
       • ${failurePoint.type === 'node' ? '노드' : '링크'} ID: ${failurePoint.id}<br>
       • 추정 내역: ${failurePoint.inference_detail}<br>
-      • 경보현황: 전체 ${relatedAlarms.length}건 (유효 ${validAlarms.length}건, 무효 ${
+      • 경보 현황: 전체 ${relatedAlarms.length}건 (유효 ${validAlarms.length}건, 무효 ${
         relatedAlarms.length - validAlarms.length
       }건)
       ${alarmListHtml}
@@ -762,6 +836,42 @@ class FailurePointManager {
 
       MessageManager.addErrorMessage(message, { type: 'warning' });
     });
+  }
+
+  /**
+   * 장애점의 분야 표시 반환
+   */
+  getFieldDisplay(failurePoint) {
+    const field = failurePoint.field || '';
+    const failureType = failurePoint.failure_type || '';
+    const type = failurePoint.type || '';
+
+    // 분야별 표시 결정
+    if (field === 'IP') {
+      return '[IP] ';
+    } else if (field === '전송') {
+      return '[전송] ';
+    } else if (field === 'MW') {
+      return '[MW] ';
+    } else if (field === '교환') {
+      return '[교환] ';
+    } else if (type === 'link' || failureType.includes('링크') || failureType.includes('선로')) {
+      return '[선로] ';
+    } else if (
+      failureType.includes('MW') ||
+      failureType.includes('페이딩') ||
+      failureType.includes('전압')
+    ) {
+      return '[MW] ';
+    } else if (failureType.includes('전송')) {
+      return '[전송] ';
+    } else if (failureType.includes('교환')) {
+      return '[교환] ';
+    } else if (type === 'node') {
+      return '[노드] ';
+    } else {
+      return '[기타] ';
+    }
   }
 
   /**
@@ -875,6 +985,7 @@ class FailurePointManager {
     </div>
   `;
   }
+
   /**
    * 하이라이트 정리
    */

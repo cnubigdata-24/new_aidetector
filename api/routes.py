@@ -59,17 +59,16 @@ MW_SOCKET_SERVER = "tcp://192.168.147.78:5555"
 context = zmq.Context()
 zmq_socket = context.socket(zmq.REQ)
 
-# 장애점 추정 API
+
 # 장애점 추정 단계별 진행 상황을 저장할 큐
 progress_queues = {}
+
+# 장애점 추정 API
+# POST 요청으로 노드, 링크, 경보 데이터를 받아 장애점을 분석하고 결과를 JSON으로 반환
 
 
 @api_bp.route("/infer_failure_point", methods=["POST"])
 def infer_failure_point():
-    """
-    장애점 추정 API
-    POST 요청으로 노드, 링크, 경보 데이터를 받아 장애점을 분석하고 결과를 JSON으로 반환
-    """
     try:
         # 요청 데이터 검증
         if not request.is_json:
@@ -186,12 +185,11 @@ def infer_failure_point():
             'error': f'서버 오류: {str(e)}'
         }), 500
 
+# 장애점 분석 진행 상황 스트리밍 API
+
 
 @api_bp.route("/infer_failure_point_stream/<session_id>")
 def infer_failure_point_stream(session_id):
-    """
-    장애점 분석 진행 상황 스트리밍 API
-    """
     def generate():
         try:
             progress_queue = progress_queues.get(session_id)

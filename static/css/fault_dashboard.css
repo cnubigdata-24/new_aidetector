@@ -1890,7 +1890,7 @@ div#pagination.simple-pagination,
 
 .node:hover circle {
   /* filter: drop-shadow(0 0 6px rgba(255, 100, 50, 0.6)); */
-  stroke-width: 3px;
+  stroke-width: 8px;
 }
 
 .node-with-alarms circle {

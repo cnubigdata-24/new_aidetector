@@ -192,8 +192,7 @@ export class EquipmentMapComponent {
 
   //토폴로지 생성 중 로딩 메시지 표시 ############ TO DO : 메시지 표시 중복 처리 여부 확인 필요
   showLoadingMessage() {
-    CommonUtils.map?.showMapLoadingMessage?.('✔️ NW 토폴로지 MAP을 생성합니다.', this.container);
-    MessageManager.addAnalyzingMessage?.('✔️ NW 토폴로지 MAP을 생성합니다.');
+    CommonUtils.map?.showMapLoadingMessage?.('NW 토폴로지 MAP을 생성합니다.', this.container);
   }
 
   //타겟 장비 검색 - 경보 데이터 또는 장비 데이터에서 조회
@@ -245,7 +244,7 @@ export class EquipmentMapComponent {
     if (!targetEquip) return [];
 
     try {
-      console.log(`🔗 API를 통한 연결된 장비 검색 시작: ${targetEquip.equip_id}`);
+      console.log(`API를 통한 연결된 장비 검색 시작: ${targetEquip.equip_id}`);
 
       const apiResult = await this.callTopologyAPI(targetEquip);
       this.processAPIResponse(apiResult);

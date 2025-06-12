@@ -9,6 +9,8 @@ from collections import defaultdict
 import json
 import requests
 
+HR_LINE_HTML = '<hr style="border: none; border-top: 1px solid #f2bbb5; margin: 10px 0;">\n'
+
 
 class InferFailurePoint:
     def __init__(self, progress_callback=None):
@@ -24,7 +26,7 @@ class InferFailurePoint:
         if self.progress_callback:
             self.progress_callback(message)
 
-    # Main 함수
+    # 장애점 찾기 Main 함수
     def analyze(self, nodes: List[Dict], links: List[Dict], alarms: List[Dict]) -> Dict[str, Any]:
         try:
             self.logger.info("=" * 60)
@@ -84,22 +86,22 @@ class InferFailurePoint:
                 f"• 분석 완료 - 현재 발견된 장애점: {len(self.failure_points)}개")
             self.logger.info("-------------------------------")
 
-            self._analyze_mw_equipment_status()  # 2. MW 장비 상태 점검 (페이딩, 배터리 모드, 오류)
+            self._analyze_mw_equipment_status()  # 2. MW 장애 (페이딩, 배터리 모드, 오류)
             self.logger.info(
                 f"• 분석 완료 - 현재 발견된 장애점: {len(self.failure_points)}개")
             self.logger.info("-------------------------------")
 
-            self._analyze_upper_node_failures()  # 3. 상위 노드 장애점
+            self._analyze_upper_node_failures()  # 3. 상위 장비 장애점
             self.logger.info(
                 f"• 분석 완료 - 현재 발견된 장애점: {len(self.failure_points)}개")
             self.logger.info("-------------------------------")
 
-            self._analyze_exchange_failures()   # 4. 교환 노드 장애점
+            self._analyze_exchange_failures()   # 4. 교환 장비 장애점
             self.logger.info(
                 f"• 분석 완료 - 현재 발견된 장애점: {len(self.failure_points)}개")
             self.logger.info("-------------------------------")
 
-            self._analyze_transmission_failures()  # 5. 전송 노드 장애점
+            self._analyze_transmission_failures()  # 5. 전송 장비 장애점
             self.logger.info(
                 f"• 분석 완료 - 현재 발견된 장애점: {len(self.failure_points)}개")
             self.logger.info("-------------------------------")
@@ -170,10 +172,10 @@ class InferFailurePoint:
 
         # 단계별 메시지 구성
         step_message = "🚩 [1단계] 선로 분야 장애점 분석 (Dr. Cable 조회)<br>\n"
-        step_message += f"{'-' * 75}<br>\n"
+        step_message += HR_LINE_HTML
 
         step_message += f"<br>• 전체 선로 현황: {len(self.links)}개 구간\n"
-        step_message += "<br>&nbsp; → 광케이블 등 선로 경보를 확인합니다."
+        step_message += "<br>&nbsp; → 광케이블 선로 경보를 확인합니다."
 
         link_failure_count = 0
         link_details = []
@@ -191,6 +193,8 @@ class InferFailurePoint:
                     'type': 'link',
                     'id': link.get('id'),
                     'name': link_name,
+                    'sector': '선로',
+
                     'failure_type': '선로 장애',
                     'inference_detail': '선로 피해 발생',
                     'alarms': link_alarms,
@@ -210,7 +214,7 @@ class InferFailurePoint:
                 if len(link_alarms) > 3:
                     self.logger.info(f"... 외 {len(link_alarms)-3}개 경보")
             else:
-                link_details.append(f"<br>&nbsp; - {link_name} → 정상")
+                link_details.append(f"<br>&nbsp; - [정상] {link_name}")
                 self.logger.info(f"• 경보 없음: 정상")
 
         # 단계 완료 메시지
@@ -234,7 +238,7 @@ class InferFailurePoint:
 
         # 단계별 메시지 구성
         step_message = "🚩 [2단계] 도서 MW 장애점 분석 (SNMP 페이딩/한전정전)<br>\n"
-        step_message += f"{'-' * 75}<br>\n"
+        step_message += HR_LINE_HTML
         step_message += f"<br>• 점검 대상 MW 장비: {len(mw_nodes)}대\n"
 
         if not mw_nodes:
@@ -249,7 +253,7 @@ class InferFailurePoint:
             mw_equipment_data = self.get_mw_equipment_info(mw_nodes)
 
             if not mw_equipment_data:
-                step_message += "<br>→ MW 장비 SNMP 정보를 찾을 수 없습니다."
+                step_message += "<br>&nbsp; → MW 장비 SNMP 정보를 찾을 수 없습니다."
                 self._send_progress(step_message)
                 self.logger.warning("→ ⚠️ MW 장비 SNMP 정보를 찾을 수 없습니다.")
                 return
@@ -261,12 +265,12 @@ class InferFailurePoint:
             mw_status_data = self.call_mw_status_api(mw_equipment_data)
 
             if not mw_status_data:
-                step_message += "<br>→ MW 상태 데이터를 가져올 수 없습니다."
+                step_message += "<br>&nbsp; → MW SNMP 상태 정보를 가져올 수 없습니다."
                 self._send_progress(step_message)
-                self.logger.warning("• ⚠️ MW 상태 데이터를 가져올 수 없습니다.")
+                self.logger.warning("• ⚠️ MW SNMP 상태 정보를 가져올 수 없습니다.")
                 return
 
-            step_message += f"<br>→ MW 상태 데이터 수신을 완료했습니다. ({len(mw_status_data)}대)\n"
+            step_message += f"<br>&nbsp; → MW SNMP 상태 정보를 수신했습니다. ({len(mw_status_data)}개)\n"
             step_message += "<br>• MW 파라미터별 상세 분석을 진행합니다.\n"
 
             # MW 장애점 분석
@@ -315,6 +319,8 @@ class InferFailurePoint:
                         'type': 'mw_equipment',
                         'id': equip_id,
                         'name': f"MW 장비 {equip_id} ({slot_name})",
+                        'sector': 'MW',
+
                         'failure_type': 'MW 전파 페이딩 의심',
                         'inference_detail': f'{slot_name}: {", ".join(fading_issues)}',
                         'alarms': [],
@@ -335,6 +341,8 @@ class InferFailurePoint:
                         'type': 'mw_equipment',
                         'id': equip_id,
                         'name': f"MW 장비 {equip_id} ({slot_name})",
+                        'sector': 'MW',
+
                         'failure_type': 'MW 전파수신 오류: 페이딩 또는 대국 장비 장애 의심',
                         'inference_detail': f'{slot_name}: 오류 발생 - {", ".join(err_issues)}',
                         'alarms': [],
@@ -355,6 +363,8 @@ class InferFailurePoint:
                     'type': 'mw_equipment',
                     'id': equip_id,
                     'name': f"MW 장비 {equip_id}",
+                    'sector': 'MW',
+
                     'failure_type': 'MW 장비 배터리 모드로 한전 정전 의심',
                     'inference_detail': f'MW 장비 전압 이상: {volt_issues}',
                     'alarms': [],
@@ -523,7 +533,7 @@ class InferFailurePoint:
 
         # 단계별 메시지 구성
         step_message = "🚩 [3단계] 상위 장비 장애점 분석 (계위별 경보 Tree 탐색)<br>\n"
-        step_message += f"{'-' * 75}<br>\n"
+        step_message += HR_LINE_HTML
         step_message += f"<br>• 전체 장비: {len(self.nodes)}대, 경보발생 장비: {len(node_alarm_map)}대\n"
 
         level_info = []
@@ -552,8 +562,12 @@ class InferFailurePoint:
 
             for i, node in enumerate(level_nodes[level]):
                 node_name = node.get('name', node['id'])
+                sector = node.get('field', '장비')  # IP, 전송, 교환, 무선, MW
+
                 self.logger.info(
-                    f"• 🔍 [{i+1}/{len(level_nodes[level])}] 장비 분석: {node_name}")
+                    f"• 🔍 [{i+1}/{len(level_nodes[level])}] 분야: {sector}, 장비 분석: {node_name}")
+
+                self.logger.info(f">>>>>>>>>>>>>>>>>>> 노드 전체: {node}")
 
                 if self.is_upper_node_failure(node, node_alarm_map, level_nodes):
                     node_alarms = node_alarm_map.get(node['id'], [])
@@ -562,6 +576,8 @@ class InferFailurePoint:
                         'type': 'node',
                         'id': node['id'],
                         'name': node_name,
+                        'sector': sector,
+
                         'failure_type': '상위 장비 장애 (경보 Tree 탐색)',
                         'inference_detail': '상위 장비 장애로 인한 하위 장비들의 연쇄 장애',
                         'alarms': node_alarms,
@@ -583,7 +599,7 @@ class InferFailurePoint:
                             f"... 외 {len(node_alarms)-2}개 경보")
                 else:
                     level_details.append(
-                        f"<br>&nbsp;&nbsp; .{node_name} → 장애조건 불일치")
+                        f"<br>&nbsp;&nbsp; . [장애조건 불일치] {node_name}")
                     self.logger.info(f"• 장애조건 불일치")
 
             if level_details:
@@ -608,7 +624,7 @@ class InferFailurePoint:
 
         # 단계별 메시지 구성
         step_message = "🚩 [4단계] 교환 장애점 분석 (A1395, A1930 경보 패턴)<br>\n"
-        step_message += f"{'-' * 75}<br>\n"
+        step_message += HR_LINE_HTML
         step_message += f"<br>• 교환 장비 수: {len(exchange_nodes)}대\n"
 
         if not exchange_nodes:
@@ -642,6 +658,8 @@ class InferFailurePoint:
                     'type': 'node',
                     'id': node['id'],
                     'name': node_name,
+                    'sector': '교환',
+
                     'failure_type': '교환 A1395 대량 장애',
                     'inference_detail': '국사 정전 또는 교환기 메인보드 장애',
                     'alarms': a1395_alarms,
@@ -676,11 +694,11 @@ class InferFailurePoint:
                         f"• A1930 관련 장애점 발견: {after_count - before_count}개")
                 else:
                     exchange_details.append(
-                        f"<br>&nbsp; - {node_name}: A1930 경보 있음 ({len(a1930_alarms)}개) - 장애조건 불일치")
+                        f"<br>&nbsp; - [장애조건 불일치] {node_name}: A1930 경보 있음 ({len(a1930_alarms)}개)")
             else:
                 exchange_details.append(
-                    f"<br>&nbsp; - {node_name}: A1395/A1930 경보 없음 → 정상")
-                self.logger.info(f"• A1930 경보 없음: 정상")
+                    f"<br>&nbsp; - [정상] {node_name} (관련 경보 없음)")
+                self.logger.info(f"• A1930/1935 경보 없음: 정상")
 
         step_message += "\n".join(exchange_details)
         step_message += f"\n<br><br>• 장애점 발견: {exchange_failure_count}개"
@@ -702,6 +720,8 @@ class InferFailurePoint:
                 'type': 'node',
                 'id': exchange_node['id'],
                 'name': exchange_node.get('name', exchange_node['id']),
+                'sector': '교환',
+
                 'failure_type': '교환 A1930 단독 장애',
                 'inference_detail': 'AGW 단독고장으로 공통부 확인 필요',
                 'alarms': a1930_alarms,
@@ -720,6 +740,9 @@ class InferFailurePoint:
                         'type': 'node',
                         'id': upper_node['id'],
                         'name': upper_node.get('name', upper_node['id']),
+                        'sector': '교환',
+
+
                         'failure_type': '교환 A1930 상위장애',
                         'inference_detail': 'AGW 단독고장으로 공통부 확인 필요',
                         'alarms': upper_alarms,
@@ -738,7 +761,7 @@ class InferFailurePoint:
 
         # 단계별 메시지 구성
         step_message = "🚩 [5단계] 전송 장애점 분석 (LOS, LOF 경보 패턴)<br>\n"
-        step_message += f"{'-' * 75}<br>\n"
+        step_message += HR_LINE_HTML
         step_message += f"<br>• 전송 장비 수: {len(transmission_nodes)}대\n"
 
         if not transmission_nodes:
@@ -772,6 +795,9 @@ class InferFailurePoint:
                     'type': 'node',
                     'id': node['id'],
                     'name': node_name,
+                    'sector': '전송',
+
+
                     'failure_type': '전송 LOS 장애',
                     'inference_detail': '광신호 없음으로 선로 절단 또는 대향국 장애',
                     'alarms': los_alarms,
@@ -805,6 +831,8 @@ class InferFailurePoint:
                     'type': 'node',
                     'id': node['id'],
                     'name': node_name,
+                    'sector': '전송',
+
                     'failure_type': '전송 LOF 장애',
                     'inference_detail': '대항국 장비 불량',
                     'alarms': lof_alarms,
@@ -827,11 +855,11 @@ class InferFailurePoint:
                         f"... 외 {len(lof_alarms)-2}개 LOF 경보")
             else:
                 transmission_details.append(
-                    f"<br>&nbsp;&nbsp; - {node_name}: LOS/LOF 경보 없음 → 정상")
-                self.logger.info(f"&nbsp;&nbsp; - LOS/LOF 경보 없음 → 정상")
+                    f"<br>&nbsp;&nbsp; - [정상] {node_name} (관련 경보 없음)")
+                self.logger.info(f"&nbsp;&nbsp; - [정상] LOS/LOF 경보 없음")
 
         step_message += "\n".join(transmission_details)
-        step_message += f"\n<br><br>• 장애점 발견: {transmission_failure_count}대"
+        step_message += f"\n<br><br>• 장애점 발견: {transmission_failure_count}개"
 
         self._send_progress(step_message)
 
