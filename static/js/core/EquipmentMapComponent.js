@@ -190,13 +190,10 @@ export class EquipmentMapComponent {
     }
   }
 
-  //토폴로지 생성 중 로딩 메시지 표시
+  //토폴로지 생성 중 로딩 메시지 표시 ############ TO DO : 메시지 표시 중복 처리 여부 확인 필요
   showLoadingMessage() {
-    CommonUtils.map?.showMapLoadingMessage?.(
-      '✔️ 네트워크 토폴로지 맵을 생성합니다.',
-      this.container
-    );
-    MessageManager?.addAnalyzingMessage?.('✔️ NW 토폴로지 MAP을 생성합니다.');
+    CommonUtils.map?.showMapLoadingMessage?.('✔️ NW 토폴로지 MAP을 생성합니다.', this.container);
+    MessageManager.addAnalyzingMessage?.('✔️ NW 토폴로지 MAP을 생성합니다.');
   }
 
   //타겟 장비 검색 - 경보 데이터 또는 장비 데이터에서 조회
@@ -562,7 +559,7 @@ export class EquipmentMapComponent {
       .attr('r', (d) =>
         d.isTarget ? MAP_CONFIG.NODE.RADIUS.SELECTED : MAP_CONFIG.NODE.RADIUS.DEFAULT
       )
-      .attr('fill', (d) => ColorManager.getEquipmentNodeColor?.(d.field) || '#007bff')
+      .attr('fill', (d) => ColorManager.getDashboardSectorColor(d.field) || '#999999')
       .attr('stroke', (d) =>
         d.isTarget
           ? ColorManager.getDarkColor?.(ColorManager.getEquipmentNodeColor?.(d.field), 0.6) ||
@@ -597,6 +594,7 @@ export class EquipmentMapComponent {
           .attr('cy', -20)
           .attr('r', 12)
           .style('fill', '#e74c3c')
+          .style('fill-opacity', 0.8) // 0.0 (완전투명) ~ 1.0 (불투명)
           .style('stroke', 'white')
           .style('stroke-width', 2)
           .style('pointer-events', 'none');
@@ -606,7 +604,7 @@ export class EquipmentMapComponent {
           .attr('y', -20)
           .attr('text-anchor', 'middle')
           .attr('dy', '0.3em')
-          .style('font-size', '10px')
+          .style('font-size', '11px')
           .style('font-weight', 'bold')
           .style('fill', 'white')
           .style('pointer-events', 'none')

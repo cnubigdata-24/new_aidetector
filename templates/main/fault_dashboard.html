@@ -25,11 +25,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/simplePagination.js/1.6/jquery.simplePagination.min.js"></script>
 
-    <!-- AI Detector 모듈 시스템 -->
+    <!-- AI Detector 모듈 -->
     <script type="module">
       console.log('🚀 AI Detector 모듈 시스템 시작...');
 
-      // 순차적 모듈 로딩
+      // 모듈 로딩
       async function initializeSystemSafely() {
         try {
           const dashboardContainer = document.getElementById('dashboard');
@@ -40,16 +40,23 @@
           console.log('메인 애플리케이션 FaultDashboardApp 로딩...');
           const { faultDashboardApp } = await import('/static/js/core/FaultDashboardApp.js');
 
-          // ✅ 추가: 초기화 전 대시보드 상태 준비
+          // 초기화 전 대시보드 상태 준비
           if (dashboardContainer) {
             dashboardContainer.classList.remove('loading');
           }
-
           // 초기화
           await faultDashboardApp.initialize();
 
           console.log('✅ 메인 애플리케이션 FaultDashboardApp 초기화 완료');
         } catch (error) {
+          const loadingOverlay = document.getElementById('loading-overlay');
+          if (loadingOverlay) {
+            loadingOverlay.classList.add('fade-out');
+            setTimeout(() => {
+              loadingOverlay.remove();
+            }, 500);
+          }
+
           console.error('❌ 메인 애플리케이션 FaultDashboardApp 초기화 실패:', error);
 
           // 상세 오류 정보
@@ -94,11 +101,9 @@
           <span>| &nbsp;최근 경보</span><span id="recent-alarm-update-time"> -</span>
 
           <!-- 우상단에 장비/국사 기준 메뉴 -->
-          <div class="header-view-toggle">
-            <span class="summary-title">| 경보 맵 그리기</span>
-            <button id="equip-view-btn" class="view-btn active">장비 연결 기준</button>
-            <button id="guksa-view-btn" class="view-btn">동일 국사 기준</button>
-          </div>
+          <span class="summary-title">| &nbsp;MAP View</span>
+          <button id="equip-view-btn" class="view-btn active">장비 연결 기준</button>
+          <button id="guksa-view-btn" class="view-btn">동일 국사 기준</button>
         </div>
       </div>
     </div>
@@ -185,6 +190,14 @@
           <!-- 좌측: 맵 영역 -->
           <div class="left-map-panel">
             <div class="new-map-container" id="map-container">
+              <!-- 맵 로딩 스피너 -->
+              <div id="map-loading-spinner" class="map-loading-spinner" style="display: none">
+                <div class="map-spinner">
+                  <div class="spinner-ring"></div>
+                  <div class="spinner-text">토폴로지 로딩 중...</div>
+                </div>
+              </div>
+
               <!-- 여기에 d3.js 맵이 추가될 예정 -->
             </div>
           </div>

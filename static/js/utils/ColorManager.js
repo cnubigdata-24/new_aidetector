@@ -40,15 +40,6 @@ const UI_COLORS = {
   GUKSA_BORDER: '#003366',
 };
 
-const SECTOR_COLORS_WITH_BORDER = {
-  MW: { FILL: '#ffaa00', BORDER: '#e67700' },
-  선로: { FILL: '#ff8833', BORDER: '#cc5500' },
-  전송: { FILL: '#ff66cc', BORDER: '#cc0099' },
-  IP: { FILL: '#ff3333', BORDER: '#cc0000' },
-  무선: { FILL: '#ffcc66', BORDER: '#cc9933' },
-  교환: { FILL: '#cc0000', BORDER: '#990000' },
-};
-
 // ================================
 // 2. ColorManager 클래스
 // ================================
@@ -57,7 +48,6 @@ class ColorManager {
   constructor() {
     this.fieldColors = FIELD_COLORS;
     this.uiColors = UI_COLORS;
-    this.sectorColors = SECTOR_COLORS_WITH_BORDER;
     this.defaultColor = '#999999';
 
     console.log('🎨 ColorManager 초기화 완료');
@@ -116,6 +106,16 @@ class ColorManager {
     return this.defaultColor;
   }
 
+  /**
+   * 분야별 색상 반환 (GuksaMapComponent에서 사용)
+   */
+  getSectorColor(sector) {
+    // FIELD_COLORS에서 일관된 색상 사용
+    const fill = this.fieldColors[sector] || this.defaultColor;
+    const border = this.getDarkColor(fill);
+    return { fill, border };
+  }
+
   getDarkColor(hex, factor = 0.6) {
     // HEX 색상의 밝기를 조정하는 함수
     if (!hex || typeof hex !== 'string') return '#999999';
@@ -168,18 +168,11 @@ class ColorManager {
         border: this.uiColors.GUKSA_BORDER,
       };
     } else if (type === 'equipment' && sector) {
-      const sectorColor = this.sectorColors[sector];
-      return sectorColor
-        ? {
-            fill: sectorColor.FILL,
-            border: sectorColor.BORDER,
-          }
-        : {
-            fill: this.defaultColor,
-            border: this.defaultColor,
-          };
+      // FIELD_COLORS 기반 통일
+      const fill = this.fieldColors[sector] || this.defaultColor;
+      const border = this.getDarkColor(fill);
+      return { fill, border };
     }
-
     return {
       fill: this.defaultColor,
       border: this.defaultColor,
@@ -201,22 +194,10 @@ class ColorManager {
   // ================================
 
   /**
-   * 모든 분야 색상 반환 (기존 FIELD_COLORS 대체)
+   * 모든 분야 색상 반환 (FIELD_COLORS 기준)
    */
   getAllFieldColors() {
     return { ...this.fieldColors };
-  }
-
-  /**
-   * 분야별 색상과 테두리 색상 모두 반환
-   */
-  getSectorWithBorder(sector) {
-    return (
-      this.sectorColors[sector] || {
-        FILL: this.defaultColor,
-        BORDER: this.defaultColor,
-      }
-    );
   }
 
   /**
@@ -304,7 +285,6 @@ class ColorManager {
     return {
       fieldColors: this.fieldColors,
       uiColors: this.uiColors,
-      sectorColors: this.sectorColors,
       defaultColor: this.defaultColor,
     };
   }
@@ -316,9 +296,7 @@ class ColorManager {
     return {
       totalFieldColors: Object.keys(this.fieldColors).length,
       totalUIColors: Object.keys(this.uiColors).length,
-      totalSectorColors: Object.keys(this.sectorColors).length,
       availableFields: Object.keys(this.fieldColors),
-      availableSectors: Object.keys(this.sectorColors),
     };
   }
 }

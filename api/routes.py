@@ -364,106 +364,212 @@ def status():
 
 @api_bp.route("/topology/<guksa_name>")
 def get_topology(guksa_name):
-    # 해당 국사 정보 조회
-    guksa_obj = TblGuksa.query.filter_by(guksa=guksa_name).first()
-    if not guksa_obj:
-        return jsonify({"error": "guksa not found"}), 404
+    # URL 디코딩 처리
+    try:
+        guksa_name = unquote(guksa_name)
+        guksa_name = guksa_name.strip()
 
-    # 해당 국사의 장비 목록 조회
-    # 장비 필드 정보를 추출하기 위한 쿼리
-    equipments = TblEquipment.query.filter_by(
-        guksa_id=guksa_obj.guksa_id).all()
-    center_equips = [
-        f"{eq.equip_type}-{eq.equip_name} ({eq.equip_model})" for eq in equipments
-    ]
+        print(f"🔍 get_topology 호출: guksa_name='{guksa_name}'")
 
-    # 해당 국사의 대표 분야 정보 확인 (가장 많은 장비가 속한 분야)
-    sector_counts = {}
-    for eq in equipments:
-        if eq.equip_type:
-            sector_counts[eq.equip_type] = sector_counts.get(
-                eq.equip_type, 0) + 1
+        # 1. 국사 조회 - 여러 필드에서 검색
+        guksa_obj = None
 
-    # 가장 장비가 많은 분야 찾기, 없으면 기본값
-    center_sector = max(sector_counts.items(), key=lambda x: x[1])[
-        0] if sector_counts else 'default'
+        # 1-1. guksa 필드로 검색
+        guksa_obj = TblGuksa.query.filter_by(guksa=guksa_name).first()
+        if guksa_obj:
+            print(
+                f"✅ guksa 필드에서 발견: {guksa_obj.guksa} (ID: {guksa_obj.guksa_id})")
+        else:
+            print(f"❌ guksa 필드에서 찾지 못함: {guksa_name}")
 
-    # 토폴로지 데이터 조회
-    # 특정 guksa_name으로 필터링하여 LEFT JOIN 쿼리 작성
+            # 1-2. guksa_t 필드로 검색
+            guksa_obj = TblGuksa.query.filter_by(guksa_t=guksa_name).first()
+            if guksa_obj:
+                print(
+                    f"✅ guksa_t 필드에서 발견: {guksa_obj.guksa_t} (ID: {guksa_obj.guksa_id})")
+            else:
+                print(f"❌ guksa_t 필드에서 찾지 못함: {guksa_name}")
 
-    # TblGuksa에서 guksa_t 값들을 가져옵니다.
-    guksa_values = db.session.query(TblGuksa.guksa_t).filter(
-        TblGuksa.guksa == guksa_name).all()
-    guksa_values = [guksa[0]
-                    for guksa in guksa_values]  # 튜플 형태로 가져오므로 첫 번째 요소만 추출
-    print(guksa_values)
-    # TblLink에서 local_guksa_name이 guksa_values에 포함되는 것만 가져옵니다.
-    links = db.session.query(TblLink).filter(
-        TblLink.local_guksa_name.in_(guksa_values)).all()
+                # 1-3. guksa_e 필드로 검색
+                guksa_obj = TblGuksa.query.filter_by(
+                    guksa_e=guksa_name).first()
+                if guksa_obj:
+                    print(
+                        f"✅ guksa_e 필드에서 발견: {guksa_obj.guksa_e} (ID: {guksa_obj.guksa_id})")
+                else:
+                    print(f"❌ guksa_e 필드에서 찾지 못함: {guksa_name}")
 
-    upper_links = []
-    lower_links = []
-    print(links)
-    for link in links:
-        # 연결된 국사의 장비 목록 조회
-        remote_guksa = TblGuksa.query.filter_by(
-            guksa=link.remote_guksa_name).first()
-        remote_equipments = []
-        remote_sector = 'default'
+        # 2. 국사를 찾지 못한 경우 유사한 이름 검색
+        if not guksa_obj:
+            print(f"🔍 유사한 국사명 검색 시도...")
+            similar_guksas = TblGuksa.query.filter(
+                or_(
+                    TblGuksa.guksa.like(f'%{guksa_name}%'),
+                    TblGuksa.guksa_t.like(f'%{guksa_name}%'),
+                    TblGuksa.guksa_e.like(f'%{guksa_name}%')
+                )
+            ).limit(5).all()
 
-        if remote_guksa:
-            remote_equips = TblEquipment.query.filter_by(
-                guksa_id=remote_guksa.guksa_id
+            if similar_guksas:
+                print(f"📋 유사한 국사들 발견:")
+                for sg in similar_guksas:
+                    print(
+                        f"  - ID:{sg.guksa_id}, guksa:'{sg.guksa}', guksa_t:'{sg.guksa_t}', guksa_e:'{sg.guksa_e}'")
+
+                # 첫 번째 유사한 국사 사용
+                guksa_obj = similar_guksas[0]
+                print(
+                    f"✅ 첫 번째 유사 국사 사용: {guksa_obj.guksa} (ID: {guksa_obj.guksa_id})")
+            else:
+                print(f"❌ 유사한 국사도 찾을 수 없음")
+
+        # 3. 여전히 국사를 찾지 못한 경우
+        if not guksa_obj:
+            print(f"❌ 최종적으로 국사를 찾을 수 없음: {guksa_name}")
+            return jsonify({
+                "guksa_name": guksa_name,
+                "guksa_id": None,
+                "장비수": 0,
+                "equip_list": [],
+                "error": f"국사 '{guksa_name}'를 찾을 수 없습니다"
+            }), 200
+
+        print(f"✅ 국사 발견: {guksa_obj.guksa} (ID: {guksa_obj.guksa_id})")
+
+        # 4. TblEquipment에서 해당 국사의 장비들을 직접 조회
+        equipments = TblEquipment.query.filter_by(
+            guksa_id=guksa_obj.guksa_id).all()
+
+        print(f"📊 해당 국사의 장비 수: {len(equipments)}개")
+
+        # 장비가 없는 경우 다른 방법 시도
+        if len(equipments) == 0:
+            print(f"⚠️ guksa_id로 장비를 찾을 수 없음, TblSubLink 데이터 사용...")
+
+            # TblSubLink에서 guksa_name으로 검색
+            from db.models import TblSubLink
+            equipment_links = TblSubLink.query.filter(
+                or_(
+                    TblSubLink.guksa_name == guksa_obj.guksa,
+                    TblSubLink.guksa_name == guksa_obj.guksa_t,
+                    TblSubLink.guksa_name == guksa_obj.guksa_e,
+                    TblSubLink.guksa_name == guksa_name
+                )
             ).all()
-            remote_equipments = [
-                f"{eq.equip_type}-{eq.equip_name} ({eq.equip_model})"
-                for eq in remote_equips
-            ]
 
-            # 원격 국사의 대표 분야 정보 확인
-            remote_sector_counts = {}
-            for eq in remote_equips:
-                if eq.equip_type:
-                    remote_sector_counts[eq.equip_type] = remote_sector_counts.get(
-                        eq.equip_type, 0) + 1
+            print(f"📊 TblSubLink에서 찾은 장비 링크 수: {len(equipment_links)}개")
 
-            # 가장 장비가 많은 분야 찾기
-            if remote_sector_counts:
-                remote_sector = max(
-                    remote_sector_counts.items(), key=lambda x: x[1])[0]
+            if equipment_links:
+                print(f"✅ TblSubLink 데이터를 사용하여 응답 생성")
 
-        link_data = {
-            "remote_guksa_name": link.remote_guksa_name,
-            "remote_id": remote_guksa.guksa_id if remote_guksa else 'N/A',
-            "link_type": link.link_type,
-            "remote_equipments": remote_equipments,
-            "field": remote_sector,
-            "type": link.updown_type,
-            "link_name": link.link_name if hasattr(link, 'link_name') else None,
-            "link_id": str(link.id) if hasattr(link, 'id') else None
+                # TblSubLink 데이터를 직접 응답 형식으로 변환
+                equip_list = []
+                for link in equipment_links:
+                    # 분야 결정 - equip_field가 없으면 장비명에서 추출
+                    sector = getattr(link, 'equip_field', None)
+                    if not sector or sector.strip() == '':
+                        # 장비명에서 분야 추출
+                        equip_name = link.equip_name or link.equip_id or ''
+                        if 'MSPP' in equip_name.upper():
+                            sector = '전송'
+                        elif 'SMR' in equip_name.upper():
+                            sector = '무선'
+                        elif 'CDM' in equip_name.upper() or 'MDM' in equip_name.upper():
+                            sector = 'MW'
+                        elif 'CTR' in equip_name.upper():
+                            sector = '선로'
+                        elif 'IP' in equip_name.upper():
+                            sector = 'IP'
+                        elif 'TEL' in equip_name.upper() or 'SWITCH' in equip_name.upper():
+                            sector = '교환'
+                        else:
+                            sector = '기타'
+
+                    # 장비명 정리
+                    display_name = link.equip_name or link.equip_id or f"장비_{link.equip_id}"
+                    if len(display_name) > 50:
+                        display_name = display_name[:47] + "..."
+
+                    equip_data = {
+                        "equip_id": link.equip_id,
+                        "equip_name": display_name,
+                        "equip_ip": getattr(link, 'equip_ip', ''),
+                        "sector": sector,
+                        "guksa_id": guksa_obj.guksa_id,
+                    }
+                    equip_list.append(equip_data)
+
+                # 분야별 그룹핑
+                sector_groups = {}
+                for equip in equip_list:
+                    sector = equip["sector"]
+                    if sector not in sector_groups:
+                        sector_groups[sector] = []
+                    sector_groups[sector].append(equip)
+
+                print(f"📊 분야별 장비 분포:")
+                for sector, equipments_in_sector in sector_groups.items():
+                    print(f"  - {sector}: {len(equipments_in_sector)}개")
+
+                # 직접 JSON 응답 반환 (TblEquipment 없이)
+                return jsonify({
+                    "guksa_name": guksa_name,
+                    "guksa_id": guksa_obj.guksa_id,
+                    "장비수": len(equip_list),
+                    "equip_list": equip_list,
+                    "sector_groups": sector_groups,
+                    "data_source": "TblSubLink"  # 데이터 출처 명시
+                }), 200
+            else:
+                print(f"❌ TblSubLink에서도 장비를 찾을 수 없음")
+
+            # 최종 결과가 없으면 에러 메시지와 함께 빈 응답
+            return jsonify({
+                "guksa_name": guksa_name,
+                "guksa_id": guksa_obj.guksa_id,
+                "장비수": 0,
+                "equip_list": [],
+                "error": f"해당 국사 '{guksa_name}'의 장비 데이터를 찾을 수 없습니다."
+            }), 200
+
+        # 5. 응답 데이터 구성
+        equip_list = []
+        for equip in equipments:
+            equip_data = {
+                "equip_id": equip.equip_id,
+                "equip_name": equip.equip_name,
+                "equip_ip": getattr(equip, 'equip_ip', ''),
+                "sector": getattr(equip, 'sector', '알 수 없음'),
+                "guksa_id": equip.guksa_id,
+                "guksa_name": guksa_name,
+            }
+            equip_list.append(equip_data)
+
+        print(f"✅ 장비 데이터 구성 완료: {len(equip_list)}개")
+
+        # 6. 응답 데이터 반환
+        response_data = {
+            "guksa_name": guksa_name,
+            "guksa_id": guksa_obj.guksa_id,
+            "장비수": len(equip_list),
+            "equip_list": equip_list
         }
 
-        if link.updown_type == "상위국":
-            upper_links.append(link_data)
-        else:
-            lower_links.append(link_data)
+        print(f"📤 최종 응답: 국사={guksa_name}, 장비수={len(equip_list)}개")
+        return jsonify(response_data)
 
-    # 국사 정보
-    guksa_info = {
-        "guksa_id": guksa_obj.guksa_id,
-        "guksa_name": guksa_obj.guksa,
-        "sector": center_sector,
-    }
+    except Exception as e:
+        print(f"❌ get_topology 에러: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
-    topology_data = {
-        "center": guksa_name,
-        "center_equipments": center_equips,
-        "upper": upper_links,
-        "lower": lower_links,
-        "guksa_info": guksa_info,
-    }
-
-    return jsonify(topology_data)
+        return jsonify({
+            "guksa_name": guksa_name,
+            "guksa_id": None,
+            "장비수": 0,
+            "equip_list": [],
+            "error": f"처리 중 오류 발생: {str(e)}"
+        }), 500
 
 
 @api_bp.route('/alarms/<guksa_name>')
@@ -2204,392 +2310,6 @@ def get_equip_info_from_alarm_all_last(equip_id):
     except Exception as e:
         print(f"장비 정보 조회 오류: {str(e)}")
         return None
-
-
-# MW-MW 링크 페이딩 분석 함수
-def analyze_mw_fading(source_equip_id, target_equip_id):
-    """
-    Args:
-        source_equip_id (str): 소스 장비 ID
-        target_equip_id (str): 타겟 장비 ID
-
-    Returns:
-        dict: 페이딩 분석 결과
-    """
-    try:
-        print(f"페이딩 분석 시작: {source_equip_id} -> {target_equip_id}")
-
-        # 1. 장비 정보 조회
-        source_equip = get_equip_info_from_alarm_all_last(source_equip_id)
-        target_equip = get_equip_info_from_alarm_all_last(target_equip_id)
-
-        if not source_equip or not target_equip:
-            return {
-                'result_code': '9998',
-                'is_fading': 'N/A',
-                'result_msg': '장비 정보를 찾을 수 없습니다.'
-            }
-
-        # 2. SNMP 데이터 수집 (SNR, BER 값)
-        source_snmp_data = collect_mw_snmp_data(source_equip_id)
-        target_snmp_data = collect_mw_snmp_data(target_equip_id)
-
-        if not source_snmp_data or not target_snmp_data:
-            return {
-                'result_code': '0000',
-                'is_fading': 'N/A',
-                'result_msg': 'SNMP 데이터 수집 실패'
-            }
-
-        # 3. 페이딩 분석 로직
-        fading_analysis = perform_fading_analysis(
-            source_snmp_data, target_snmp_data)
-
-        # 4. 분석 결과 반환
-        if fading_analysis['is_fading']:
-            return {
-                'result_code': '1111',
-                'is_fading': 'fading',
-                'result_msg': f"SNR: {fading_analysis['snr_status']}, BER: {fading_analysis['ber_status']} - 페이딩 의심됨",
-                'analysis_data': {
-                    'source_snr': fading_analysis.get('source_snr'),
-                    'target_snr': fading_analysis.get('target_snr'),
-                    'source_ber': fading_analysis.get('source_ber'),
-                    'target_ber': fading_analysis.get('target_ber'),
-                    'snr_variance': fading_analysis.get('snr_variance'),
-                    'ber_variance': fading_analysis.get('ber_variance')
-                }
-            }
-        else:
-            return {
-                'result_code': '1111',
-                'is_fading': 'normal',
-                'result_msg': f"SNR: {fading_analysis['snr_status']}, BER: {fading_analysis['ber_status']} - 정상 범위",
-                'analysis_data': {
-                    'source_snr': fading_analysis.get('source_snr'),
-                    'target_snr': fading_analysis.get('target_snr'),
-                    'source_ber': fading_analysis.get('source_ber'),
-                    'target_ber': fading_analysis.get('target_ber')
-                }
-            }
-
-    except Exception as e:
-        print(f"페이딩 분석 오류: {str(e)}")
-        return {
-            'result_code': '0000',
-            'is_fading': 'N/A',
-            'result_msg': f'페이딩 분석 중 오류 발생: {str(e)}'
-        }
-
-
-# MW 장비 전원 상태 분석 함수
-def analyze_mw_power_status(equip_id, guksa_name=None):
-    """
-    Args:
-        equip_id (str): 장비 ID
-        guksa_name (str): 국사명 (옵션)
-
-    Returns:
-        dict: 전원 상태 분석 결과
-    """
-    try:
-        print(f"전원 상태 분석 시작: {equip_id}")
-
-        # 1. 장비 정보 조회
-        equip_info = get_equip_info_from_alarm_all_last(equip_id)
-
-        if not equip_info:
-            return {
-                'result_code': '9998',
-                'battery_mode': 'N/A',
-                'result_msg': '장비 정보를 찾을 수 없습니다.'
-            }
-
-        # 2. SNMP를 통한 전압 데이터 수집
-        power_data = collect_mw_power_data(equip_id)
-
-        if not power_data:
-            return {
-                'result_code': '0000',
-                'battery_mode': 'N/A',
-                'result_msg': 'SNMP 데이터 수집 실패'
-            }
-
-        # 3. 전원 상태 분석 로직
-        power_analysis = perform_power_analysis(power_data)
-
-        # 4. 분석 결과 반환
-        if power_analysis['is_battery_mode']:
-            return {
-                'result_code': '1111',
-                'battery_mode': 'battery',
-                'result_msg': f"인입 전압이 {power_analysis['input_voltage']}mV로 기준치 {power_analysis['threshold_voltage']}mV보다 낮아 배터리로 운용 중 - 한전 정전 추정",
-                'power_data': {
-                    'input_voltage': power_analysis['input_voltage'],
-                    'threshold_voltage': power_analysis['threshold_voltage'],
-                    'battery_voltage': power_analysis.get('battery_voltage'),
-                    'power_status': power_analysis.get('power_status')
-                }
-            }
-        else:
-            return {
-                'result_code': '1111',
-                'battery_mode': 'main_power',
-                'result_msg': f"인입 전압이 {power_analysis['input_voltage']}mV로 기준치 {power_analysis['threshold_voltage']}mV와 비교시 정상 수준 - 한전 정전 아님",
-                'power_data': {
-                    'input_voltage': power_analysis['input_voltage'],
-                    'threshold_voltage': power_analysis['threshold_voltage'],
-                    'power_status': power_analysis.get('power_status')
-                }
-            }
-
-    except Exception as e:
-        print(f"전원 상태 분석 오류: {str(e)}")
-        return {
-            'result_code': '0000',
-            'battery_mode': 'N/A',
-            'result_msg': f'전원 상태 분석 중 오류 발생: {str(e)}'
-        }
-
-
-# MW 장비의 SNMP 데이터 수집 (SNR, BER)
-def collect_mw_snmp_data(equip_id):
-    """
-    Args:
-        equip_id (str): 장비 ID
-
-    Returns:
-        dict: SNMP 데이터 또는 None
-    """
-    try:
-        # 실제 구현에서는 SNMP 라이브러리를 사용하여 데이터 수집
-        # 예시: pysnmp 또는 easysnmp 사용
-
-        # 장비 정보 조회
-        equip_info = get_equip_info_from_alarm_all_last(equip_id)
-        if not equip_info or not equip_info.get('ip_address'):
-            print(f"장비 {equip_id}의 IP 주소를 찾을 수 없습니다.")
-            return None
-
-        ip_address = equip_info['ip_address']
-
-        # SNMP OID 정의 (실제 장비에 맞게 수정 필요)
-        snr_oid = '1.3.6.1.4.1.12345.1.1.1'  # SNR OID
-        ber_oid = '1.3.6.1.4.1.12345.1.1.2'  # BER OID
-
-        # 모의 데이터 (실제 구현에서는 SNMP 수집 코드로 대체)
-
-        # 최근 5분간의 데이터를 시뮬레이션
-        snr_values = []
-        ber_values = []
-
-        for i in range(5):  # 5개 샘플
-            # 정상적인 경우와 페이딩이 있는 경우를 구분하여 시뮬레이션
-            if random.random() < 0.3:  # 30% 확률로 페이딩 시뮬레이션
-                snr_val = random.uniform(15, 25)  # 낮은 SNR
-                ber_val = random.uniform(1e-4, 1e-3)  # 높은 BER
-            else:
-                snr_val = random.uniform(25, 35)  # 정상 SNR
-                ber_val = random.uniform(1e-6, 1e-5)  # 정상 BER
-
-            snr_values.append(snr_val)
-            ber_values.append(ber_val)
-
-        return {
-            'equip_id': equip_id,
-            'ip_address': ip_address,
-            'timestamp': time.time(),
-            'snr_values': snr_values,
-            'ber_values': ber_values,
-            'sample_count': len(snr_values)
-        }
-
-    except Exception as e:
-        print(f"SNMP 데이터 수집 오류 ({equip_id}): {str(e)}")
-        return None
-
-
-# MW 장비의 전원 데이터 수집
-def collect_mw_power_data(equip_id):
-    """
-    Args:
-        equip_id (str): 장비 ID
-
-    Returns:
-        dict: 전원 데이터 또는 None
-    """
-    try:
-        # 장비 정보 조회
-        equip_info = get_equip_info_from_alarm_all_last(equip_id)
-        if not equip_info or not equip_info.get('ip_address'):
-            print(f"장비 {equip_id}의 IP 주소를 찾을 수 없습니다.")
-            return None
-
-        ip_address = equip_info['ip_address']
-
-        # SNMP OID 정의 (실제 장비에 맞게 수정 필요)
-        input_voltage_oid = '1.3.6.1.4.1.12345.2.1.1'  # 인입전압 OID
-        battery_voltage_oid = '1.3.6.1.4.1.12345.2.1.2'  # 배터리전압 OID
-        power_status_oid = '1.3.6.1.4.1.12345.2.1.3'  # 전원상태 OID
-
-        # 모의 데이터 (실제 구현에서는 SNMP 수집 코드로 대체)
-
-        # 정전 상황을 시뮬레이션
-        if random.random() < 0.2:  # 20% 확률로 정전 시뮬레이션
-            input_voltage = random.uniform(180, 200)  # 낮은 전압 (정전)
-            battery_voltage = random.uniform(22, 24)  # 배터리 전압
-            power_status = 'battery'
-        else:
-            input_voltage = random.uniform(220, 240)  # 정상 전압
-            battery_voltage = random.uniform(26, 28)  # 충전된 배터리
-            power_status = 'main'
-
-        return {
-            'equip_id': equip_id,
-            'ip_address': ip_address,
-            'timestamp': time.time(),
-            'input_voltage': input_voltage,
-            'battery_voltage': battery_voltage,
-            'power_status': power_status
-        }
-
-    except Exception as e:
-        print(f"전원 데이터 수집 오류 ({equip_id}): {str(e)}")
-        return None
-
-
-# MW-MW 링크 페이딩 분석
-def perform_fading_analysis(source_data, target_data):
-    """
-    Args:
-        source_data (dict): 소스 장비 SNMP 데이터
-        target_data (dict): 타겟 장비 SNMP 데이터
-
-    Returns:
-        dict: 분석 결과
-    """
-    try:
-        # SNR과 BER 데이터 추출
-        source_snr = source_data.get('snr_values', [])
-        source_ber = source_data.get('ber_values', [])
-        target_snr = target_data.get('snr_values', [])
-        target_ber = target_data.get('ber_values', [])
-
-        # 평균값 계산
-        avg_source_snr = np.mean(source_snr) if source_snr else 0
-        avg_target_snr = np.mean(target_snr) if target_snr else 0
-        avg_source_ber = np.mean(source_ber) if source_ber else 0
-        avg_target_ber = np.mean(target_ber) if target_ber else 0
-
-        # 분산 계산 (변동성 확인)
-        snr_variance = np.var(
-            source_snr + target_snr) if (source_snr and target_snr) else 0
-        ber_variance = np.var(
-            source_ber + target_ber) if (source_ber and target_ber) else 0
-
-        # 페이딩 판단 기준
-        SNR_THRESHOLD = 25.0  # dB
-        BER_THRESHOLD = 1e-4
-        SNR_VARIANCE_THRESHOLD = 10.0  # 변동성 기준
-        BER_VARIANCE_THRESHOLD = 1e-6
-
-        # 페이딩 판단 로직
-        low_snr = (avg_source_snr < SNR_THRESHOLD) or (
-            avg_target_snr < SNR_THRESHOLD)
-        high_ber = (avg_source_ber > BER_THRESHOLD) or (
-            avg_target_ber > BER_THRESHOLD)
-        high_variance = (snr_variance > SNR_VARIANCE_THRESHOLD) or (
-            ber_variance > BER_VARIANCE_THRESHOLD)
-
-        is_fading = low_snr and (high_ber or high_variance)
-
-        # 상태 메시지 생성
-        snr_status = f"평균 {(avg_source_snr + avg_target_snr) / 2:.1f}dB"
-        ber_status = f"평균 {(avg_source_ber + avg_target_ber) / 2:.2e}"
-
-        if snr_variance > SNR_VARIANCE_THRESHOLD:
-            snr_status += " (변동 큼)"
-        if ber_variance > BER_VARIANCE_THRESHOLD:
-            ber_status += " (변동 큼)"
-
-        return {
-            'is_fading': is_fading,
-            'source_snr': avg_source_snr,
-            'target_snr': avg_target_snr,
-            'source_ber': avg_source_ber,
-            'target_ber': avg_target_ber,
-            'snr_variance': snr_variance,
-            'ber_variance': ber_variance,
-            'snr_status': snr_status,
-            'ber_status': ber_status
-        }
-
-    except Exception as e:
-        print(f"페이딩 분석 오류: {str(e)}")
-        return {
-            'is_fading': False,
-            'snr_status': '분석 실패',
-            'ber_status': '분석 실패'
-        }
-
-
-# MW 장비 전원 상태 분석
-def perform_power_analysis(power_data):
-    try:
-        input_voltage = power_data.get('input_voltage', 0)
-        battery_voltage = power_data.get('battery_voltage', 0)
-        power_status = power_data.get('power_status', 'unknown')
-
-        # 전압 기준값 (실제 장비 사양에 맞게 조정 필요)
-        NORMAL_VOLTAGE_MIN = 210  # 210V
-        NORMAL_VOLTAGE_MAX = 250  # 250V
-        BATTERY_MODE_THRESHOLD = 200  # 200V 이하면 배터리 모드로 판단
-
-        # 정전 판단 로직
-        is_battery_mode = (input_voltage < BATTERY_MODE_THRESHOLD) or (
-            power_status == 'battery')
-
-        return {
-            'is_battery_mode': is_battery_mode,
-            'input_voltage': input_voltage,
-            'threshold_voltage': BATTERY_MODE_THRESHOLD,
-            'battery_voltage': battery_voltage,
-            'power_status': power_status,
-            'voltage_range': f"{NORMAL_VOLTAGE_MIN}V ~ {NORMAL_VOLTAGE_MAX}V"
-        }
-
-    except Exception as e:
-        print(f"전원 분석 오류: {str(e)}")
-        return {
-            'is_battery_mode': False,
-            'input_voltage': 0,
-            'threshold_voltage': 200
-        }
-
-
-# puresnmp를 사용한 여러 OID 값을 가져오는 함수
-def get_multiple_snmp_values(ip, community, oids, port=161):
-    result = {}
-    try:
-        for oid in oids:
-            try:
-                # puresnmp의 get 함수로 각 OID 값을 가져옴
-                value = puresnmp.get(ip, community, oid, port=port, timeout=2)
-
-                # 반환된 값 처리 (바이트 또는 특수 타입일 수 있음)
-                if isinstance(value, bytes):
-                    result[oid] = value.decode("utf-8", errors="replace")
-                else:
-                    result[oid] = str(value)
-            except Exception as e:
-                result[oid] = f"Error: {str(e)}"
-    except Exception as e:
-        # 전체 처리 중 오류 발생
-        for oid in oids:
-            if oid not in result:
-                result[oid] = f"Exception: {str(e)}"
-
-    return result
 
 
 def get_current_time():

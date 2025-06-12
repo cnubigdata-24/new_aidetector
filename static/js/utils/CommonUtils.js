@@ -209,32 +209,75 @@ export async function callMapApi(url, data = null, options = {}) {
  * 맵 로딩 메시지 표시 (맵 간섭 방지)
  */
 export function showMapLoadingMessage(message, container = null) {
-  const mapContainer = container || document.getElementById('map-container');
-  if (!mapContainer) return;
+  // 로딩 메시지 표시 비활성화
+  //return;
 
-  // EquipmentMapComponent와 동일한 구조 사용
-  mapContainer.innerHTML = `
-    <div class="map-loading-overlay">
-      <div class="map-loading-content">            
-        <div class="map-loading-text loading-text">⏳ ${message}</div>
-      </div>
+  const targetContainer = container || document.getElementById('map-container');
+  if (!targetContainer) return;
+
+  targetContainer.innerHTML = `
+    <div class="map-loading-message" style="
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 20px;
+      text-align: center;
+      color: #777;
+      background: white;
+      border-radius: 4px;
+    ">
+      <div style="font-size: 24px; margin-bottom: 16px;">⏳</div>
+      <div style="font-size: 16px; color: rgb(134, 134, 134);">${message}</div>
     </div>
   `;
 }
 
 // showMapErrorMessage 함수 뒤에 추가할 새로운 함수들
 export function showMapSectorChangeMessage(sectorName, container = null) {
-  const mapContainer = container || document.getElementById('map-container');
-  if (!mapContainer) return;
+  const targetContainer = container || document.getElementById('map-container');
+  if (!targetContainer) return;
 
-  // 메시지를 이전 분야 → 새 분야 형태로 표시
-  let changeMessage = `✔️ 경보 내역을 '${sectorName}' 분야로 변경했습니다.`;
+  targetContainer.innerHTML = `
+    <div class="sector-change-message" style="
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 20px;
+      text-align: center;
+      color: #777;
+      background: white;
+      border-radius: 4px;
+    ">
+      <div style="font-size: 16px; margin-bottom: 8px; color:  rgb(134, 134, 134);">✔️ '${sectorName}' 분야로 변경되었습니다.</div>
 
-  mapContainer.innerHTML = `
-    <div class="map-loading-overlay">
-      <div class="map-loading-content">            
-        <div class="map-loading-text loading-text">${changeMessage}</div>
-      </div>
+    </div>
+  `;
+}
+
+// 요구사항: 맵뷰 변경 메시지 표시 함수 추가
+export function showMapViewChangeMessage(mapViewType, container = null) {
+  const targetContainer = container || document.getElementById('map-container');
+  if (!targetContainer) return;
+
+  targetContainer.innerHTML = `
+    <div class="view-change-message" style="
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 20px;
+      text-align: center;
+      color: #777;
+      background: white;
+      border-radius: 4px;
+    ">
+      <div style="font-size: 16px; margin-bottom: 8px; color: rgb(134, 134, 134);">✔️ MAP View가 '${mapViewType}'으로 변경되었습니다.</div>
+ 
     </div>
   `;
 }
@@ -265,15 +308,24 @@ export function updateMapLoadingMessage(message, container = null) {
  * 맵 에러 메시지 표시
  */
 export function showMapErrorMessage(equipId, errorMessage, container = null) {
-  const mapContainer = container || document.getElementById('map-container');
-  if (!mapContainer) return;
+  const targetContainer = container || document.getElementById('map-container');
+  if (!targetContainer) return;
 
-  mapContainer.innerHTML = `
-    <div class="commonutils-map-error-container">
-      <div class="commonutils-map-error-content">
-        <div class="commonutils-map-error-title">❌ 장비 ${equipId} 토폴로지 생성에 실패했습니다.</div>
-        <div class="commonutils-map-error-message">${errorMessage}</div>
-      </div>
+  targetContainer.innerHTML = `
+    <div class="map-error-message" style="
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 20px;
+      text-align: center;
+      color: #777;
+      background: white;
+      border-radius: 4px;
+    ">
+      <div style="font-size: 16px; margin-bottom: 8px; color: rgb(134, 134, 134);">❌ 장비 '${equipId}' 토폴로지 생성에 실패했습니다.</div>
+      <div style="font-size: 12px; line-height: 1.5; color: #777;">${errorMessage}</div>
     </div>
   `;
 }
@@ -431,8 +483,9 @@ function renderSimpleEquipmentMap(equipId, data) {
   }
 
   // 맵 보호 상태 확인
-  if (window._activeMapExists) {
-    const timeDiff = Date.now() - (window._activeMapTimestamp || 0);
+  const mapStatus = StateManager.get('mapStatus') || {};
+  if (mapStatus.activeMapExists) {
+    const timeDiff = Date.now() - (mapStatus.timestamp || 0);
     if (timeDiff < 15000) {
       // 15초 이내
       console.log('🛡️ 활성 맵 보호 상태, renderSimpleEquipmentMap 건너뜀');
@@ -464,13 +517,12 @@ export function loadAlarmData() {
     .then((response) => response.json())
     .then((data) => {
       const alarmData = data.alarms || data || [];
-      window._totalAlarmDataList = alarmData;
-      window.totalAlarmDataList = alarmData;
+
+      // StateManager에 저장
+      StateManager.set('alarmData', alarmData);
+      StateManager.set('totalAlarmDataList', alarmData); // 호환성용
 
       console.log(`📊 알람 데이터 로드: ${alarmData.length}개`);
-
-      // 헤더 업데이트
-      // updateHeaderSummary(alarmData);
 
       return alarmData;
     })
@@ -480,9 +532,49 @@ export function loadAlarmData() {
     });
 }
 
+export function loadEquipmentData() {
+  const selectedSector = getSelectedSector();
+  return fetch('/api/get_equipment_data', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sector: selectedSector }),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      const equipmentData = data.equipments || data || [];
+
+      console.log(`📊 장비 데이터 로드: ${equipmentData.length}개 (분야: ${selectedSector})`);
+
+      return Array.isArray(equipmentData) ? equipmentData : [];
+    })
+    .catch((error) => {
+      console.error('장비 데이터 로드 실패:', error);
+      return [];
+    });
+}
+
+export function loadGuksaData() {
+  return fetch('/api/guksa_list', {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      const guksaData = data || [];
+
+      console.log(`📊 국사 데이터 로드: ${guksaData.length}개`);
+
+      return Array.isArray(guksaData) ? guksaData : [];
+    })
+    .catch((error) => {
+      console.error('국사 데이터 로드 실패:', error);
+      return [];
+    });
+}
+
 export function updateSidebarEquipmentList() {
   try {
-    const alarmData = window._totalAlarmDataList || [];
+    const alarmData = StateManager.get('alarmData') || [];
     const selectedSector = getSelectedSector();
 
     // 현재 선택된 분야의 경보 장비 목록 추출
@@ -554,7 +646,7 @@ export function updateSidebarEquipmentList() {
 
 export function updateAlarmTable() {
   try {
-    const alarmData = window._totalAlarmDataList || [];
+    const alarmData = StateManager.get('alarmData') || [];
     const selectedSector = getSelectedSector();
 
     // 현재 선택된 분야의 경보 데이터 필터링
@@ -615,8 +707,20 @@ export function updateAlarmTable() {
 }
 
 function getSelectedSector() {
+  // StateManager에서 먼저 확인
+  const storedSector = StateManager.get('selectedSector');
+  if (storedSector) {
+    return storedSector;
+  }
+
+  // DOM에서 확인 (fallback)
   const selectedRadio = document.querySelector('input[name="sector"]:checked');
-  return selectedRadio ? selectedRadio.value : 'IP';
+  const sector = selectedRadio ? selectedRadio.value : 'IP';
+
+  // StateManager에 저장
+  StateManager.set('selectedSector', sector);
+
+  return sector;
 }
 
 /**
@@ -695,7 +799,7 @@ export function handleSectorChange(selectedSector) {
   }
 
   // 전역 변수 업데이트
-  window._selectedSector = selectedSector;
+  StateManager.set('selectedSector', selectedSector);
 
   // UI 업데이트
   updateSidebarEquipmentList();
@@ -716,52 +820,24 @@ function updateDashboardHighlight(selectedSector) {
   }
 }
 
-// export function updateHeaderSummary(alarmData) {
-//   if (!Array.isArray(alarmData) || alarmData.length === 0) return;
+// ================================
+// 맵 상태 관리 헬퍼 함수들
+// ================================
 
-//   const uniqueEquips = new Set(alarmData.filter((a) => a?.equip_id).map((a) => a.equip_id));
-//   const totalAlarms = alarmData.length;
-//   const recentAlarm = alarmData
-//     .filter((a) => a?.occur_datetime)
-//     .sort((a, b) => new Date(b.occur_datetime) - new Date(a.occur_datetime))[0];
+export function setMapActiveStatus(isActive = true) {
+  StateManager.set('mapStatus', {
+    activeMapExists: isActive,
+    timestamp: Date.now(),
+  });
+}
 
-//   const realtimeEquipEl = document.getElementById('realtime-equip-count');
-//   const totalAlarmEl = document.getElementById('total-alarm-count');
-//   const recentAlarmEl = document.getElementById('recent-alarm-count');
-
-//   if (realtimeEquipEl) realtimeEquipEl.textContent = ` ${formatNumber(uniqueEquips.size)} 대`;
-//   if (totalAlarmEl) totalAlarmEl.textContent = ` ${formatNumber(totalAlarms)} 건`;
-//   if (recentAlarmEl) recentAlarmEl.textContent = ` ${formatDateTime(recentAlarm?.occur_datetime)}`;
-// }
-
-// // improveHeaderFormatting 함수 수정 (updateHeader -> updateHeaderSummary)
-// export function improveHeaderFormatting() {
-//   // StateManager 연결
-//   if (StateManager) {
-//     StateManager.on('totalAlarmDataList', (data) => updateHeaderSummary(data.value || []));
-//   }
-
-//   // 초기 업데이트
-//   setTimeout(() => {
-//     const alarmData = window._totalAlarmDataList || [];
-//     updateHeaderSummary(alarmData);
-//   }, 500);
-
-//   console.log('✅ 헤더 포맷팅 개선 완료');
-//   return { formatNumber, formatDateTime, updateHeaderSummary };
-// }
-
-// // 패치 함수들
-// export function applyAllPatches() {
-//   console.log('🔧 모든 패치 적용 시작...');
-
-//   try {
-//     improveHeaderFormatting();
-//     console.log('✅ 모든 패치 적용 완료');
-//   } catch (error) {
-//     console.error('패치 적용 중 오류:', error);
-//   }
-// }
+export function getMapActiveStatus() {
+  const mapStatus = StateManager.get('mapStatus') || {};
+  return {
+    activeMapExists: mapStatus.activeMapExists || false,
+    timestamp: mapStatus.timestamp || 0,
+  };
+}
 
 // ================================
 // 통합 네임스페이스 객체
@@ -775,7 +851,9 @@ const commonUtils = {
     clearMapMessages,
     updateMapLoadingMessage,
     showMapSectorChangeMessage,
+    showMapViewChangeMessage,
   },
+  state: { setMapActiveStatus, getMapActiveStatus },
   performance: { checkPerformance, checkMemoryUsage, optimizeDOM },
   dom: { sortData, getDragAfterElement },
 
@@ -785,6 +863,8 @@ const commonUtils = {
   handleSectorChange,
 
   loadAlarmData,
+  loadEquipmentData,
+  loadGuksaData,
   escapeHtml,
   showErrorMessage,
 
@@ -798,81 +878,21 @@ const commonUtils = {
   clearMapMessages,
   updateMapLoadingMessage,
   showMapSectorChangeMessage,
+  showMapViewChangeMessage,
+  setMapActiveStatus,
+  getMapActiveStatus,
 };
 
 // Default export로 네임스페이스 객체 제공
 export default commonUtils;
 
 // ================================
-// 8. 전역 등록 및 자동 실행
+// 8. ES6 모듈로 사용 시 자동 실행이 필요한 경우
 // ================================
 
-if (typeof window !== 'undefined') {
-  window.commonUtils = commonUtils;
-
-  // 기본 함수들
-  window.loadAlarmData = loadAlarmData;
-  window.updateSidebarEquipmentList = updateSidebarEquipmentList;
-  window.updateAlarmTable = updateAlarmTable;
-
-  window.handleSectorChange = handleSectorChange;
-
-  // 포맷팅 함수들
-  window.formatNumber = formatNumber;
-  window.formatDateTime = formatDateTime;
-  window.formatDateTimeForToolTip = formatDateTimeForToolTip;
-  window.formatDateTimeLong = formatDateTimeLong;
-  window.escapeHtml = escapeHtml;
-
-  // API 함수들
-  window.callApi = callApi;
-  window.showMapLoadingMessage = showMapLoadingMessage;
-  window.showMapErrorMessage = showMapErrorMessage;
-  window.showErrorMessage = showErrorMessage;
-
-  // 성능 함수들
-  window.checkPerformance = checkPerformance;
-  window.checkMemoryUsage = checkMemoryUsage;
-  window.optimizeDOM = optimizeDOM;
-
-  // 유틸리티 함수들
-  window.sortData = sortData;
-  window.getDragAfterElement = getDragAfterElement;
-
-  // 맵 관련 함수들 등록
-  window.showMapLoadingMessage = showMapLoadingMessage;
-  window.showMapErrorMessage = showMapErrorMessage;
-  window.updateMapLoadingMessage = updateMapLoadingMessage;
-  window.showMapSectorChangeMessage = showMapSectorChangeMessage;
-  window.clearMapMessages = clearMapMessages;
-  window.callMapApi = callMapApi;
-
-  console.log('✅ CommonUtils 맵 관련 함수 등록 완료');
-
-  // 맵 로딩 메시지 표시
-  window.showMapSectorChangeMessage = showMapSectorChangeMessage;
-  window.clearMapMessages = clearMapMessages;
-
-  console.log('✅ CommonUtils 전역 함수 등록 완료');
-
-  // DOM 로드 후 자동 실행
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(() => {
-        // 기본 데이터 로드
-        loadAlarmData().then(() => {
-          updateSidebarEquipmentList();
-          updateAlarmTable();
-        });
-      }, 300);
-    });
-  } else {
-    setTimeout(() => {
-      // 기본 데이터 로드
-      loadAlarmData().then(() => {
-        updateSidebarEquipmentList();
-        updateAlarmTable();
-      });
-    }, 300);
-  }
-}
+// 필요한 경우 각 컴포넌트에서 개별적으로 호출:
+// import CommonUtils from './utils/CommonUtils.js';
+// CommonUtils.loadAlarmData().then(() => {
+//   CommonUtils.updateSidebarEquipmentList();
+//   CommonUtils.updateAlarmTable();
+// });

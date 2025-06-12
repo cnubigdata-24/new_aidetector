@@ -48,11 +48,15 @@ const DEFAULT_STATE = {
     timestamp: null,
   },
 
-  // 현재 맵 상태 - 노드, 링크, 기준 노드, 경보 데이터
+  // 장비 맵 뷰 상태 변수 - 노드, 링크, 기준 노드, 경보 데이터
   currentMapNodes: [],
   currentMapLinks: [],
   currentBaseNode: null,
   currentMapAlarms: [],
+
+  // 국사 맵 뷰 관련 변수
+  currentGuksaList: [], // 국사 목록 (배열)
+  guksaTopologyCache: new Map(), // 국사별 토폴로지 캐시
 
   // 기타 UI 상태
   sidebarCollapsed: false,
@@ -650,6 +654,55 @@ class StateManager {
       console.error('맵 관련 경보 필터링 오류:', error);
       return [];
     }
+  }
+
+  /**
+   * 현재 국사 목록 설정
+   */
+  setCurrentGuksaList(guksaList) {
+    this.set('currentGuksaList', Array.isArray(guksaList) ? [...guksaList] : [], {
+      source: 'guksa-list-update',
+    });
+    return this;
+  }
+
+  /**
+   * 현재 국사 목록 조회 (배열)
+   */
+  getCurrentGuksaList() {
+    return this.get('currentGuksaList', []);
+  }
+
+  /**
+   * 국사 Map 형태로 조회 (필요할 때만 생성)
+   */
+  getCurrentGuksaMap() {
+    const guksaList = this.getCurrentGuksaList();
+    const guksaMap = new Map();
+
+    guksaList.forEach((guksa) => {
+      if (guksa && guksa.guksa_name) {
+        guksaMap.set(guksa.guksa_name, guksa);
+      }
+    });
+
+    return guksaMap;
+  }
+
+  /**
+   * 특정 국사 조회 (이름으로)
+   */
+  getGuksaByName(guksaName) {
+    const guksaList = this.getCurrentGuksaList();
+    return guksaList.find((guksa) => guksa.guksa_name === guksaName) || null;
+  }
+
+  /**
+   * 특정 국사 조회 (ID로)
+   */
+  getGuksaById(guksaId) {
+    const guksaList = this.getCurrentGuksaList();
+    return guksaList.find((guksa) => guksa.guksa_id === guksaId) || null;
   }
 
   // ================================

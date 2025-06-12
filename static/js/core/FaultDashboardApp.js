@@ -3,7 +3,6 @@
  */
 
 // 싱글톤
-import { guksaMapComponent } from './GuksaMapComponent.js';
 import { tooltipManager as TooltipManager } from '../utils/TooltipManager.js';
 import { colorManager as ColorManager } from '../utils/ColorManager.js';
 import { stateManager as StateManager } from './StateManager.js';
@@ -15,6 +14,7 @@ import { failurePointManager } from './FailurePointManager.js';
 // 클래스와 함수
 import CommonUtils from '../utils/CommonUtils.js';
 import MessageManager from '../utils/MessageManager.js';
+import GuksaMapComponent from './GuksaMapComponent.js';
 import EquipmentMapComponent from './EquipmentMapComponent.js';
 
 // 설정 상수
@@ -43,8 +43,12 @@ export class FaultDashboardApp {
     // 데이터 캐시 초기화
     this.dataCache = new Map();
     this.isInitialized = false;
+
     this.equipmentMapComponent = null;
-    this._keyboardHandlersAttached = false; // 키보드 핸들러 중복 방지 플래그
+    this.guksaMapComponent = null;
+
+    this.currentMapType = 'equip'; // 'equip' 또는 'guksa'
+    this._keyboardHandlersAttached = false;
 
     // 메서드 바인딩
     this.bindEventHandlers();
@@ -139,6 +143,7 @@ export class FaultDashboardApp {
     this.setupEventListeners();
     this.setupStateListeners();
     this.setupInitialState();
+
     await this.loadInitialData();
   }
 
@@ -436,7 +441,7 @@ export class FaultDashboardApp {
       this.updateStateManager(alarmData, equipmentData, guksaData);
       this.updateUI(alarmData);
 
-      MessageManager.addSuccessMessage('✅ 분야별 전체 최신 경보 데이터 수집을 완료했습니다.');
+      MessageManager.addSuccessMessage('✅ 전체 최신 경보 데이터 수집을 완료했습니다.');
     } catch (error) {
       this.handleError('초기 기본 데이터 로드 실패', error);
     }
@@ -725,75 +730,85 @@ export class FaultDashboardApp {
   async createAndRenderMap(equipId) {
     try {
       // 기존 인스턴스 정리
-      this.cleanupMapInstance();
+      this.cleanupCurrentMap();
 
-      // 새 인스턴스 생성 및 렌더링
-      this.equipMapComponent = new EquipmentMapComponent('map-container');
+      const currentMapType = this.currentMapType || 'equip';
 
-      const alarmData = StateManager.get('totalAlarmDataList', []);
-      const equipmentData = StateManager.get('allEquipmentList', []);
+      if (currentMapType === 'equip') {
+        // 1. 장비 연결 기준 맵
+        this.equipmentMapComponent = new EquipmentMapComponent('map-container');
 
-      await this.equipMapComponent.renderEquipmentTopology(equipId, equipmentData, [], {
-        showProgress: true,
-        showAllSectors: true,
-      });
+        const alarmData = StateManager.get('totalAlarmDataList', []);
+        const equipmentData = StateManager.get('allEquipmentList', []);
 
-      // 맵 생성 완료 후 StateManager에 맵 상태 업데이트
-      if (this.equipMapComponent?.nodes) {
-        console.log(`✅ 맵 생성 성공: ${equipId} (노드 ${this.equipMapComponent.nodes.length}개)`);
+        await this.equipmentMapComponent.renderEquipmentTopology(equipId, equipmentData, [], {
+          showProgress: true,
+          showAllSectors: true,
+        });
 
-        // baseNode 찾기 (개선된 로직)
-        // 1차: 실제 생성된 노드 중에서 equipId와 정확 매칭
-        let baseNode = this.equipMapComponent.nodes.find(
-          (node) => String(node.equip_id || node.id || '').trim() === String(equipId).trim()
-        );
+        // 맵 생성 완료 후 StateManager에 맵 상태 업데이트
+        if (this.equipmentMapComponent?.nodes) {
+          console.log(
+            `✅ 장비 맵 생성 성공: ${equipId} (노드 ${this.equipmentMapComponent.nodes.length}개)`
+          );
 
-        // 2차: 정확 매칭 실패 시 포함 매칭
-        if (!baseNode) {
-          baseNode = this.equipMapComponent.nodes.find((node) => {
-            const nodeId = String(node.equip_id || node.id || '').trim();
-            return (
-              nodeId.includes(String(equipId).trim()) || String(equipId).trim().includes(nodeId)
+          let baseNode = this.equipmentMapComponent.nodes.find(
+            (node) => String(node.equip_id || node.id || '').trim() === String(equipId).trim()
+          );
+
+          if (baseNode) {
+            console.log(
+              `✅ baseNode 설정 성공: ${baseNode.equip_name || baseNode.name || baseNode.equip_id}`
             );
-          });
-        }
-
-        // 3차: 마지막으로 equipmentData에서 찾기
-        if (!baseNode) {
-          const equipData = equipmentData.find(
-            (equip) => String(equip.equip_id).trim() === String(equipId).trim()
-          );
-          if (equipData) {
-            console.log(`🔍 baseNode를 equipmentData에서 찾음: ${equipData.equip_name}`);
-            baseNode = equipData;
           }
-        }
 
-        if (baseNode) {
-          console.log(
-            `✅ baseNode 설정 성공: ${baseNode.equip_name || baseNode.name || baseNode.equip_id}`
-          );
-        } else {
-          console.warn(`⚠️ baseNode를 찾을 수 없음: equipId=${equipId}`);
-          console.log(
-            `📋 생성된 노드 ID 목록:`,
-            this.equipMapComponent.nodes.map((n) => n.equip_id || n.id)
+          StateManager.setCurrentMapData(
+            this.equipmentMapComponent.nodes,
+            this.equipmentMapComponent.links,
+            baseNode || null,
+            []
           );
         }
-
-        // StateManager에 enriched된 맵 데이터 전달
-        StateManager.setCurrentMapData(
-          this.equipMapComponent.nodes,
-          this.equipMapComponent.links,
-          baseNode || null,
-          []
-        );
       } else {
-        console.warn('⚠️ 맵 노드 생성 실패 - 상태 초기화');
-        StateManager.setCurrentMapData([], [], null, []);
+        // 2. 동일 국사 기준 맵
+        this.guksaMapComponent = new GuksaMapComponent('map-container');
+
+        const alarmData = StateManager.get('totalAlarmDataList', []);
+        const equipmentData = StateManager.get('allEquipmentList', []);
+
+        // 선택된 장비의 국사명 찾기
+        const targetEquip =
+          alarmData.find((alarm) => alarm.equip_id === equipId) ||
+          equipmentData.find((equip) => equip.equip_id === equipId);
+
+        if (targetEquip && targetEquip.guksa_name) {
+          await this.guksaMapComponent.renderGuksaMap(equipmentData, {
+            selectedGuksa: targetEquip.guksa_name,
+            showProgress: true,
+          });
+
+          console.log(`✅ 국사 맵 생성 성공: ${targetEquip.guksa_name}`);
+        }
       }
     } catch (error) {
       console.error(`❌ 맵 생성 실패 (${equipId}):`, error);
+      this.handleMapError(equipId, error);
+    }
+  }
+  // 국사 토폴로지 로드
+  async loadGuksaTopology(equipId) {
+    try {
+      console.log(`🏢 국사 토폴로지 로드: ${equipId}`);
+
+      // 맵 로딩 스피너 표시
+      this.updateMapLoadingText('국사 토폴로지 로딩 중...');
+
+      CommonUtils.showMapLoadingMessage?.(
+        `장비 ${equipId}가 속한 국사의 토폴로지 데이터를 수집하고 분석 중입니다`
+      );
+
+      await this.createAndRenderMap(equipId);
+    } catch (error) {
       this.handleMapError(equipId, error);
     }
   }
@@ -1213,12 +1228,51 @@ export class FaultDashboardApp {
       StateManager.set('selectedView', mapType);
       this.updateViewButtons();
 
-      const mapTypeName = mapType === CONFIG.MAP_TYPES.EQUIPMENT ? '장비 연결 기준' : '국사 기준';
-      MessageManager.addMessage?.(`✔️ 맵 뷰를 ${mapTypeName}으로 변경했습니다.`, { type: 'info' });
+      // 기존 맵 정리
+      this.cleanupCurrentMap();
+
+      const mapTypeName = mapType === 'equip' ? '장비 연결 기준' : '동일 국사 기준';
+
+      // 9번 요구사항: 맵뷰 변경 메시지 표시
+      CommonUtils.showMapViewChangeMessage?.(mapTypeName);
+
+      // 현재 선택된 장비가 있으면 새로운 뷰 모드로 다시 렌더링
+      const selectedEquipment = StateManager.get('selectedEquipment');
+      if (selectedEquipment) {
+        if (mapType === 'equip') {
+          this.loadEquipmentTopology(selectedEquipment);
+        } else {
+          this.loadGuksaTopology(selectedEquipment);
+        }
+      }
 
       console.log(`👁️ 뷰 변경: ${mapType}`);
     } catch (error) {
       console.error('뷰 변경 실패:', error);
+    }
+  }
+
+  cleanupCurrentMap() {
+    try {
+      if (this.equipmentMapComponent) {
+        this.equipmentMapComponent.destroy();
+        this.equipmentMapComponent = null;
+      }
+
+      if (this.guksaMapComponent) {
+        this.guksaMapComponent.destroy();
+        this.guksaMapComponent = null;
+      }
+
+      // StateManager의 맵 상태도 초기화
+      StateManager.setCurrentMapData([], [], null, []);
+
+      const mapContainer = document.getElementById('map-container');
+      if (mapContainer) {
+        mapContainer.innerHTML = '';
+      }
+    } catch (error) {
+      console.error('맵 정리 중 오류:', error);
     }
   }
 
@@ -1423,7 +1477,6 @@ export class FaultDashboardApp {
 
     try {
       console.log(`🔧 장비 토폴로지 로드: ${equipId}`);
-
       CommonUtils.showMapLoadingMessage?.(
         `장비 ${equipId} 토폴로지 데이터를 수집하고 분석 중입니다`
       );

@@ -1540,13 +1540,13 @@ div#pagination.simple-pagination,
   background-color: rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 6px; /* 살짝 라운드 처리 */
-  padding: 4px 8px;
-  margin: 0 2px;
+  padding: 4px 4px;
+  margin: 0 1px;
   color: white;
   font-size: 13px;
   font-weight: normal;
   transition: all 0.2s ease;
-  width: 100px;
+  width: 120px;
   height: 25px;
   line-height: 18px;
   text-align: center;
@@ -1879,37 +1879,6 @@ div#pagination.simple-pagination,
   transition: stroke-width var(--transition-normal);
 }
 
-/* 노드 색상 */
-.node-MW circle {
-  fill: #ffaa00;
-  stroke: #e67700;
-}
-.node-IP circle {
-  fill: #ff3333;
-  stroke: #cc0000;
-}
-.node-교환 circle {
-  fill: #cc0000;
-  stroke: #990000;
-}
-.node-전송 circle {
-  fill: #ff66cc;
-  stroke: #cc0099;
-}
-.node-선로 circle {
-  fill: #ff8833;
-  stroke: #cc5500;
-}
-.node-무선 circle {
-  fill: #ffcc66;
-  stroke: #cc9933;
-}
-
-.node-guksa rect {
-  fill: #0056b3;
-  stroke: #000000;
-}
-
 .node-guksa:hover rect {
   stroke-width: 3px;
 }
@@ -1920,7 +1889,7 @@ div#pagination.simple-pagination,
 }
 
 .node:hover circle {
-  filter: drop-shadow(0 0 6px rgba(255, 100, 50, 0.6));
+  /* filter: drop-shadow(0 0 6px rgba(255, 100, 50, 0.6)); */
   stroke-width: 3px;
 }
 

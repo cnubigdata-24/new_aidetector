@@ -1,36 +1,26 @@
 /**
- * STEP 10: 국사 맵 컴포넌트 모듈
- * 파일 위치: src/core/GuksaMapComponent.js
- *
- * 1. fault_d3_map.js의 국사 기준 맵 기능 모듈화
- * 2. 국사별 장비 그룹핑 및 시각화
- * 3. 계층적 맵 구조 (국사 > 장비)
- * 4. 동적 확대/축소 및 드릴다운 기능
- * 5. 지리적 위치 기반 배치 (옵션)
+ * 국사 토폴로지 맵 구성 컴포넌트
  */
 
-import CommonUtils from '../utils/CommonUtils.js'; // 공통 유틸리티 Function
+// 싱글톤
+import { stateManager as StateManager } from './StateManager.js';
+import { tooltipManager as TooltipManager } from '../utils/TooltipManager.js';
+import { colorManager as ColorManager } from '../utils/ColorManager.js';
 
-import { colorManager as ColorManager } from '../utils/ColorManager.js'; // 싱글톤
-import { tooltipManager as TooltipManager } from '../utils/TooltipManager.js'; // 싱글톤
-import { stateManager as StateManager } from './StateManager.js'; // 싱글톤
+import CommonUtils from '../utils/CommonUtils.js';
+import MessageManager from '../utils/MessageManager.js';
 
-// ================================
-// 1. 국사 맵 설정 및 상수 정의
-// ================================
-
+// 설정 상수
 const GUKSA_MAP_CONFIG = {
-  // 기본 크기
   DEFAULT_WIDTH: 800,
   DEFAULT_HEIGHT: 600,
-
-  // 줌 설정
-  ZOOM_MIN: 0.5,
-  ZOOM_MAX: 8,
-  ZOOM_INITIAL: 1,
-
-  // 국사 노드 설정
-  GUKSA_NODE: {
+  ZOOM: {
+    MIN: 0.1,
+    MAX: 10,
+    SCALE_FACTOR: 1.5,
+    TRANSITION_DURATION: 300,
+  },
+  NODE: {
     WIDTH: 120,
     HEIGHT: 80,
     MIN_WIDTH: 60,
@@ -39,62 +29,35 @@ const GUKSA_MAP_CONFIG = {
     MAX_HEIGHT: 120,
     BORDER_RADIUS: 8,
   },
-
-  // 장비 노드 설정 (국사 내부)
-  EQUIPMENT_NODE: {
+  EQUIPMENT: {
     RADIUS: 6,
-    MIN_RADIUS: 4,
-    MAX_RADIUS: 10,
     SPACING: 15,
   },
-
-  // 연결선 설정
-  CONNECTION: {
-    STROKE_WIDTH: 2,
-    HIGHLIGHTED_WIDTH: 4,
-    CURVE_OFFSET: 20,
-  },
-
-  // 레이아웃 설정
   LAYOUT: {
     GRID_SPACING_X: 180,
     GRID_SPACING_Y: 120,
     MARGIN: 50,
-    CENTER_FORCE: 0.1,
   },
-
-  // 애니메이션
-  ANIMATION_DURATION: 500,
-  TRANSITION_DURATION: 300,
-
-  // 성능
-  MAX_GUKSA_DISPLAY: 50,
-  MAX_EQUIPMENT_PER_GUKSA: 20,
-};
-
-const GUKSA_LAYOUTS = {
-  GRID: 'grid',
-  FORCE: 'force',
-  GEOGRAPHIC: 'geographic',
-  HIERARCHICAL: 'hierarchical',
+  ANIMATION: {
+    DURATION: 500,
+    TRANSITION_DURATION: 300,
+  },
 };
 
 const VIEW_MODES = {
-  OVERVIEW: 'overview', // 국사만 표시
-  DETAILED: 'detailed', // 국사 + 장비 표시
-  EQUIPMENT_FOCUS: 'focus', // 선택된 국사의 장비 확대
+  OVERVIEW: 'overview',
+  DETAILED: 'detailed',
+  EQUIPMENT_FOCUS: 'focus',
 };
-
-// ================================
-// 2. GuksaMapComponent 클래스
-// ================================
 
 export class GuksaMapComponent {
   constructor(containerId = 'map-container') {
     this.containerId = containerId;
     this.container = null;
     this.svg = null;
-    this.g = null; // 메인 그룹 (줌/팬 대상)
+    this.g = null;
+    this.zoom = null;
+    this.simulation = null; // 시뮬레이션 인스턴스 추가
 
     // 레이어 구분
     this.connectionLayer = null;
@@ -106,187 +69,110 @@ export class GuksaMapComponent {
     this.guksaData = [];
     this.equipmentData = [];
     this.connectionData = [];
-    this.guksaMap = new Map(); // guksa_name -> guksa 매핑
+    this.guksaMap = new Map();
 
-    // 레이아웃 및 상태
-    this.currentLayout = GUKSA_LAYOUTS.GRID;
+    // 상태
     this.currentViewMode = VIEW_MODES.OVERVIEW;
     this.selectedGuksa = null;
     this.highlightedConnections = new Set();
-
-    // D3 객체들
-    this.zoom = null;
     this.currentTransform = d3.zoomIdentity;
-
-    // 상태
     this.isInitialized = false;
 
-    // 이벤트 핸들러 바인딩
-    this.handleGuksaClick = this.handleGuksaClick.bind(this);
-    this.handleGuksaMouseOver = this.handleGuksaMouseOver.bind(this);
-    this.handleGuksaMouseOut = this.handleGuksaMouseOut.bind(this);
-    this.handleEquipmentClick = this.handleEquipmentClick.bind(this);
-    this.handleEquipmentMouseOver = this.handleEquipmentMouseOver.bind(this);
-    this.handleEquipmentMouseOut = this.handleEquipmentMouseOut.bind(this);
-
     this.init();
-    console.log('🏢 GuksaMapComponent 초기화 완료');
   }
 
   // ================================
-  // 3. 초기화 및 설정
+  // 초기화 및 설정
   // ================================
 
-  /**
-   * 초기화
-   */
   init() {
     try {
-      this.container = document.getElementById(this.containerId);
+      this.container = this.getContainer();
+      if (!this.container) return;
 
-      if (!this.container) {
-        console.warn(`국사 맵 컨테이너를 찾을 수 없습니다: ${this.containerId}`);
-        return;
+      if (typeof d3 !== 'undefined') {
+        this.setupSVG();
+        this.setupZoom();
+        this.setupEventListeners();
       }
 
-      this.setupContainer();
-      this.setupSVG();
-      this.setupZoom();
-      this.setupEventListeners();
       this.isInitialized = true;
-
       console.log('✅ GuksaMapComponent 초기화 완료');
     } catch (error) {
-      console.error('GuksaMapComponent 초기화 중 오류:', error);
+      this.handleError('GuksaMapComponent 초기화 실패', error);
     }
   }
 
-  /**
-   * 컨테이너 설정
-   */
-  setupContainer() {
-    this.container.style.position = 'relative';
-    this.container.style.overflow = 'hidden';
-    this.container.style.background = '#f1f3f4';
+  getContainer() {
+    const container = document.getElementById(this.containerId);
+    if (!container) {
+      console.error(`국사 맵 컨테이너를 찾을 수 없습니다: ${this.containerId}`);
+    }
+    return container;
   }
 
-  /**
-   * SVG 설정
-   */
   setupSVG() {
-    // 기존 SVG 제거
+    const { width, height } = this.getContainerDimensions();
     d3.select(this.container).selectAll('svg').remove();
 
-    const rect = this.container.getBoundingClientRect();
-    const width = rect.width || GUKSA_MAP_CONFIG.DEFAULT_WIDTH;
-    const height = rect.height || GUKSA_MAP_CONFIG.DEFAULT_HEIGHT;
-
-    // SVG 생성
     this.svg = d3
       .select(this.container)
       .append('svg')
       .attr('width', '100%')
       .attr('height', '100%')
       .attr('viewBox', `0 0 ${width} ${height}`)
-      .style('background', '#f1f3f4');
+      .style('background', '#ffffff');
 
-    // 정의 영역 (패턴, 그라디언트 등)
-    this.setupDefs();
+    this.g = this.svg
+      .append('g')
+      .attr('class', 'guksa-map-main-group')
+      .style('transform-origin', '0 0');
 
-    // 메인 그룹 (줌/팬 적용 대상)
-    this.g = this.svg.append('g').attr('class', 'guksa-map-main-group');
-
-    // 레이어 순서대로 생성
+    // 레이어 생성
     this.connectionLayer = this.g.append('g').attr('class', 'connection-layer');
     this.guksaLayer = this.g.append('g').attr('class', 'guksa-layer');
     this.equipmentLayer = this.g.append('g').attr('class', 'equipment-layer');
     this.labelLayer = this.g.append('g').attr('class', 'label-layer');
 
-    console.log(`📐 국사 맵 SVG 설정 완료: ${width}x${height}`);
+    // 컨테이너 overflow 설정 (잘림 방지)
+    this.container.style.overflow = 'visible';
   }
 
-  /**
-   * 정의 영역 설정 (패턴, 그라디언트 등)
-   */
-  setupDefs() {
-    const defs = this.svg.append('defs');
-
-    // 국사 그라디언트
-    const guksaGradient = defs
-      .append('linearGradient')
-      .attr('id', 'guksa-gradient')
-      .attr('x1', '0%')
-      .attr('y1', '0%')
-      .attr('x2', '0%')
-      .attr('y2', '100%');
-
-    guksaGradient
-      .append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#4a90e2')
-      .attr('stop-opacity', 0.9);
-
-    guksaGradient
-      .append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#2c5aa0')
-      .attr('stop-opacity', 1);
-
-    // 선택된 국사 그라디언트
-    const selectedGuksaGradient = defs
-      .append('linearGradient')
-      .attr('id', 'selected-guksa-gradient')
-      .attr('x1', '0%')
-      .attr('y1', '0%')
-      .attr('x2', '0%')
-      .attr('y2', '100%');
-
-    selectedGuksaGradient
-      .append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#ff6b6b')
-      .attr('stop-opacity', 0.9);
-
-    selectedGuksaGradient
-      .append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#e74c3c')
-      .attr('stop-opacity', 1);
-
-    // 드롭 섀도우 필터
-    const dropShadow = defs
-      .append('filter')
-      .attr('id', 'drop-shadow')
-      .attr('x', '-20%')
-      .attr('y', '-20%')
-      .attr('width', '140%')
-      .attr('height', '140%');
-
-    dropShadow
-      .append('feDropShadow')
-      .attr('dx', 2)
-      .attr('dy', 2)
-      .attr('stdDeviation', 3)
-      .attr('flood-color', '#00000040');
+  getContainerDimensions() {
+    const rect = this.container.getBoundingClientRect();
+    return {
+      width: rect.width || GUKSA_MAP_CONFIG.DEFAULT_WIDTH,
+      height: rect.height || GUKSA_MAP_CONFIG.DEFAULT_HEIGHT,
+    };
   }
 
-  /**
-   * 줌 기능 설정
-   */
   setupZoom() {
     this.zoom = d3
       .zoom()
-      .scaleExtent([GUKSA_MAP_CONFIG.ZOOM_MIN, GUKSA_MAP_CONFIG.ZOOM_MAX])
-      .on('zoom', this.handleZoom.bind(this));
+      .scaleExtent([0.2, 3.0])
+      .filter(this.zoomFilter.bind(this))
+      .on('zoom', this.onZoom.bind(this));
 
     this.svg.call(this.zoom);
   }
 
-  /**
-   * 이벤트 리스너 설정
-   */
+  zoomFilter(event) {
+    // 컨트롤 패널 클릭 시 줌/패닝 비활성화
+    if (event.target.closest('.map-control-panel')) return false;
+    // 노드(click on node) 위에서 시작된 mousedown은 개별 드래그용, 줌/패닝 차단
+    if (event.type === 'mousedown' && event.target.closest('.node')) return false;
+    // 마우스 휠과 배경 mousedown은 허용
+    if (event.type === 'wheel' || event.type === 'dblclick') return true;
+    if (event.type === 'mousedown') return true;
+    return false;
+  }
+
+  onZoom(event) {
+    this.g.attr('transform', event.transform);
+    this.currentTransform = event.transform;
+  }
+
   setupEventListeners() {
-    // StateManager 이벤트
     StateManager.on('totalAlarmDataList', () => {
       this.refreshMapData();
     });
@@ -299,10 +185,8 @@ export class GuksaMapComponent {
       this.selectGuksa(data.value);
     });
 
-    // 윈도우 리사이즈
     window.addEventListener('resize', this.handleResize.bind(this));
 
-    // ESC 키로 선택 해제
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         this.clearSelection();
@@ -311,21 +195,12 @@ export class GuksaMapComponent {
   }
 
   // ================================
-  // 4. 데이터 처리 및 전처리
+  // 메인 렌더링 메서드
   // ================================
 
-  /**
-   * 국사 맵 데이터 렌더링 (개선된 버전)
-   */
-  renderGuksaMap(equipmentData, options = {}) {
+  async renderGuksaMap(equipmentData, options = {}) {
     try {
-      const {
-        layout = GUKSA_LAYOUTS.GRID,
-        viewMode = VIEW_MODES.OVERVIEW,
-        showProgress = true,
-        animateTransition = true,
-        selectedGuksa = null,
-      } = options;
+      const { selectedGuksa = null, showProgress = true } = options;
 
       if (showProgress) {
         CommonUtils.showMapLoadingMessage('국사 기준 맵을 생성하고 있습니다...');
@@ -333,374 +208,599 @@ export class GuksaMapComponent {
 
       console.log('🏢 국사 맵 렌더링 시작...');
 
-      // 초기 로딩 시에는 빈 맵 표시
-      if (!selectedGuksa && (!equipmentData || equipmentData.length === 0)) {
-        this.renderEmptyGuksaMap();
-        return;
-      }
+      //       if (!selectedGuksa && (!equipmentData || equipmentData.length === 0)) {
+      //         this.renderEmptyGuksaMap();
+      //         return;
+      //       }
 
-      // 특정 국사가 선택된 경우 해당 국사의 장비만 로드
       if (selectedGuksa) {
-        this.renderGuksaTopology(selectedGuksa, equipmentData, options);
+        await this.renderGuksaTopology(selectedGuksa, equipmentData, options);
         return;
       }
 
-      // 기존 전체 렌더링 로직 (필요한 경우에만)
       this.renderFullGuksaMap(equipmentData, options);
     } catch (error) {
       console.error('국사 맵 렌더링 실패:', error);
       CommonUtils.showMapErrorMessage(`국사 맵 렌더링 실패: ${error.message}`);
-      throw error;
     }
   }
 
-  /**
-   * 빈 국사 맵 표시
-   */
-  //   renderEmptyGuksaMap() {
-  //     this.clearMap();
-
-  //     const mapContainer = document.getElementById('map-container');
-  //     if (mapContainer) {
-  //       mapContainer.innerHTML = `
-  //         <div class="empty-guksa-map-message" style="
-  //           display: flex;
-  //           flex-direction: column;
-  //           justify-content: center;
-  //           align-items: center;
-  //           height: 100%;
-  //           color: #666;
-  //           font-size: 16px;
-  //         ">
-  //           <div style="margin-bottom: 20px;">
-  //             🏢 국사 기준 맵
-  //           </div>
-  //           <div style="font-size: 14px; text-align: center; line-height: 1.5;">
-  //             사이드바에서 국사를 선택하거나<br>
-  //             경보 테이블에서 국사를 클릭하면<br>
-  //             해당 국사의 분야별 장비가 표시됩니다.
-  //           </div>
-  //         </div>
-  //       `;
-  //     }
-
-  //     console.log('📋 빈 국사 맵 표시 완료');
-  //   }
-  // 기존 renderEmptyGuksaMap 메서드 수정
-  renderEmptyGuksaMap() {
-    this.clearMap();
-
-    const mapContainer = document.getElementById('map-container');
-    if (mapContainer) {
-      mapContainer.innerHTML = `
-      <div class="initial-message">
-        <div class="map-icon">🗺️</div>
-        <div class="map-message-title">${this.currentSelectedSector} 분야 준비 완료</div>
-        <div class="map-message-subtitle">
-          좌측에서 장비를 선택하거나<br>
-          하단 테이블에서 장비를 클릭하면<br>
-          토폴로지가 표시됩니다
-        </div>
-      </div>
-    `;
-    }
-
-    console.log('📋 초기 맵 상태 표시 완료');
-  }
-
-  /**
-   * 특정 국사의 토폴로지 렌더링
-   */
+  // 국사 맵 토폴로지 렌더링
   async renderGuksaTopology(guksaName, equipmentData, options = {}) {
     try {
-      console.log(`🏢 국사 토폴로지 렌더링 시작: ${guksaName}`);
+      console.log(`🏢 국사 토폴로지 렌더링: ${guksaName}`);
 
-      CommonUtils.showMapLoadingMessage(`국사 ${guksaName}의 장비 토폴로지를 로드하고 있습니다...`);
+      CommonUtils.showMapLoadingMessage(
+        `✔️ 국사 ${guksaName}의 장비 토폴로지를 로드하고 있습니다.`
+      );
 
-      // 1. API 데이터 시도
-      let topologyData = null;
-      try {
-        topologyData = await this.fetchGuksaTopology(guksaName);
-      } catch (apiError) {
-        console.warn('국사 API 호출 실패, 로컬 데이터로 처리:', apiError.message);
-      }
+      // API 호출
+      const topologyData = await this.fetchGuksaTopology(guksaName);
 
-      // 2. API 데이터가 있으면 기존 함수 사용
-      if (topologyData && topologyData.equip_list) {
+      if (topologyData && topologyData.equip_list && topologyData.equip_list.length > 0) {
+        console.log(`✅ 토폴로지 데이터 수신: ${topologyData.equip_list.length}개 장비`);
         this.createGuksaTopologyMap(topologyData);
-        return;
-      }
+      } else {
+        console.log(`⚠️ 토폴로지 데이터 없음: ${guksaName}`);
 
-      // 3. API 실패시 로컬 데이터로 국사 맵 생성
-      console.log('로컬 데이터로 국사 맵 생성');
-      const localGuksaData = this.createLocalGuksaTopology(guksaName, equipmentData);
-      this.renderLocalGuksaMap(localGuksaData);
+        this.renderFallbackGuksaMap({
+          guksa_name: guksaName,
+          equip_list: [],
+          error_message: `✔️ 국사 '${guksaName}'의 장비 정보를 찾을 수 없습니다.`,
+        });
+      }
 
       console.log(`✅ 국사 ${guksaName} 토폴로지 렌더링 완료`);
     } catch (error) {
       console.error(`국사 토폴로지 렌더링 실패 (${guksaName}):`, error);
-      this.renderFallbackGuksaMap({ guksa_name: guksaName, equip_list: equipmentData || [] });
-    }
-  }
 
-  /**
-   * 로컬 국사 토폴로지 데이터 생성
-   */
-  createLocalGuksaTopology(guksaName, equipmentData) {
-    const allEquipment = equipmentData || window._allEquipmentData || [];
-    const alarmData = StateManager.get('totalAlarmDataList', []);
-
-    // 해당 국사의 모든 장비 필터링
-    const guksaEquipment = allEquipment.filter((e) => e.guksa_name === guksaName);
-
-    // 분야별로 그룹핑
-    const sectorGroups = {};
-    guksaEquipment.forEach((equip) => {
-      const sector = equip.equip_field || 'Unknown';
-      if (!sectorGroups[sector]) {
-        sectorGroups[sector] = [];
-      }
-
-      // 알람 정보 추가
-      const equipWithAlarms = {
-        ...equip,
-        alarms: alarmData.filter(
-          (alarm) => alarm.equip_id === equip.equip_id || alarm.equip_name === equip.equip_name
-        ),
-      };
-
-      sectorGroups[sector].push(equipWithAlarms);
-    });
-
-    return {
-      guksa_name: guksaName,
-      equip_list: guksaEquipment,
-      sector_groups: sectorGroups,
-      total_count: guksaEquipment.length,
-    };
-  }
-
-  /**
-   * 로컬 국사 맵 렌더링
-   */
-  renderLocalGuksaMap(guksaData) {
-    try {
-      const { guksa_name, sector_groups, total_count } = guksaData;
-
-      console.log(`로컬 국사 맵 렌더링: ${guksa_name}, 총 ${total_count}개 장비`);
-
-      // 기존 맵 클리어
-      this.clearMap();
-
-      // 국사 맵 형태로 렌더링
-      this.renderFullGuksaMap(guksaData.equip_list, {
-        layout: 'hierarchical',
-        viewMode: 'detailed',
-        showProgress: false,
-        animateTransition: true,
+      this.renderFallbackGuksaMap({
+        guksa_name: guksaName,
+        equip_list: [],
+        error_message: `오류가 발생했습니다: ${error.message}`,
       });
-    } catch (error) {
-      console.error('로컬 국사 맵 렌더링 실패:', error);
-      this.renderFallbackGuksaMap(guksaData);
-    }
-  }
-  /**
-   * 로컬 국사 맵 렌더링
-   */
-  renderLocalGuksaMap(guksaData) {
-    try {
-      const { guksa_name, sector_groups, total_count } = guksaData;
-
-      console.log(`로컬 국사 맵 렌더링: ${guksa_name}, 총 ${total_count}개 장비`);
-
-      // 기존 맵 클리어
-      this.clearMap();
-
-      // 국사 맵 형태로 렌더링
-      this.renderFullGuksaMap(guksaData.equip_list, {
-        layout: 'hierarchical',
-        viewMode: 'detailed',
-        showProgress: false,
-        animateTransition: true,
-      });
-    } catch (error) {
-      console.error('로컬 국사 맵 렌더링 실패:', error);
-      this.renderFallbackGuksaMap(guksaData);
     }
   }
 
-  /**
-   * 국사 토폴로지 데이터 가져오기
-   */
-  async fetchGuksaTopology(guksaName) {
-    try {
-      // ✅ API 엔드포인트 체크
-      const response = await fetch(`/api/topology/${encodeURIComponent(guksaName)}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      if (!response.ok) {
-        // ✅ 404 등 오류시 null 반환
-        console.warn(`국사 토폴로지 API 오류: ${response.status}`);
-        return null;
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('국사 토폴로지 데이터 가져오기 실패:', error);
-      // ✅ 네트워크 오류시 null 반환
-      return null;
-    }
-  }
-
-  /**
-   * 기존 createGuksaTopologyMap 로직 통합
-   */
-  createGuksaTopologyMap(data) {
-    // 기존 fault_d3_map.js의 createGuksaTopologyMap 함수 로직을 여기에 통합
-    // 이는 기존 코드와의 호환성을 위해 전역 함수를 호출하는 방식으로 구현
-    if (typeof window.createGuksaTopologyMap === 'function') {
-      window.createGuksaTopologyMap(data);
-    } else {
-      console.warn(
-        'createGuksaTopologyMap 함수를 찾을 수 없습니다. 기존 스크립트가 로드되지 않았을 수 있습니다.'
-      );
-      this.renderFallbackGuksaMap(data);
-    }
-  }
-
-  /**
-   * 폴백 국사 맵 렌더링
-   */
-  renderFallbackGuksaMap(data) {
-    const mapContainer = document.getElementById('map-container');
-    if (mapContainer) {
-      mapContainer.innerHTML = `
-        <div class="fallback-guksa-map" style="padding: 20px; text-align: center;">
-          <h3>국사 토폴로지: ${data.guksa_name || '알 수 없는 국사'}</h3>
-          <p>장비 수: ${data.equip_list?.length || 0}개</p>
-          <small>상세 맵 렌더링을 위해 페이지를 새로고침해주세요.</small>
-        </div>
-      `;
-    }
-  }
-
-  /**
-   * 전체 국사 맵 렌더링 (기존 로직)
-   */
   renderFullGuksaMap(equipmentData, options = {}) {
-    const {
-      layout = GUKSA_LAYOUTS.GRID,
-      viewMode = VIEW_MODES.OVERVIEW,
-      animateTransition = true,
-    } = options;
+    const { animateTransition = false } = options; // 장비 연결 기준 애니메이션 제거
 
     console.log(`- 장비 데이터: ${equipmentData?.length || 0}개`);
-    console.log(`- 레이아웃: ${layout}`);
-    console.log(`- 뷰 모드: ${viewMode}`);
 
-    // 데이터 검증
-    if (!this.validateData(equipmentData)) {
-      throw new Error('유효하지 않은 장비 데이터');
-    }
-
-    // 국사별 데이터 그룹핑
     this.preprocessGuksaData(equipmentData);
-
-    // 레이아웃 설정
-    this.currentLayout = layout;
-    this.currentViewMode = viewMode;
-
-    // 연결 관계 분석
     this.analyzeConnections();
-
-    // 위치 계산
     this.calculatePositions();
 
-    // 렌더링
-    this.renderConnections(animateTransition);
-    this.renderGuksas(animateTransition);
+    this.renderConnections(false); // 애니메이션 제거
+    this.renderGuksas(false); // 애니메이션 제거
 
-    if (viewMode !== VIEW_MODES.OVERVIEW) {
-      this.renderEquipments(animateTransition);
+    if (this.currentViewMode !== VIEW_MODES.OVERVIEW) {
+      this.renderEquipments(false); // 애니메이션 제거
     }
 
-    this.renderLabels(animateTransition);
-
-    // 맵 컨테이너 표시
     this.container.style.display = 'block';
     this.container.innerHTML = '';
     this.container.appendChild(this.svg.node());
 
-    // 초기 뷰 설정
-    setTimeout(() => {
-      this.fitToScreen();
-    }, 500);
+    // 기존 불필요한 애니메이션 제거 - 즉시 화면에 맞춤
+    this.fitToScreen();
 
     console.log('✅ 전체 국사 맵 렌더링 완료');
+  }
 
-    // 전역 변수 동기화 (하위 호환성)
-    if (typeof window !== 'undefined') {
-      window._currentGuksaData = this.guksaData;
-      window._currentGuksaMap = this.guksaMap;
+  // ================================
+  // 데이터 처리
+  // ================================
+
+  async fetchGuksaTopology(guksaName) {
+    try {
+      console.log(`🔍 국사 토폴로지 API 호출: ${guksaName}`);
+
+      // 한국어 국사명을 안전하게 인코딩
+      const encodedGuksaName = encodeURIComponent(guksaName);
+
+      const response = await fetch(`/api/topology/${encodedGuksaName}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.warn(`⚠️ 국사 토폴로지 API 오류: ${response.status} - ${response.statusText}`);
+        return null;
+      }
+
+      const data = await response.json();
+      console.log(`✅ 국사 토폴로지 데이터 수신:`, data);
+
+      return data;
+    } catch (error) {
+      console.error('❌ 국사 토폴로지 데이터 가져오기 실패:', error);
+      return null;
     }
   }
 
-  /**
-   * 데이터 검증
-   */
-  validateData(equipmentData) {
-    if (!Array.isArray(equipmentData)) {
-      console.error('장비 데이터가 배열이 아닙니다:', equipmentData);
-      return false;
-    }
+  createGuksaTopologyMap(data) {
+    try {
+      console.log('🏢 국사 토폴로지 맵 생성 (fault_d3_map.js 방식):', data?.guksa_name);
+      console.log('📊 받은 데이터:', data);
 
-    if (equipmentData.length === 0) {
-      console.warn('장비 데이터가 비어있습니다.');
-      return false;
-    }
+      // 맵 컨테이너 초기화
+      this.clearMap();
 
-    // 필수 필드 확인
-    const requiredFields = ['equip_id', 'equip_name', 'guksa_name'];
-    const invalidEquipment = equipmentData.filter(
-      (equip) => !equip || !requiredFields.every((field) => equip[field])
+      if (!data) {
+        console.log('❌ 데이터가 없음');
+        this.renderFallbackGuksaMap(null);
+        return;
+      }
+
+      if (!data.equip_list || data.equip_list.length === 0) {
+        console.log('❌ 장비 리스트가 비어있음:', data);
+        this.renderFallbackGuksaMap({
+          ...data,
+          error_message: data.error || '해당 국사에 등록된 장비가 없습니다',
+        });
+        return;
+      }
+
+      // 컨테이너 크기 가져오기
+      const { width, height } = this.getContainerDimensions();
+
+      // 국사 이름
+      const guksaName = data.guksa_name || data.guksa_id || '알 수 없는 국사';
+
+      // 노드 및 링크 데이터 준비
+      const nodes = [
+        {
+          id: guksaName,
+          type: 'guksa',
+          color: '#0056b3',
+          borderColor: '#0056b3',
+          nodeCount: data.equip_list.length,
+        },
+      ];
+
+      const links = [];
+
+      // 분야별 노드와 링크 생성
+      const uniqueEquipMap = this.createEquipNodes(data.equip_list);
+
+      // 유니크한 장비 노드 추가 및 링크 생성
+      this.addEquipNodesToMap(uniqueEquipMap, nodes, links, guksaName);
+
+      // 노드가 없으면 메시지 표시 후 종료
+      if (nodes.length <= 1) {
+        console.log('❌ 유효한 노드가 없음 - 상세 정보:', {
+          총노드수: nodes.length,
+          국사노드: nodes.filter((n) => n.type === 'guksa').length,
+          장비노드: nodes.filter((n) => n.type === 'equip').length,
+          uniqueEquipMap크기: uniqueEquipMap.size,
+          원본장비수: data.equip_list.length,
+        });
+        this.renderFallbackGuksaMap({
+          ...data,
+          error_message: '표시할 장비 토폴로지 데이터가 없습니다.',
+        });
+        return;
+      }
+
+      console.log(`✅ 토폴로지 노드 준비 완료: 국사 1개 + 장비 ${nodes.length - 1}개`);
+      console.log(`📊 링크 수: ${links.length}개`);
+      console.log(`📦 노드 상세:`, {
+        국사노드: nodes.filter((n) => n.type === 'guksa').map((n) => ({ id: n.id, type: n.type })),
+        장비노드샘플: nodes
+          .filter((n) => n.type === 'equip')
+          .slice(0, 5)
+          .map((n) => ({
+            id: n.id,
+            displayName: n.displayName,
+            sector: n.sector,
+          })),
+      });
+
+      // SVG 설정 및 생성
+      this.setupTopologySVG(width, height);
+
+      // 제목 추가
+      this.addTopologyTitle(guksaName, nodes.length - 1);
+
+      // 줌 컨트롤 패널 추가
+      this.addTopologyZoomControls();
+
+      // 노드 위치 설정
+      console.log('📍 노드 위치 설정 시작...');
+      this.setupTopologyNodePositions(nodes);
+      console.log('✅ 노드 위치 설정 완료');
+
+      // 툴팁 생성
+      console.log('🔧 툴팁 생성 시작...');
+      const tooltip = this.createTopologyTooltip();
+      console.log('✅ 툴팁 생성 완료');
+
+      // 힘 시뮬레이션 생성
+      console.log('⚡ 힘 시뮬레이션 생성 시작...');
+      const simulation = this.createTopologySimulation(nodes, links);
+      console.log('✅ 힘 시뮬레이션 생성 완료');
+
+      // 링크 생성
+      console.log('🔗 링크 생성 시작...');
+      const link = this.createTopologyLinks(links);
+      console.log('✅ 링크 생성 완료');
+
+      // 노드 생성
+      console.log('🎯 노드 생성 시작...');
+      const node = this.createTopologyNodes(nodes, simulation, tooltip);
+      console.log('✅ 노드 생성 완료');
+
+      // 시뮬레이션 업데이트 함수 설정
+      console.log('🔄 시뮬레이션 업데이트 설정 시작...');
+      this.setupTopologySimulation(simulation, nodes, link, node);
+      console.log('✅ 시뮬레이션 업데이트 설정 완료');
+
+      // StateManager에 데이터 저장
+      if (data?.guksa_name) {
+        StateManager.set('guksaTopologyCache', data);
+      }
+
+      // 로딩 메시지 제거
+      console.log('🧹 로딩 메시지 제거...');
+      CommonUtils.clearMapMessages?.();
+
+      // 로딩 메시지가 제거되지 않을 경우 직접 제거
+      setTimeout(() => {
+        const loadingElements = this.container.querySelectorAll(
+          '.map-loading-message, .map-loading-overlay, .map-loading-content'
+        );
+        loadingElements.forEach((el) => el.remove());
+      }, 100);
+
+      console.log('✅ 국사 토폴로지 맵 생성 완료 (fault_d3_map.js 방식)');
+    } catch (error) {
+      console.error('국사 토폴로지 맵 생성 실패:', error);
+      this.renderFallbackGuksaMap({
+        ...data,
+        error_message: `❌ 국사 기준 토폴로지 맵 생성 중 오류 발생: ${error.message}`,
+      });
+    }
+  }
+
+  renderGuksaTopologyDirect(data) {
+    // createGuksaTopologyMap으로 통합
+    this.createGuksaTopologyMap(data);
+  }
+
+  // fault_d3_map.js 방식의 장비 노드 생성
+  createEquipNodes(equipList) {
+    console.log('🏗️ createEquipNodes 시작...');
+    console.log('📊 입력 데이터 샘플:', equipList.slice(0, 3));
+
+    const uniqueEquipMap = new Map();
+
+    // 분야별 카운터
+    const sectorCounts = {
+      MW: 0,
+      선로: 0,
+      전송: 0,
+      IP: 0,
+      무선: 0,
+      교환: 0,
+      '알 수 없음': 0,
+      기타: 0,
+    };
+
+    let processedCount = 0;
+    let skippedCount = 0;
+    const duplicateNames = [];
+    const emptyNames = [];
+
+    equipList.forEach((equip, index) => {
+      console.log(`📦 장비 ${index + 1}/${equipList.length}:`, {
+        equip_id: equip.equip_id,
+        equip_name: equip.equip_name,
+        sector: equip.sector,
+        유효성: {
+          'equip_name 존재': !!equip.equip_name,
+          'equip_name 빈값 아님': equip.equip_name && equip.equip_name.trim() !== '',
+          'equip_id 존재': !!equip.equip_id,
+        },
+      });
+
+      // 장비 이름 검증
+      if (!equip.equip_name || equip.equip_name.trim() === '') {
+        console.log(
+          `⚠️ 장비명이 없어 건너뜀: equip_id=${equip.equip_id}, equip_name="${equip.equip_name}"`
+        );
+        emptyNames.push(equip.equip_id);
+        skippedCount++;
+        return;
+      }
+
+      // 동일 장비 처리 - 장비명으로만 체크 (equip_id는 다를 수 있음)
+      if (uniqueEquipMap.has(equip.equip_name)) {
+        console.log(`🔄 중복 장비명으로 건너뜀: "${equip.equip_name}" (이미 존재함)`);
+        duplicateNames.push(equip.equip_name);
+        skippedCount++;
+        return;
+      }
+
+      const sector = equip.sector || '알 수 없음';
+
+      // 분야별 카운터 증가
+      if (sectorCounts[sector] !== undefined) {
+        sectorCounts[sector]++;
+      } else {
+        // 예상치 못한 분야는 '알 수 없음'으로 처리
+        console.log(`⚠️ 알 수 없는 분야: "${sector}", '알 수 없음'으로 처리`);
+        sectorCounts['알 수 없음']++;
+      }
+
+      // 3. ColorManager를 사용하여 분야별 색상 설정
+      const fill = ColorManager.getDashboardSectorColor(sector);
+      const border = ColorManager.getDarkColor(fill);
+
+      // 장비명이 너무 길면 줄이기 (토폴로지 표시용)
+      const displayName =
+        equip.equip_name.length > 50 ? equip.equip_name.substring(0, 50) + '...' : equip.equip_name;
+
+      const newEquip = {
+        id: equip.equip_name, // 원본 장비명을 ID로 사용
+        displayName: displayName, // 표시용 이름
+        equip_id: equip.equip_id,
+        type: 'equip',
+        sector: sector,
+        sectorIndex: sectorCounts[sector],
+        color: fill,
+        borderColor: border,
+        guksa_name: equip.guksa_name,
+      };
+
+      uniqueEquipMap.set(equip.equip_name, newEquip);
+      processedCount++;
+
+      console.log(`✅ 장비 추가: "${displayName}" → 분야: ${sector}`);
+    });
+
+    console.log(
+      `📊 처리 결과: 총 ${equipList.length}개 → 처리됨 ${processedCount}개, 건너뜀 ${skippedCount}개`
     );
 
-    if (invalidEquipment.length > 0) {
-      console.error('필수 필드가 없는 장비들:', invalidEquipment);
-      return false;
+    if (duplicateNames.length > 0) {
+      console.log(`🔄 중복된 장비명들 (${duplicateNames.length}개):`, duplicateNames);
     }
 
-    return true;
+    if (emptyNames.length > 0) {
+      console.log(`📭 빈 장비명들 (${emptyNames.length}개):`, emptyNames);
+    }
+
+    console.log(`📊 분야별 분포:`, sectorCounts);
+    console.log(`✅ createEquipNodes 완료: ${uniqueEquipMap.size}개 장비`);
+    return uniqueEquipMap;
   }
 
-  /**
-   * 국사별 데이터 전처리
-   */
-  preprocessGuksaData(equipmentData) {
-    // 국사별로 장비 그룹핑
-    const guksaGroups = d3.group(equipmentData, (d) => d.guksa_name);
+  // 노드와 링크에 장비 추가
+  addEquipNodesToMap(uniqueEquipMap, nodes, links, guksaName) {
+    console.log(
+      `🔗 노드와 링크 추가 시작: 장비 ${uniqueEquipMap.size}개, 기존 노드 ${nodes.length}개`
+    );
 
+    let addedNodes = 0;
+    let addedLinks = 0;
+
+    for (const equip of uniqueEquipMap.values()) {
+      nodes.push(equip);
+      addedNodes++;
+
+      // 국사와 장비 간 링크 생성
+      const link = {
+        source: guksaName,
+        target: equip.id,
+        sector: equip.sector,
+      };
+      links.push(link);
+      addedLinks++;
+
+      console.log(`  📦 노드 추가: ${equip.id} (분야: ${equip.sector})`);
+    }
+
+    console.log(
+      `✅ 노드와 링크 추가 완료: 노드 +${addedNodes}개 (총 ${nodes.length}개), 링크 +${addedLinks}개 (총 ${links.length}개)`
+    );
+  }
+
+  // 토폴로지용 SVG 설정 - 우측 하단 등장 애니메이션 추가
+  setupTopologySVG(width, height) {
+    // 컨테이너 크기에 맞는 viewBox 설정
+    const viewBoxWidth = width;
+    const viewBoxHeight = height;
+
+    // SVG 생성 - 컨테이너 전체 영역 활용
+    this.svg = d3
+      .select(this.container)
+      .append('svg')
+      .attr('width', '100%')
+      .attr('height', '100%')
+      .attr('viewBox', `0 0 ${viewBoxWidth} ${viewBoxHeight}`)
+      .style('background', '#ffffff');
+
+    // 줌/패닝을 위한 루트 그룹
+    this.g = this.svg.append('g').style('transform-origin', '0 0');
+
+    // 전체 패닝을 원활히 하기 위해 캡처용 투명 사각형 추가 (노드 뒤쪽)
+    this.g
+      .insert('rect', ':first-child')
+      .attr('class', 'zoom-capture')
+      .attr('x', -viewBoxWidth)
+      .attr('y', -viewBoxHeight)
+      .attr('width', viewBoxWidth * 3)
+      .attr('height', viewBoxHeight * 3)
+      .style('fill', 'none')
+      .style('pointer-events', 'all');
+
+    // 즉시 표시
+    this.g.style('opacity', 1);
+
+    // 레이어 생성
+    this.connectionLayer = this.g.append('g').attr('class', 'connection-layer');
+    this.guksaLayer = this.g.append('g').attr('class', 'guksa-layer');
+    this.equipmentLayer = this.g.append('g').attr('class', 'equipment-layer');
+    this.labelLayer = this.g.append('g').attr('class', 'label-layer');
+
+    // 컨테이너 overflow 설정 (잘림 방지)
+    this.container.style.overflow = 'visible';
+
+    // 줌/패닝 설정 - 노드 드래그와 배경 패닝 분리
+    this.zoom = d3
+      .zoom()
+      .scaleExtent([0.2, 3.0])
+      .filter(this.zoomFilter.bind(this))
+      .on('zoom', this.onZoom.bind(this));
+
+    // SVG에 줌 기능 적용
+    this.svg.call(this.zoom);
+  }
+
+  // 제목 추가
+  addTopologyTitle(guksaName, equipmentCount) {
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'map-title';
+    titleDiv.style.cssText = `
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      border: 0;
+      font-weight: bold;
+      z-index: 1000;
+      color: #333;
+    `;
+    titleDiv.textContent = `국사: '${guksaName}' 경보 장비 (${equipmentCount} 대)`;
+    this.container.appendChild(titleDiv);
+  }
+
+  // 줌 컨트롤 추가 - 그라데이션 제거 (2번 요구사항)
+  addTopologyZoomControls() {
+    // fault_d3_map.js의 addMapZoomControlPanel 함수 기능 구현
+    const controlPanel = document.createElement('div');
+    controlPanel.className = 'map-control-panel';
+    controlPanel.style.cssText = `
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: white;
+      border-radius: 4px;
+      border: 0;
+      padding: 1px;
+      z-index: 1000;
+      display: flex;
+      gap: 1px;
+    `;
+
+    // 줌 인 버튼
+    const zoomInBtn = this.createZoomButton('+', () => this.zoomIn());
+    controlPanel.appendChild(zoomInBtn);
+
+    // 줌 아웃 버튼
+    const zoomOutBtn = this.createZoomButton('-', () => this.zoomOut());
+    controlPanel.appendChild(zoomOutBtn);
+
+    // 리셋 버튼
+    const resetBtn = this.createZoomButton('Restore', () => this.resetZoom());
+    resetBtn.style.width = '70px';
+    resetBtn.style.fontSize = '12px';
+    controlPanel.appendChild(resetBtn);
+
+    this.container.appendChild(controlPanel);
+  }
+
+  createZoomButton(text, onClick) {
+    const button = document.createElement('button');
+    button.textContent = text;
+    button.style.cssText = `
+      margin: 1px;
+      padding: 4px 0px;
+      cursor: pointer;
+      font-size: 15px;
+      border: 1px solid #ccc;
+      background: white;
+      border-radius: 3px;
+      width: 28px;
+      height: 25px;
+    `;
+    button.onclick = onClick;
+    return button;
+  }
+
+  zoomIn() {
+    this.performZoom('in');
+  }
+
+  zoomOut() {
+    this.performZoom('out');
+  }
+
+  resetZoom() {
+    const { width, height } = this.getContainerDimensions();
+
+    // 모든 노드의 범위 계산
+    const nodes = this.g.selectAll('.node').data();
+    if (nodes.length === 0) return;
+
+    // 최초 맵 로드 시 크기와 위치로 복원
+    let minX = Infinity,
+      minY = Infinity;
+    let maxX = -Infinity,
+      maxY = -Infinity;
+
+    nodes.forEach((d) => {
+      const nodeSize = d.type === 'guksa' ? 100 : 50; // 노드 크기 고려
+      minX = Math.min(minX, d.x - nodeSize);
+      minY = Math.min(minY, d.y - nodeSize);
+      maxX = Math.max(maxX, d.x + nodeSize);
+      maxY = Math.max(maxY, d.y + nodeSize);
+    });
+
+    // 화면 공간을 최대한 활용하도록 패딩 조정
+    const padding = 80; // 적당한 패딩
+    minX -= padding;
+    minY -= padding;
+    maxX += padding;
+    maxY += padding;
+
+    const dx = maxX - minX;
+    const dy = maxY - minY;
+
+    // 화면 공간을 최대한 활용하면서도 적절한 크기 유지
+    const scale = Math.min(width / dx, height / dy, 1); // 최대 크기 제한
+    const tx = (width - scale * (minX + maxX)) / 2;
+    const ty = (height - scale * (minY + maxY)) / 2;
+
+    // 리셋 애니메이션 제거
+    this.svg.call(this.zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+  }
+
+  preprocessGuksaData(equipmentData) {
+    const guksaGroups = d3.group(equipmentData, (d) => d.guksa_name);
     this.guksaData = [];
     this.guksaMap.clear();
 
     guksaGroups.forEach((equipments, guksaName) => {
-      // 각 장비의 알람 데이터 추가
       const enrichedEquipments = equipments.map((equip) => ({
         ...equip,
         alarms: this.getEquipmentAlarms(equip.equip_id),
       }));
 
-      // 국사 통계 계산
       const stats = this.calculateGuksaStats(enrichedEquipments);
 
       const guksaInfo = {
-        guksa_id: guksaName, // ID와 이름이 같다고 가정
+        guksa_id: guksaName,
         guksa_name: guksaName,
         equipments: enrichedEquipments,
         stats: stats,
-        x: null, // 위치는 나중에 계산
+        x: null,
         y: null,
         width: this.calculateGuksaWidth(enrichedEquipments.length),
         height: this.calculateGuksaHeight(enrichedEquipments.length),
@@ -710,20 +810,17 @@ export class GuksaMapComponent {
       this.guksaMap.set(guksaName, guksaInfo);
     });
 
-    // 장비 데이터도 별도 저장 (빠른 검색용)
     this.equipmentData = equipmentData.map((equip) => ({
       ...equip,
       alarms: this.getEquipmentAlarms(equip.equip_id),
     }));
 
+    StateManager.setCurrentGuksaList(this.guksaData);
     console.log(
       `📊 국사 데이터 전처리 완료: ${this.guksaData.length}개 국사, ${this.equipmentData.length}개 장비`
     );
   }
 
-  /**
-   * 장비의 알람 데이터 가져오기
-   */
   getEquipmentAlarms(equipId) {
     const alarmData = StateManager.get('totalAlarmDataList', []);
     return alarmData.filter(
@@ -731,9 +828,6 @@ export class GuksaMapComponent {
     );
   }
 
-  /**
-   * 국사 통계 계산
-   */
   calculateGuksaStats(equipments) {
     const totalEquipments = equipments.length;
     const equipmentsWithAlarms = equipments.filter((e) => e.alarms && e.alarms.length > 0);
@@ -743,14 +837,12 @@ export class GuksaMapComponent {
       0
     );
 
-    // 분야별 장비 수
     const sectorCounts = {};
     equipments.forEach((equip) => {
       const sector = equip.equip_field || 'Unknown';
       sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
     });
 
-    // 주요 분야 (가장 많은 장비를 가진 분야)
     const primarySector =
       Object.entries(sectorCounts).sort(([, a], [, b]) => b - a)[0]?.[0] || 'Unknown';
 
@@ -767,45 +859,35 @@ export class GuksaMapComponent {
     };
   }
 
-  /**
-   * 국사 크기 계산
-   */
   calculateGuksaWidth(equipmentCount) {
-    const base = GUKSA_MAP_CONFIG.GUKSA_NODE.WIDTH;
+    const base = GUKSA_MAP_CONFIG.NODE.WIDTH;
     const factor = Math.min(equipmentCount / 10, 2);
     return Math.min(
-      Math.max(base * factor, GUKSA_MAP_CONFIG.GUKSA_NODE.MIN_WIDTH),
-      GUKSA_MAP_CONFIG.GUKSA_NODE.MAX_WIDTH
+      Math.max(base * factor, GUKSA_MAP_CONFIG.NODE.MIN_WIDTH),
+      GUKSA_MAP_CONFIG.NODE.MAX_WIDTH
     );
   }
 
   calculateGuksaHeight(equipmentCount) {
-    const base = GUKSA_MAP_CONFIG.GUKSA_NODE.HEIGHT;
+    const base = GUKSA_MAP_CONFIG.NODE.HEIGHT;
     const factor = Math.min(equipmentCount / 15, 1.5);
     return Math.min(
-      Math.max(base * factor, GUKSA_MAP_CONFIG.GUKSA_NODE.MIN_HEIGHT),
-      GUKSA_MAP_CONFIG.GUKSA_NODE.MAX_HEIGHT
+      Math.max(base * factor, GUKSA_MAP_CONFIG.NODE.MIN_HEIGHT),
+      GUKSA_MAP_CONFIG.NODE.MAX_HEIGHT
     );
   }
 
   // ================================
-  // 5. 레이아웃 및 위치 계산
+  // 레이아웃 및 위치 계산
   // ================================
 
-  /**
-   * 연결 관계 분석
-   */
   analyzeConnections() {
     this.connectionData = [];
-
-    // 실제 구현에서는 링크 데이터나 장비 간 연결 정보를 사용
-    // 여기서는 같은 분야 국사들 간의 논리적 연결을 표시
 
     const sectorGroups = d3.group(this.guksaData, (d) => d.stats.primarySector);
 
     sectorGroups.forEach((guksas, sector) => {
       if (guksas.length > 1) {
-        // 같은 분야의 국사들을 연결
         for (let i = 0; i < guksas.length - 1; i++) {
           for (let j = i + 1; j < guksas.length; j++) {
             this.connectionData.push({
@@ -823,35 +905,12 @@ export class GuksaMapComponent {
     console.log(`🔗 연결 관계 분석 완료: ${this.connectionData.length}개 연결`);
   }
 
-  /**
-   * 위치 계산
-   */
   calculatePositions() {
-    switch (this.currentLayout) {
-      case GUKSA_LAYOUTS.GRID:
-        this.calculateGridPositions();
-        break;
-      case GUKSA_LAYOUTS.FORCE:
-        this.calculateForcePositions();
-        break;
-      case GUKSA_LAYOUTS.GEOGRAPHIC:
-        this.calculateGeographicPositions();
-        break;
-      case GUKSA_LAYOUTS.HIERARCHICAL:
-        this.calculateHierarchicalPositions();
-        break;
-      default:
-        this.calculateGridPositions();
-    }
+    this.calculateGridPositions();
   }
 
-  /**
-   * 그리드 레이아웃 위치 계산
-   */
   calculateGridPositions() {
-    const rect = this.container.getBoundingClientRect();
-    const width = rect.width || GUKSA_MAP_CONFIG.DEFAULT_WIDTH;
-    const height = rect.height || GUKSA_MAP_CONFIG.DEFAULT_HEIGHT;
+    const { width, height } = this.getContainerDimensions();
 
     const cols = Math.ceil(Math.sqrt(this.guksaData.length));
     const rows = Math.ceil(this.guksaData.length / cols);
@@ -872,251 +931,102 @@ export class GuksaMapComponent {
       guksa.x = startX + col * spacingX;
       guksa.y = startY + row * spacingY;
     });
-
-    console.log('📐 그리드 레이아웃 위치 계산 완료');
-  }
-
-  /**
-   * 포스 레이아웃 위치 계산
-   */
-  calculateForcePositions() {
-    const rect = this.container.getBoundingClientRect();
-    const width = rect.width || GUKSA_MAP_CONFIG.DEFAULT_WIDTH;
-    const height = rect.height || GUKSA_MAP_CONFIG.DEFAULT_HEIGHT;
-
-    // D3 Force Simulation 사용
-    const simulation = d3
-      .forceSimulation(this.guksaData)
-      .force('charge', d3.forceManyBody().strength(-1000))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .force(
-        'collision',
-        d3.forceCollide().radius((d) => Math.max(d.width, d.height) / 2 + 20)
-      )
-      .force(
-        'link',
-        d3
-          .forceLink(this.connectionData)
-          .id((d) => d.guksa_name)
-          .distance(200)
-          .strength(0.1)
-      )
-      .stop();
-
-    // 시뮬레이션 수동 실행
-    for (let i = 0; i < 300; ++i) simulation.tick();
-
-    console.log('🌀 포스 레이아웃 위치 계산 완료');
-  }
-
-  /**
-   * 지리적 레이아웃 위치 계산 (추후 확장)
-   */
-  calculateGeographicPositions() {
-    // 실제 지리적 좌표가 있다면 사용
-    // 현재는 그리드 레이아웃으로 대체
-    this.calculateGridPositions();
-    console.log('🗺️ 지리적 레이아웃 (그리드로 대체)');
-  }
-
-  /**
-   * 계층적 레이아웃 위치 계산
-   */
-  calculateHierarchicalPositions() {
-    // 분야별로 계층 구조 생성
-    const sectorGroups = d3.group(this.guksaData, (d) => d.stats.primarySector);
-    const sectors = Array.from(sectorGroups.keys());
-
-    const rect = this.container.getBoundingClientRect();
-    const width = rect.width || GUKSA_MAP_CONFIG.DEFAULT_WIDTH;
-    const height = rect.height || GUKSA_MAP_CONFIG.DEFAULT_HEIGHT;
-
-    const sectorHeight = height / sectors.length;
-
-    sectors.forEach((sector, sectorIndex) => {
-      const guksas = sectorGroups.get(sector);
-      const sectorCenterY = sectorHeight * (sectorIndex + 0.5);
-
-      const guksaWidth = width / (guksas.length + 1);
-
-      guksas.forEach((guksa, guksaIndex) => {
-        guksa.x = guksaWidth * (guksaIndex + 1);
-        guksa.y = sectorCenterY;
-      });
-    });
-
-    console.log('🏗️ 계층적 레이아웃 위치 계산 완료');
   }
 
   // ================================
-  // 6. 렌더링 메서드들
+  // 렌더링 메서드들
   // ================================
 
-  /**
-   * 연결선 렌더링
-   */
-  renderConnections(animate = true) {
-    const connectionSelection = this.connectionLayer
-      .selectAll('.guksa-connection')
-      .data(this.connectionData, (d) => `${d.source}-${d.target}`);
-
-    // EXIT
-    connectionSelection
-      .exit()
-      .transition()
-      .duration(animate ? GUKSA_MAP_CONFIG.ANIMATION_DURATION : 0)
-      .style('opacity', 0)
-      .remove();
-
-    // ENTER
-    const connectionEnter = connectionSelection
+  // 1. 초기 맵 애니메이션 추가
+  renderConnections(animate = false) {
+    // animate 기본값을 false로 변경
+    const connections = this.connectionLayer
+      .selectAll('.connection')
+      .data(this.connectionData)
       .enter()
       .append('path')
-      .attr('class', 'guksa-connection')
-      .style('opacity', 0)
+      .attr('class', 'connection')
+      .attr('d', (d) => this.generateConnectionPath(d))
+      .style('stroke', '#ccc')
+      .style('stroke-width', 2)
       .style('fill', 'none')
-      .style('pointer-events', 'none');
+      .style('opacity', 0.6); // 애니메이션 제거하고 바로 표시
 
-    // UPDATE + ENTER
-    const connectionUpdate = connectionEnter.merge(connectionSelection);
-
-    connectionUpdate
-      .transition()
-      .duration(animate ? GUKSA_MAP_CONFIG.ANIMATION_DURATION : 0)
-      .style('opacity', 0.3)
-      .attr('stroke', (d) => ColorManager.getEquipmentNodeColor(d.sector))
-      .attr('stroke-width', GUKSA_MAP_CONFIG.CONNECTION.STROKE_WIDTH)
-      .attr('stroke-dasharray', '5,5')
-      .attr('d', (d) => this.generateConnectionPath(d));
+    this.connectionLayer
+      .selectAll('.connection')
+      .on('mouseover', this.handleConnectionMouseOver.bind(this))
+      .on('mouseout', this.handleConnectionMouseOut.bind(this));
   }
 
-  /**
-   * 국사 노드 렌더링
-   */
-  renderGuksas(animate = true) {
-    const guksaSelection = this.guksaLayer
-      .selectAll('.guksa-node')
-      .data(this.guksaData, (d) => d.guksa_name);
-
-    // EXIT
-    guksaSelection
-      .exit()
-      .transition()
-      .duration(animate ? GUKSA_MAP_CONFIG.ANIMATION_DURATION : 0)
-      .style('opacity', 0)
-      .remove();
-
-    // ENTER
-    const guksaEnter = guksaSelection
+  // 초기 맵 애니메이션 추가
+  renderGuksas(animate = false) {
+    // animate 기본값을 false로 변경
+    const guksaGroups = this.guksaLayer
+      .selectAll('.guksa-group')
+      .data(this.guksaData)
       .enter()
       .append('g')
-      .attr('class', 'guksa-node')
-      .style('opacity', 0)
-      .style('cursor', 'pointer')
-      .on('click', this.handleGuksaClick)
-      .on('mouseover', this.handleGuksaMouseOver)
-      .on('mouseout', this.handleGuksaMouseOut);
+      .attr('class', 'guksa-group')
+      .attr('transform', (d) => `translate(${d.x},${d.y})`)
+      .style('opacity', 1); // 애니메이션 제거하고 바로 표시
 
-    // 국사 배경 사각형
-    guksaEnter
+    guksaGroups
       .append('rect')
-      .attr('class', 'guksa-background')
-      .attr('rx', GUKSA_MAP_CONFIG.GUKSA_NODE.BORDER_RADIUS)
-      .attr('ry', GUKSA_MAP_CONFIG.GUKSA_NODE.BORDER_RADIUS)
-      .style('filter', 'url(#drop-shadow)');
+      .attr('class', 'guksa-node')
+      .attr('width', (d) => d.width)
+      .attr('height', (d) => d.height)
+      .attr('x', (d) => -d.width / 2)
+      .attr('y', (d) => -d.height / 2)
+      .attr('rx', GUKSA_MAP_CONFIG.NODE.BORDER_RADIUS)
+      .attr('ry', GUKSA_MAP_CONFIG.NODE.BORDER_RADIUS)
+      .style('fill', (d) => this.getGuksaFillColor(d))
+      .style('stroke', (d) => this.getGuksaStrokeColor(d))
+      .style('stroke-width', (d) => this.getGuksaStrokeWidth(d))
+      .style('filter', 'url(#drop-shadow)')
+      .style('cursor', 'pointer');
 
-    // 국사 제목
-    guksaEnter
+    guksaGroups
       .append('text')
-      .attr('class', 'guksa-title')
+      .attr('class', 'guksa-name')
       .attr('text-anchor', 'middle')
+      .attr('dy', '-0.2em')
+      .style('font-size', '11px')
       .style('font-weight', 'bold')
-      .style('font-size', '12px')
-      .style('fill', 'white')
-      .style('pointer-events', 'none');
+      .style('fill', '#fff')
+      .style('pointer-events', 'none')
+      .text((d) => this.getGuksaDisplayName(d));
 
-    // 통계 정보
-    guksaEnter
+    guksaGroups
       .append('text')
       .attr('class', 'guksa-stats')
       .attr('text-anchor', 'middle')
-      .style('font-size', '10px')
-      .style('fill', 'white')
-      .style('opacity', 0.9)
-      .style('pointer-events', 'none');
+      .attr('dy', '1em')
+      .style('font-size', '11px')
+      .style('fill', '#fff')
+      .style('pointer-events', 'none')
+      .text((d) => `${d.stats.totalEquipments}대 | ${d.stats.totalAlarms}건`);
 
-    // 알람 표시기
-    guksaEnter
-      .append('circle')
-      .attr('class', 'guksa-alarm-indicator')
-      .attr('r', 0)
-      .style('fill', '#e74c3c')
-      .style('stroke', 'white')
-      .style('stroke-width', 2);
+    guksaGroups
+      .on('click', this.handleGuksaClick.bind(this))
+      .on('mouseover', this.handleGuksaMouseOver.bind(this))
+      .on('mouseout', this.handleGuksaMouseOut.bind(this));
 
-    // UPDATE + ENTER
-    const guksaUpdate = guksaEnter.merge(guksaSelection);
-
-    guksaUpdate
-      .transition()
-      .duration(animate ? GUKSA_MAP_CONFIG.ANIMATION_DURATION : 0)
-      .style('opacity', 1)
-      .attr('transform', (d) => `translate(${d.x - d.width / 2}, ${d.y - d.height / 2})`);
-
-    // 배경 업데이트
-    guksaUpdate
-      .select('.guksa-background')
-      .transition()
-      .duration(animate ? GUKSA_MAP_CONFIG.ANIMATION_DURATION : 0)
-      .attr('width', (d) => d.width)
-      .attr('height', (d) => d.height)
-      .attr('fill', (d) => this.getGuksaFillColor(d))
-      .attr('stroke', (d) => this.getGuksaStrokeColor(d))
-      .attr('stroke-width', (d) => this.getGuksaStrokeWidth(d));
-
-    // 제목 업데이트
-    guksaUpdate
-      .select('.guksa-title')
-      .attr('x', (d) => d.width / 2)
-      .attr('y', (d) => d.height / 2 - 10)
-      .text((d) => this.getGuksaDisplayName(d));
-
-    // 통계 업데이트
-    guksaUpdate
-      .select('.guksa-stats')
-      .attr('x', (d) => d.width / 2)
-      .attr('y', (d) => d.height / 2 + 8)
-      .text((d) => `${d.stats.totalEquipments}대 | ${d.stats.validAlarms}개 경보`);
-
-    // 알람 표시기 업데이트
-    guksaUpdate
-      .select('.guksa-alarm-indicator')
-      .transition()
-      .duration(animate ? GUKSA_MAP_CONFIG.ANIMATION_DURATION : 0)
-      .attr('cx', (d) => d.width - 15)
-      .attr('cy', 15)
-      .attr('r', (d) => (d.stats.validAlarms > 0 ? 6 : 0))
-      .style('opacity', (d) => (d.stats.validAlarms > 0 ? 1 : 0));
+    this.updateGuksaSelection();
   }
 
-  /**
-   * 장비 노드 렌더링 (상세 모드에서만)
-   */
-  renderEquipments(animate = true) {
+  // 초기 맵 애니메이션 추가
+  renderEquipments(animate = false) {
+    // animate 기본값을 false로 변경
     if (this.currentViewMode === VIEW_MODES.OVERVIEW) {
       return;
     }
 
-    // 각 국사별로 장비 렌더링
-    this.guksaData.forEach((guksa) => {
-      this.renderGuksaEquipments(guksa, animate);
+    this.guksaData.forEach((guksa, guksaIndex) => {
+      this.renderGuksaEquipments(guksa, false, guksaIndex); // 애니메이션 제거
     });
   }
 
-  /**
-   * 특정 국사의 장비들 렌더링
-   */
-  renderGuksaEquipments(guksa, animate = true) {
+  renderGuksaEquipments(guksa, animate = false, guksaIndex = 0) {
     const equipmentGroup = this.equipmentLayer
       .selectAll(`.equipment-group-${guksa.guksa_name.replace(/\s+/g, '-')}`)
       .data([guksa]);
@@ -1128,66 +1038,47 @@ export class GuksaMapComponent {
 
     const equipmentGroupUpdate = equipmentGroupEnter.merge(equipmentGroup);
 
-    // 장비 노드들
     const equipmentSelection = equipmentGroupUpdate
       .selectAll('.equipment-node')
       .data(guksa.equipments, (d) => d.equip_id);
 
-    // EXIT
-    equipmentSelection
-      .exit()
-      .transition()
-      .duration(animate ? GUKSA_MAP_CONFIG.TRANSITION_DURATION : 0)
-      .style('opacity', 0)
-      .remove();
+    equipmentSelection.exit().remove();
 
-    // ENTER
     const equipmentEnter = equipmentSelection
       .enter()
       .append('circle')
       .attr('class', 'equipment-node')
-      .style('opacity', 0)
+      .style('opacity', 1) // 애니메이션 제거하고 바로 표시
       .style('cursor', 'pointer')
-      .on('click', this.handleEquipmentClick)
-      .on('mouseover', this.handleEquipmentMouseOver)
-      .on('mouseout', this.handleEquipmentMouseOut);
+      .on('click', this.handleEquipmentClick.bind(this))
+      .on('mouseover', this.handleEquipmentMouseOver.bind(this))
+      .on('mouseout', this.handleEquipmentMouseOut.bind(this));
 
-    // UPDATE + ENTER
     const equipmentUpdate = equipmentEnter.merge(equipmentSelection);
-
-    // 장비 위치 계산
     const equipmentPositions = this.calculateEquipmentPositions(guksa);
 
     equipmentUpdate
-      .transition()
-      .duration(animate ? GUKSA_MAP_CONFIG.TRANSITION_DURATION : 0)
-      .style('opacity', 1)
       .attr('cx', (d, i) => guksa.x + equipmentPositions[i].x)
       .attr('cy', (d, i) => guksa.y + equipmentPositions[i].y)
       .attr('r', (d) => this.getEquipmentRadius(d))
       .attr('fill', (d) => this.getEquipmentFillColor(d))
       .attr('stroke', (d) => this.getEquipmentStrokeColor(d))
-      .attr('stroke-width', 1.5);
+      .attr('stroke-width', 1.5)
+      .style('opacity', 1); // 애니메이션 제거하고 바로 표시
   }
 
-  /**
-   * 국사 내 장비 위치 계산
-   */
   calculateEquipmentPositions(guksa) {
     const equipments = guksa.equipments;
     const positions = [];
 
-    const maxCols = Math.floor((guksa.width - 20) / GUKSA_MAP_CONFIG.EQUIPMENT_NODE.SPACING);
-    const maxRows = Math.floor((guksa.height - 40) / GUKSA_MAP_CONFIG.EQUIPMENT_NODE.SPACING);
-
+    const maxCols = Math.floor((guksa.width - 20) / GUKSA_MAP_CONFIG.EQUIPMENT.SPACING);
     const cols = Math.min(maxCols, Math.ceil(Math.sqrt(equipments.length)));
-    const rows = Math.ceil(equipments.length / cols);
 
-    const spacingX = GUKSA_MAP_CONFIG.EQUIPMENT_NODE.SPACING;
-    const spacingY = GUKSA_MAP_CONFIG.EQUIPMENT_NODE.SPACING;
+    const spacingX = GUKSA_MAP_CONFIG.EQUIPMENT.SPACING;
+    const spacingY = GUKSA_MAP_CONFIG.EQUIPMENT.SPACING;
 
     const startX = -guksa.width / 2 + spacingX;
-    const startY = -guksa.height / 2 + 30; // 제목 공간 확보
+    const startY = -guksa.height / 2 + 30;
 
     equipments.forEach((equipment, index) => {
       const col = index % cols;
@@ -1202,21 +1093,10 @@ export class GuksaMapComponent {
     return positions;
   }
 
-  /**
-   * 라벨 렌더링
-   */
-  renderLabels(animate = true) {
-    // 현재는 국사 노드 내부에 라벨이 포함되어 있으므로 별도 처리 없음
-    // 필요시 외부 라벨 추가 가능
-  }
-
   // ================================
-  // 7. 스타일링 메서드들
+  // 스타일링 및 이벤트 처리
   // ================================
 
-  /**
-   * 국사 채우기 색상
-   */
   getGuksaFillColor(guksa) {
     if (this.selectedGuksa === guksa.guksa_name) {
       return 'url(#selected-guksa-gradient)';
@@ -1224,9 +1104,6 @@ export class GuksaMapComponent {
     return 'url(#guksa-gradient)';
   }
 
-  /**
-   * 국사 테두리 색상
-   */
   getGuksaStrokeColor(guksa) {
     if (this.selectedGuksa === guksa.guksa_name) {
       return '#c0392b';
@@ -1234,9 +1111,6 @@ export class GuksaMapComponent {
     return '#34495e';
   }
 
-  /**
-   * 국사 테두리 두께
-   */
   getGuksaStrokeWidth(guksa) {
     if (this.selectedGuksa === guksa.guksa_name) {
       return 3;
@@ -1244,43 +1118,26 @@ export class GuksaMapComponent {
     return 2;
   }
 
-  /**
-   * 국사 표시 이름
-   */
   getGuksaDisplayName(guksa) {
-    return guksa.guksa_name.length > 10
-      ? guksa.guksa_name.substring(0, 10) + '...'
+    return guksa.guksa_name.length > 50
+      ? guksa.guksa_name.substring(0, 50) + '...'
       : guksa.guksa_name;
   }
 
-  /**
-   * 장비 반지름
-   */
   getEquipmentRadius(equipment) {
     const hasAlarms = equipment.alarms && equipment.alarms.length > 0;
-    return hasAlarms
-      ? GUKSA_MAP_CONFIG.EQUIPMENT_NODE.MAX_RADIUS
-      : GUKSA_MAP_CONFIG.EQUIPMENT_NODE.RADIUS;
+    return hasAlarms ? GUKSA_MAP_CONFIG.EQUIPMENT.RADIUS + 2 : GUKSA_MAP_CONFIG.EQUIPMENT.RADIUS;
   }
 
-  /**
-   * 장비 채우기 색상
-   */
   getEquipmentFillColor(equipment) {
     return ColorManager.getEquipmentNodeColor(equipment.equip_field);
   }
 
-  /**
-   * 장비 테두리 색상
-   */
   getEquipmentStrokeColor(equipment) {
     const hasAlarms = equipment.alarms && equipment.alarms.length > 0;
     return hasAlarms ? '#e74c3c' : '#34495e';
   }
 
-  /**
-   * 연결선 경로 생성
-   */
   generateConnectionPath(connection) {
     const sourceGuksa = this.guksaMap.get(connection.source);
     const targetGuksa = this.guksaMap.get(connection.target);
@@ -1292,7 +1149,6 @@ export class GuksaMapComponent {
     const x2 = targetGuksa.x;
     const y2 = targetGuksa.y;
 
-    // 곡선 경로 생성
     const dx = x2 - x1;
     const dy = y2 - y1;
     const dr = Math.sqrt(dx * dx + dy * dy);
@@ -1301,17 +1157,13 @@ export class GuksaMapComponent {
   }
 
   // ================================
-  // 8. 이벤트 핸들러들
+  // 이벤트 핸들러
   // ================================
 
-  /**
-   * 국사 클릭 이벤트
-   */
   handleGuksaClick(event, guksa) {
     event.stopPropagation();
 
     if (this.selectedGuksa === guksa.guksa_name) {
-      // 이미 선택된 국사 클릭 시 선택 해제 또는 상세 뷰 토글
       if (this.currentViewMode === VIEW_MODES.EQUIPMENT_FOCUS) {
         this.setViewMode(VIEW_MODES.DETAILED);
       } else {
@@ -1319,16 +1171,12 @@ export class GuksaMapComponent {
         this.focusOnGuksa(guksa.guksa_name);
       }
     } else {
-      // 새로운 국사 선택
       this.selectGuksa(guksa.guksa_name);
     }
 
     console.log(`🏢 국사 선택: ${guksa.guksa_name}`);
   }
 
-  /**
-   * 국사 마우스 오버 이벤트
-   */
   handleGuksaMouseOver(event, guksa) {
     TooltipManager.showGuksaTooltip(event, {
       guksa_id: guksa.guksa_id,
@@ -1338,33 +1186,20 @@ export class GuksaMapComponent {
       sectors: guksa.stats.sectors,
     });
 
-    // 연결된 국사들 하이라이트
     this.highlightConnectedGuksas(guksa.guksa_name);
   }
 
-  /**
-   * 국사 마우스 아웃 이벤트
-   */
   handleGuksaMouseOut(event, guksa) {
     TooltipManager.hide();
     this.clearGuksaHighlight();
   }
 
-  /**
-   * 장비 클릭 이벤트
-   */
   handleEquipmentClick(event, equipment) {
     event.stopPropagation();
-
     console.log(`⚙️ 장비 선택: ${equipment.equip_name} (${equipment.equip_id})`);
-
-    // StateManager에 선택된 장비 정보 저장
     StateManager.set('selectedEquipment', equipment.equip_id, { source: 'guksa-map-click' });
   }
 
-  /**
-   * 장비 마우스 오버 이벤트
-   */
   handleEquipmentMouseOver(event, equipment) {
     TooltipManager.showEquipmentTooltip(event, {
       equip_id: equipment.equip_id,
@@ -1376,56 +1211,36 @@ export class GuksaMapComponent {
     });
   }
 
-  /**
-   * 장비 마우스 아웃 이벤트
-   */
   handleEquipmentMouseOut(event, equipment) {
     TooltipManager.hide();
   }
 
   // ================================
-  // 9. 뷰 모드 및 상호작용
+  // 뷰 모드 및 상호작용
   // ================================
 
-  /**
-   * 국사 선택
-   */
   selectGuksa(guksaName) {
     this.selectedGuksa = guksaName;
     this.updateGuksaSelection();
-
-    // StateManager 업데이트
     StateManager.set('selectedGuksa', guksaName, { source: 'guksa-map-click' });
   }
 
-  /**
-   * 선택 해제
-   */
   clearSelection() {
     this.selectedGuksa = null;
     this.updateGuksaSelection();
-
-    // StateManager 업데이트
     StateManager.set('selectedGuksa', '', { source: 'guksa-map-clear' });
   }
 
-  /**
-   * 국사 선택 상태 업데이트
-   */
   updateGuksaSelection() {
+    // 장비 연결 기준: 애니메이션 제거
     this.guksaLayer
       .selectAll('.guksa-node')
       .select('.guksa-background')
-      .transition()
-      .duration(GUKSA_MAP_CONFIG.TRANSITION_DURATION)
       .attr('fill', (d) => this.getGuksaFillColor(d))
       .attr('stroke', (d) => this.getGuksaStrokeColor(d))
       .attr('stroke-width', (d) => this.getGuksaStrokeWidth(d));
   }
 
-  /**
-   * 뷰 모드 설정
-   */
   setViewMode(viewMode) {
     if (this.currentViewMode === viewMode) return;
 
@@ -1434,14 +1249,12 @@ export class GuksaMapComponent {
     const previousMode = this.currentViewMode;
     this.currentViewMode = viewMode;
 
-    // 장비 표시/숨김
     if (viewMode === VIEW_MODES.OVERVIEW) {
       this.hideEquipments();
     } else if (previousMode === VIEW_MODES.OVERVIEW) {
       this.showEquipments();
     }
 
-    // 장비 포커스 모드 처리
     if (viewMode === VIEW_MODES.EQUIPMENT_FOCUS && this.selectedGuksa) {
       this.focusOnGuksa(this.selectedGuksa);
     } else if (previousMode === VIEW_MODES.EQUIPMENT_FOCUS) {
@@ -1449,56 +1262,34 @@ export class GuksaMapComponent {
     }
   }
 
-  /**
-   * 장비 표시
-   */
   showEquipments() {
-    this.renderEquipments(true);
+    this.renderEquipments(false); // 장비 연결 기준: 애니메이션 제거
   }
 
-  /**
-   * 장비 숨김
-   */
   hideEquipments() {
-    this.equipmentLayer
-      .selectAll('.equipment-group')
-      .transition()
-      .duration(GUKSA_MAP_CONFIG.TRANSITION_DURATION)
-      .style('opacity', 0)
-      .remove();
+    // 장비 연결 기준: 애니메이션 제거
+    this.equipmentLayer.selectAll('.equipment-group').style('opacity', 0).remove();
   }
 
-  /**
-   * 특정 국사에 포커스
-   */
   focusOnGuksa(guksaName) {
     const guksa = this.guksaMap.get(guksaName);
     if (!guksa) return;
 
-    // 선택된 국사로 줌
     const scale = 3;
-    const rect = this.container.getBoundingClientRect();
-    const translate = [rect.width / 2 - scale * guksa.x, rect.height / 2 - scale * guksa.y];
+    const { width, height } = this.getContainerDimensions();
+    const translate = [width / 2 - scale * guksa.x, height / 2 - scale * guksa.y];
 
-    this.svg
-      .transition()
-      .duration(750)
-      .call(
-        this.zoom.transform,
-        d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale)
-      );
+    // 포커스 애니메이션 제거
+    this.svg.call(
+      this.zoom.transform,
+      d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale)
+    );
 
-    // 다른 국사들 흐리게 표시
     this.guksaLayer
       .selectAll('.guksa-node')
-      .transition()
-      .duration(GUKSA_MAP_CONFIG.TRANSITION_DURATION)
       .style('opacity', (d) => (d.guksa_name === guksaName ? 1 : 0.3));
   }
 
-  /**
-   * 연결된 국사들 하이라이트
-   */
   highlightConnectedGuksas(guksaName) {
     this.highlightedConnections.clear();
 
@@ -1511,80 +1302,52 @@ export class GuksaMapComponent {
     this.updateConnectionHighlight();
   }
 
-  /**
-   * 국사 하이라이트 제거
-   */
   clearGuksaHighlight() {
     this.highlightedConnections.clear();
     this.updateConnectionHighlight();
   }
 
-  /**
-   * 연결선 하이라이트 업데이트
-   */
   updateConnectionHighlight() {
     this.connectionLayer
       .selectAll('.guksa-connection')
-      .transition()
-      .duration(200)
       .style('opacity', (d) => {
         const key = `${d.source}-${d.target}`;
         return this.highlightedConnections.has(key) ? 0.8 : 0.3;
       })
       .attr('stroke-width', (d) => {
         const key = `${d.source}-${d.target}`;
-        return this.highlightedConnections.has(key)
-          ? GUKSA_MAP_CONFIG.CONNECTION.HIGHLIGHTED_WIDTH
-          : GUKSA_MAP_CONFIG.CONNECTION.STROKE_WIDTH;
+        return this.highlightedConnections.has(key) ? 4 : 2;
       });
   }
 
   // ================================
-  // 10. 줌 및 기타 기능
+  // 줌 및 기타 기능
   // ================================
 
-  /**
-   * 줌 이벤트 처리
-   */
-  handleZoom(event) {
-    this.currentTransform = event.transform;
-    this.g.attr('transform', this.currentTransform);
-  }
-
-  /**
-   * 화면에 맞추기
-   */
   fitToScreen() {
     if (!this.guksaData.length || !this.svg) return;
 
     const bounds = this.calculateBounds();
-    const fullWidth = this.container.clientWidth;
-    const fullHeight = this.container.clientHeight;
+    const { width, height } = this.getContainerDimensions();
 
-    const width = bounds.maxX - bounds.minX;
-    const height = bounds.maxY - bounds.minY;
+    const boundWidth = bounds.maxX - bounds.minX;
+    const boundHeight = bounds.maxY - bounds.minY;
 
-    if (width === 0 || height === 0) return;
+    if (boundWidth === 0 || boundHeight === 0) return;
 
     const midX = (bounds.minX + bounds.maxX) / 2;
     const midY = (bounds.minY + bounds.maxY) / 2;
 
-    const scale = Math.min(fullWidth / width, fullHeight / height) * 0.8; // 여백 추가
+    const scale = Math.min(width / boundWidth, height / boundHeight) * 0.8;
+    const translate = [width / 2 - scale * midX, height / 2 - scale * midY];
 
-    const translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
-
-    this.svg
-      .transition()
-      .duration(750)
-      .call(
-        this.zoom.transform,
-        d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale)
-      );
+    // 2번 문제: fit to screen 애니메이션 제거
+    this.svg.call(
+      this.zoom.transform,
+      d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale)
+    );
   }
 
-  /**
-   * 경계 계산
-   */
   calculateBounds() {
     if (!this.guksaData.length) {
       return { minX: 0, maxX: 100, minY: 0, maxY: 100 };
@@ -1598,46 +1361,17 @@ export class GuksaMapComponent {
     };
   }
 
-  /**
-   * 줌 레벨 설정
-   */
-  setZoomLevel(level) {
-    if (!this.svg) return;
-
-    if (level === 'fit') {
-      this.fitToScreen();
-      return;
-    }
-
-    const rect = this.container.getBoundingClientRect();
-    const scale = level;
-    const translate = [rect.width / 2, rect.height / 2];
-
-    this.svg
-      .transition()
-      .duration(500)
-      .call(
-        this.zoom.transform,
-        d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale)
-      );
-  }
-
   // ================================
-  // 11. 데이터 업데이트 및 관리
+  // 데이터 업데이트
   // ================================
 
-  /**
-   * 맵 데이터 새로고침
-   */
   refreshMapData() {
     console.log('🔄 국사 맵 데이터 새로고침...');
 
-    // 모든 장비의 알람 데이터 업데이트
     this.equipmentData.forEach((equipment) => {
       equipment.alarms = this.getEquipmentAlarms(equipment.equip_id);
     });
 
-    // 국사별 통계 재계산
     this.guksaData.forEach((guksa) => {
       guksa.equipments.forEach((equipment) => {
         equipment.alarms = this.getEquipmentAlarms(equipment.equip_id);
@@ -1645,230 +1379,588 @@ export class GuksaMapComponent {
       guksa.stats = this.calculateGuksaStats(guksa.equipments);
     });
 
-    // 국사 노드 업데이트
+    StateManager.setCurrentGuksaList(this.guksaData);
+
     this.guksaLayer
       .selectAll('.guksa-node')
       .select('.guksa-stats')
       .text((d) => `${d.stats.totalEquipments}대 | ${d.stats.validAlarms}개 경보`);
 
-    // 알람 표시기 업데이트
+    // 2번 문제: 알람 표시기 업데이트 애니메이션 제거
     this.guksaLayer
       .selectAll('.guksa-alarm-indicator')
-      .transition()
-      .duration(GUKSA_MAP_CONFIG.TRANSITION_DURATION)
       .attr('r', (d) => (d.stats.validAlarms > 0 ? 6 : 0))
       .style('opacity', (d) => (d.stats.validAlarms > 0 ? 1 : 0));
 
-    // 장비 노드 업데이트 (상세 모드인 경우)
     if (this.currentViewMode !== VIEW_MODES.OVERVIEW) {
+      // 2번 문제: 장비 노드 업데이트 애니메이션 제거
       this.equipmentLayer
         .selectAll('.equipment-node')
-        .transition()
-        .duration(GUKSA_MAP_CONFIG.TRANSITION_DURATION)
         .attr('r', (d) => this.getEquipmentRadius(d))
         .attr('fill', (d) => this.getEquipmentFillColor(d))
         .attr('stroke', (d) => this.getEquipmentStrokeColor(d));
     }
   }
 
-  /**
-   * 가시성 업데이트 (분야 필터링)
-   */
   updateVisibility() {
     const selectedSector = StateManager.get('selectedSector');
 
     if (!selectedSector) {
-      // 전체 표시
       this.guksaLayer.selectAll('.guksa-node').style('opacity', 1);
       this.equipmentLayer.selectAll('.equipment-node').style('opacity', 1);
       return;
     }
 
-    // 선택된 분야 관련 국사만 강조
     this.guksaLayer.selectAll('.guksa-node').style('opacity', (d) => {
       return d.stats.sectors.includes(selectedSector) ? 1 : 0.3;
     });
 
-    // 선택된 분야 장비만 강조
     this.equipmentLayer
       .selectAll('.equipment-node')
       .style('opacity', (d) => (d.equip_field === selectedSector ? 1 : 0.2));
   }
 
-  /**
-   * 리사이즈 처리
-   */
   handleResize() {
     if (!this.svg || !this.container) return;
 
-    const rect = this.container.getBoundingClientRect();
-    const width = rect.width || GUKSA_MAP_CONFIG.DEFAULT_WIDTH;
-    const height = rect.height || GUKSA_MAP_CONFIG.DEFAULT_HEIGHT;
-
+    const { width, height } = this.getContainerDimensions();
     this.svg.attr('viewBox', `0 0 ${width} ${height}`);
-
-    // 레이아웃 재계산이 필요한 경우
-    // this.calculatePositions();
-    // this.renderGuksas(false);
   }
 
   // ================================
-  // 12. 상태 관리 및 진단
+  // 유틸리티 및 정리
   // ================================
 
-  /**
-   * 현재 상태 가져오기
-   */
-  getState() {
-    return {
-      isInitialized: this.isInitialized,
-      guksaCount: this.guksaData.length,
-      equipmentCount: this.equipmentData.length,
-      connectionCount: this.connectionData.length,
-      currentLayout: this.currentLayout,
-      currentViewMode: this.currentViewMode,
-      selectedGuksa: this.selectedGuksa,
-      currentZoom: this.currentTransform.k,
-    };
+  handleError(message, error) {
+    console.error(`❌ ${message}:`, error);
+    MessageManager?.addErrorMessage?.(`${message}: ${error.message}`);
   }
 
-  /**
-   * 통계 정보
-   */
-  getStats() {
-    const alarmGuksas = this.guksaData.filter((g) => g.stats.validAlarms > 0);
-    const totalEquipments = this.guksaData.reduce((sum, g) => sum + g.stats.totalEquipments, 0);
-    const totalAlarms = this.guksaData.reduce((sum, g) => sum + g.stats.validAlarms, 0);
-
-    return {
-      ...this.getState(),
-      alarmGuksaCount: alarmGuksas.length,
-      totalEquipments,
-      totalAlarms,
-      averageEquipmentsPerGuksa: totalEquipments / this.guksaData.length || 0,
-      guksaDistribution: this.guksaData.map((g) => ({
-        name: g.guksa_name,
-        equipments: g.stats.totalEquipments,
-        alarms: g.stats.validAlarms,
-      })),
-    };
-  }
-
-  /**
-   * 진단 정보
-   */
-  diagnose() {
-    const diagnosis = {
-      ...this.getState(),
-      containerExists: !!this.container,
-      svgExists: !!this.svg,
-      layerCount: 4, // connection, guksa, equipment, label
-      bounds: this.calculateBounds(),
-    };
-
-    console.table(diagnosis);
-    return diagnosis;
-  }
-
-  /**
-   * 맵 정리
-   */
   clearMap() {
-    // 선택 상태 초기화
     this.selectedGuksa = null;
     this.highlightedConnections.clear();
-
-    // 데이터 초기화
     this.guksaData = [];
     this.equipmentData = [];
     this.connectionData = [];
     this.guksaMap.clear();
 
-    // SVG 정리
     if (this.svg) {
       this.connectionLayer.selectAll('*').remove();
       this.guksaLayer.selectAll('*').remove();
       this.equipmentLayer.selectAll('*').remove();
       this.labelLayer.selectAll('*').remove();
     }
-
-    console.log('🗑️ 국사 맵 정리 완료');
   }
 
-  /**
-   * 컴포넌트 정리
-   */
   destroy() {
-    // 이벤트 리스너 제거
     window.removeEventListener('resize', this.handleResize);
     document.removeEventListener('keydown', this.clearSelection);
 
-    // 맵 정리
     this.clearMap();
 
-    // SVG 제거
     if (this.container) {
       d3.select(this.container).selectAll('svg').remove();
     }
 
     console.log('🗑️ GuksaMapComponent 정리 완료');
   }
-}
 
-// ================================
-// 13. 전역 인스턴스 및 호환성
-// ================================
+  getStats() {
+    const alarmGuksas = this.guksaData.filter((g) => g.stats.validAlarms > 0);
+    const totalEquipments = this.guksaData.reduce((sum, g) => sum + g.stats.totalEquipments, 0);
+    const totalAlarms = this.guksaData.reduce((sum, g) => sum + g.stats.validAlarms, 0);
 
-/**
- * 싱글톤 인스턴스 생성
- */
-export const guksaMapComponent = new GuksaMapComponent();
-
-/**
- * 하위 호환성을 위한 전역 함수 등록
- */
-export function registerGuksaMapGlobalFunctions() {
-  if (typeof window !== 'undefined') {
-    // 기존 함수들을 래퍼로 등록
-    window.renderGuksaMap = (equipmentData, options) => {
-      return guksaMapComponent.renderGuksaMap(equipmentData, options);
+    return {
+      isInitialized: this.isInitialized,
+      guksaCount: this.guksaData.length,
+      alarmGuksaCount: alarmGuksas.length,
+      totalEquipments,
+      totalAlarms,
+      currentViewMode: this.currentViewMode,
+      selectedGuksa: this.selectedGuksa,
     };
+  }
 
-    window.clearGuksaMap = () => {
-      return guksaMapComponent.clearMap();
-    };
+  // 노드 위치 설정 (fault_d3_map.js 방식)
+  setupTopologyNodePositions(nodes) {
+    const { width, height } = this.getContainerDimensions();
+    const guksaNode = nodes[0];
 
-    window.fitGuksaMapToScreen = () => {
-      return guksaMapComponent.fitToScreen();
-    };
+    // 국사 노드 초기 위치만 설정 (고정 제거)
+    guksaNode.x = 100; // 좌측 여백을 고정값으로 지정하여 국사 노드를 화면 맨 좌측에 배치
+    guksaNode.y = height / 2;
 
-    window.setGuksaMapZoom = (level) => {
-      return guksaMapComponent.setZoomLevel(level);
-    };
+    const sectorGroups = d3.group(
+      nodes.filter((n) => n.type === 'equip'),
+      (d) => d.sector
+    );
 
-    window.setGuksaMapLayout = (layout) => {
-      guksaMapComponent.currentLayout = layout;
-      guksaMapComponent.calculatePositions();
-      guksaMapComponent.renderGuksas(true);
-      guksaMapComponent.renderConnections(true);
-    };
+    // 분야별 그룹 위치 설정 (X축 목표 지점 설정)
+    this.setupSectorGroupPositions(sectorGroups, guksaNode.x, width);
+  }
 
-    window.setGuksaMapViewMode = (viewMode) => {
-      return guksaMapComponent.setViewMode(viewMode);
-    };
+  // 1. 분야별 그룹의 목표 X위치 설정
+  setupSectorGroupPositions(sectorGroups, guksaX, width) {
+    const SECTOR_ORDER = ['MW', '선로', '전송', 'IP', '무선', '교환'];
+    const activeSectors = SECTOR_ORDER.filter((sector) => sectorGroups.has(sector));
 
-    // 새로운 함수들
-    window.refreshGuksaMapData = () => guksaMapComponent.refreshMapData();
-    window.getGuksaMapStats = () => guksaMapComponent.getStats();
-    window.clearGuksaMapSelection = () => guksaMapComponent.clearSelection();
-    window.selectGuksa = (guksaName) => guksaMapComponent.selectGuksa(guksaName);
+    const marginRight = width * 0.05;
+    const startX = guksaX + 300; // 국사 노드와의 기본 간격을 300px 로 확대
+    const usableWidth = width - startX - marginRight;
+    const groupSpacing = activeSectors.length > 1 ? usableWidth / (activeSectors.length - 1) : 0;
 
-    // GuksaMapComponent 인스턴스도 전역 등록
-    window.guksaMapComponent = guksaMapComponent;
+    activeSectors.forEach((sector, index) => {
+      const groupNodes = sectorGroups.get(sector);
+      const groupCenterX = startX + index * groupSpacing;
+      groupNodes.forEach((node) => {
+        node.groupCenterX = groupCenterX; // 시뮬레이션에서 사용할 목표 X좌표
+      });
+    });
+  }
 
-    console.log('✅ GuksaMapComponent 전역 함수 등록 완료');
+  // 툴팁 생성
+  createTopologyTooltip() {
+    return d3
+      .select('body')
+      .append('div')
+      .attr('class', 'topology-tooltip')
+      .style('opacity', 0)
+      .style('position', 'absolute')
+      .style('background-color', 'white')
+      .style('border', '1px solid #ddd')
+      .style('border-radius', '4px')
+      .style('padding', '8px')
+      .style('pointer-events', 'auto')
+      .style('font-size', '12px')
+      .style('z-index', 10)
+      .style('max-width', '350px')
+      .style('max-height', '300px');
+  }
+
+  // 힘 시뮬레이션 생성 - 그룹핑 강화
+  createTopologySimulation(nodes, links) {
+    const { width, height } = this.getContainerDimensions();
+
+    const simulation = d3
+      .forceSimulation(nodes)
+      .force(
+        'link',
+        d3
+          .forceLink(links)
+          .id((d) => d.id)
+          .distance(45) // 링크 거리 절반으로 감소
+          .strength(0.3)
+      )
+      .force('charge', d3.forceManyBody().strength(-50)) // 반발력을 더욱 낮춰 노드 간 충돌 완화
+      .force(
+        'x',
+        d3
+          .forceX((d) => {
+            if (d.type === 'guksa') return width * 0.15; // 국사는 좌측 고정
+            return d.groupCenterX || width / 2; // 각 분야 목표 중심
+          })
+          .strength(1.0) // 분야별 X 축 정렬 강도 유지
+      )
+      .force('y', d3.forceY(height / 2).strength(0.1))
+      .force('collide', d3.forceCollide().radius(20).strength(1)); // 충돌 반경을 더 줄여 노드 밀집 완화
+
+    this.simulation = simulation; // 인스턴스 저장
+    return simulation;
+  }
+
+  // 3. 올바른 드래그 핸들러 구현
+  dragstarted(event, d) {
+    if (!event.active) this.simulation.alphaTarget(0.3).restart();
+    d.fx = d.x;
+    d.fy = d.y;
+  }
+
+  dragged(event, d) {
+    d.fx = event.x;
+    d.fy = event.y;
+  }
+
+  dragended(event, d) {
+    if (!event.active) this.simulation.alphaTarget(0);
+    // drag 후 위치에 노드를 고정합니다. fx와 fy를 해제하지 않습니다.
+  }
+
+  renderFallbackGuksaMap(data) {
+    const { guksa_name, error_message } = data;
+
+    // 간단한 1줄 메시지로 표시
+    let message = '';
+    if (error_message) {
+      message = error_message;
+    } else if (data.equip_count === 0) {
+      message = `❌ ${guksa_name || '해당'} 국사에 수용된 장비를 찾을 수 없습니다.`;
+    } else {
+      message = `❌ ${guksa_name || '해당'} 국사의 토폴로지 데이터를 로드할 수 없습니다.`;
+    }
+
+    // 기존 컨테이너 내용 제거
+    this.container.innerHTML = '';
+
+    // 심플한 메시지 표시 (MessageManager/EquipmentMapComponent 방식)
+    const messageDiv = document.createElement('div');
+    messageDiv.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 20px;
+      text-align: center;
+      color: #777;
+      font-size: 16px;
+      background: white;
+      border-radius: 4px;
+    `;
+    messageDiv.textContent = message;
+
+    this.container.appendChild(messageDiv);
+  }
+
+  // 링크 생성
+  createTopologyLinks(links) {
+    return this.connectionLayer
+      .selectAll('line')
+      .data(links)
+      .enter()
+      .append('line')
+      .attr('stroke', (d) => ColorManager.getDashboardSectorColor(d.sector))
+      .attr('stroke-opacity', 0.6)
+      .attr('stroke-width', 2);
+  }
+
+  // 노드 생성
+  createTopologyNodes(nodes, simulation, tooltip) {
+    const node = this.guksaLayer
+      .selectAll('g')
+      .data(nodes)
+      .enter()
+      .append('g')
+      .attr('class', (d) => `node ${d.type === 'guksa' ? 'node-guksa' : `node-${d.sector}`}`)
+      .style('cursor', 'pointer')
+      // 개별 노드 드래그 핸들러 복원
+      .call(
+        d3
+          .drag()
+          .on('start', (event, d) => this.dragstarted(event, d))
+          .on('drag', (event, d) => this.dragged(event, d))
+          .on('end', (event, d) => this.dragended(event, d))
+      );
+
+    // 노드 형태 추가
+    node.each(function (d) {
+      const selection = d3.select(this);
+
+      // 국사 노드인 경우 설정
+      if (d.type === 'guksa') {
+        // ColorManager의 GUKSA_FILL과 GUKSA_BORDER 사용
+        const guksaColors = ColorManager.getGuksaMapColor('guksa');
+        selection
+          .append('rect')
+          .attr('width', 90)
+          .attr('height', 30)
+          .attr('x', -45)
+          .attr('y', -15)
+          .attr('rx', 5)
+          .attr('ry', 5)
+          .attr('fill', guksaColors.fill)
+          .attr('stroke', guksaColors.border)
+          .attr('stroke-width', 2.5);
+      } else {
+        // 일반 노드인 경우 설정
+        selection
+          .append('circle')
+          .attr('r', 14)
+          .attr('fill', ColorManager.getDashboardSectorColor(d.sector)) // FIELD_COLORS 일관성 사용
+          .attr('stroke', d.borderColor)
+          .attr('stroke-width', 2.5);
+      }
+    });
+
+    // 경보 배지 추가
+    this.addAlarmBadges(node, nodes);
+
+    // 텍스트 추가
+    node
+      .append('text')
+      .text((d) => {
+        if (d.type === 'guksa') return d.id.substring(0, 5);
+        return d.sector;
+      })
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'middle')
+      .attr('fill', 'white')
+      .attr('font-size', (d) => (d.type === 'guksa' ? '13px' : '11px'))
+      .attr('font-weight', 'bold');
+
+    // 라벨 추가
+    node
+      .append('text')
+      .text((d) => {
+        if (d.type === 'guksa') return '';
+        const labelText = d.displayName || d.id;
+        const maxLength = 20;
+        return labelText.length > maxLength ? labelText.slice(0, maxLength) + '...' : labelText;
+      })
+      .attr('text-anchor', 'middle')
+      .attr('x', 0)
+      .attr('y', (d) => (d.type === 'guksa' ? 26.25 : 31.25))
+      .attr('font-size', '13px')
+      .attr('fill', '#333');
+
+    // 마우스 이벤트 추가
+    node
+      .on('mouseover', (event, d) => this.handleTopologyMouseOverImproved(event, d, tooltip))
+      .on('mouseout', (event, d) => this.handleTopologyMouseOut(event, d, tooltip))
+      .on('click', (event, d) => this.handleTopologyClick(event, d));
+
+    return node;
+  }
+
+  // 개선된 마우스 오버 핸들러
+  handleTopologyMouseOverImproved(event, d, tooltip) {
+    // TooltipManager 사용하여 상세한 툴팁 표시
+    if (d.type === 'guksa') {
+      const guksaData = {
+        guksa_id: d.id,
+        guksa_name: d.id,
+        equipmentCount: d.nodeCount || '알 수 없음',
+        alarmCount: d.alarmCount || 0,
+        alarms: d.alarmMessages || [],
+      };
+      TooltipManager.showGuksaTooltip(event, guksaData);
+    } else {
+      const equipmentData = {
+        equip_id: d.equip_id || d.id,
+        equip_name: d.id,
+        equip_type: d.sector,
+        equip_field: d.sector,
+        guksa_name: d.guksa_name,
+        alarms: d.alarmMessages || [],
+      };
+      TooltipManager.showEquipmentTooltip(event, equipmentData);
+    }
+
+    // 노드 크기 증가 애니메이션 제거
+    if (d.type === 'guksa') {
+      d3.select(event.currentTarget)
+        .select('rect')
+        .attr('width', 94.5)
+        .attr('height', 33)
+        .attr('x', -47.25)
+        .attr('y', -16.5);
+    } else {
+      d3.select(event.currentTarget).select('circle').attr('r', 17);
+    }
+  }
+
+  // 시뮬레이션 설정
+  setupTopologySimulation(simulation, nodes, link, node) {
+    const { width, height } = this.getContainerDimensions();
+    const margin = 30;
+
+    simulation.on('tick', () => {
+      // 노드 위치 제한 (화면 밖으로 나가지 않도록)
+      node.attr('transform', (d) => {
+        d.x = Math.max(margin, Math.min(width - margin, d.x));
+        d.y = Math.max(margin, Math.min(height - margin, d.y));
+        return `translate(${d.x},${d.y})`;
+      });
+
+      // 링크 위치 업데이트
+      link
+        .attr('x1', (d) => d.source.x)
+        .attr('y1', (d) => d.source.y)
+        .attr('x2', (d) => d.target.x)
+        .attr('y2', (d) => d.target.y);
+    });
+  }
+
+  // 마우스 이벤트 핸들러들
+  handleTopologyMouseOver(event, d, tooltip) {
+    let tooltipContent = '';
+
+    if (d.type === 'guksa') {
+      tooltipContent = `<strong>• 국사:</strong> ${d.id}<br><strong>• 장비 수:</strong> ${
+        d.nodeCount || '알 수 없음'
+      }`;
+    } else {
+      // 원본 장비명 (id)을 툴팁에 표시
+      const equipmentName = d.id; // 원본 전체 장비명
+      const maxTooltipLength = 60; // 툴팁에서는 더 긴 이름 허용
+      const displayEquipName =
+        equipmentName.length > maxTooltipLength
+          ? equipmentName.substring(0, maxTooltipLength) + '...'
+          : equipmentName;
+
+      tooltipContent = `
+        <strong>• 장비:</strong> ${displayEquipName}<br>
+        <strong>• 분야:</strong> ${d.sector}<br>
+        <strong>• 국사:</strong> ${d.guksa_name}<br>
+      `;
+    }
+
+    tooltip
+      .html(tooltipContent)
+      .style('left', event.pageX + 10 + 'px')
+      .style('top', event.pageY - 28 + 'px')
+      .style('opacity', 0.9); // 애니메이션 제거
+
+    // 노드 크기 증가 애니메이션 제거
+    if (d.type === 'guksa') {
+      d3.select(event.currentTarget)
+        .select('rect')
+        .attr('width', 126)
+        .attr('height', 44)
+        .attr('x', -63)
+        .attr('y', -22);
+    } else {
+      d3.select(event.currentTarget).select('circle').attr('r', 22);
+    }
+  }
+
+  handleTopologyMouseOut(event, d, tooltip) {
+    // TooltipManager 사용
+    TooltipManager.hide();
+
+    // 노드 크기 원복 애니메이션 제거
+    if (d.type === 'guksa') {
+      d3.select(event.currentTarget)
+        .select('rect')
+        .attr('width', 90)
+        .attr('height', 30)
+        .attr('x', -45)
+        .attr('y', -15);
+    } else {
+      d3.select(event.currentTarget).select('circle').attr('r', 14);
+    }
+  }
+
+  handleTopologyClick(event, d) {
+    console.log('토폴로지 노드 클릭:', d);
+    if (d.type === 'equip') {
+      // 장비 상세 정보 표시 등의 액션
+      StateManager.set('selectedEquipment', d.equip_id);
+    }
+  }
+
+  // 실제 경보 배지 추가 부분
+  addAlarmBadges(node, nodes) {
+    console.log('🚨 경보 배지 추가 시작...');
+
+    // StateManager에서 알람 데이터 가져오기
+    const alarmData =
+      StateManager.get('totalAlarmDataList', []) || StateManager.get('alarmData', []);
+    console.log('📊 전체 알람 데이터:', alarmData.length, '개');
+
+    node.each(function (d) {
+      const selection = d3.select(this);
+
+      // 노드별 알람 필터링
+      let nodeAlarms = [];
+      if (d.type === 'guksa') {
+        nodeAlarms = alarmData.filter((alarm) => alarm && alarm.guksa_name === d.id);
+      } else {
+        nodeAlarms = alarmData.filter(
+          (alarm) =>
+            alarm &&
+            (alarm.equip_name === d.id ||
+              alarm.equip_id === d.equip_id ||
+              (alarm.equip_name && d.id && alarm.equip_name.includes(d.id)))
+        );
+      }
+
+      const alarmCount = nodeAlarms.length;
+      console.log(`📦 ${d.type} "${d.id}" 알람 수:`, alarmCount);
+
+      // 알람이 있는 경우에만 배지 추가
+      if (alarmCount > 0 && d.type !== 'guksa') {
+        // EquipmentMapComponent와 동일한 스타일 적용
+        selection
+          .append('circle')
+          .attr('class', 'alarm-badge')
+          .attr('cx', 16) // 통일된 위치
+          .attr('cy', -16) // 통일된 위치
+          .attr('r', 10) // 통일된 크기
+          .style('fill', '#e74c3c')
+          .style('fill-opacity', 0.8) // EquipmentMapComponent와 동일
+          .style('stroke', 'white')
+          .style('stroke-width', 1); // 통일된 테두리
+
+        selection
+          .append('text')
+          .attr('class', 'alarm-badge-text')
+          .attr('x', 16)
+          .attr('y', -19)
+          .attr('text-anchor', 'middle')
+          .attr('dy', '0.3em')
+          .style('font-size', '11px')
+          .style('font-weight', 'bold')
+          .style('fill', 'white')
+          .style('pointer-events', 'none')
+          .text(alarmCount > 99 ? '99+' : alarmCount); // 99+ 표시 로직 추가
+
+        // 노드에 알람 정보 저장
+        d.alarmMessages = nodeAlarms;
+        d.alarmCount = alarmCount;
+      }
+    });
+
+    console.log('✅ 경보 배지 추가 완료');
+  }
+
+  // 4. ZoomIn, ZoomOut 통합
+  performZoom(direction) {
+    const { width, height } = this.getContainerDimensions();
+    const currentTransform = d3.zoomTransform(this.svg.node());
+
+    const scaleFactor = direction === 'in' ? 1.2 : 0.8;
+    const minScale = 0.2;
+    const maxScale = 3.0;
+
+    const newScale = Math.max(minScale, Math.min(maxScale, currentTransform.k * scaleFactor));
+
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const worldCenterX = (centerX - currentTransform.x) / currentTransform.k;
+    const worldCenterY = (centerY - currentTransform.y) / currentTransform.k;
+    const newX = centerX - worldCenterX * newScale;
+    const newY = centerY - worldCenterY * newScale;
+
+    this.svg.call(this.zoom.transform, d3.zoomIdentity.translate(newX, newY).scale(newScale));
+  }
+
+  // 5. 중복 코드 제거 - 마우스 이벤트 핸들러 통합
+  handleConnectionMouseOver(event, connection) {
+    // 연결선 강조 표시
+    d3.select(event.currentTarget).style('stroke-width', 4).style('opacity', 1);
+  }
+
+  handleConnectionMouseOut(event, connection) {
+    // 연결선 원상복구
+    d3.select(event.currentTarget).style('stroke-width', 2).style('opacity', 0.6);
+  }
+
+  // 2. 줌/패닝 필터: 노드 위에서는 드래그, 빈 공간에서는 패닝
+  zoomFilter(event) {
+    // 컨트롤 패널 클릭 시 줌/패닝 비활성화
+    if (event.target.closest('.map-control-panel')) return false;
+    // 노드(click on node) 위에서 시작된 mousedown은 개별 드래그용, 줌/패닝 차단
+    if (event.type === 'mousedown' && event.target.closest('.node')) return false;
+    // 마우스 휠과 배경 mousedown은 허용
+    if (event.type === 'wheel' || event.type === 'dblclick') return true;
+    if (event.type === 'mousedown') return true;
+    return false;
+  }
+
+  // 줌/패닝 이벤트 핸들러
+  onZoom(event) {
+    this.g.attr('transform', event.transform);
+    this.currentTransform = event.transform;
   }
 }
 
-// 즉시 전역 함수 등록 (기존 코드 호환성)
-registerGuksaMapGlobalFunctions();
+export default GuksaMapComponent;
