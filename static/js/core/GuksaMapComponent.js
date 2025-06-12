@@ -673,11 +673,12 @@ export class GuksaMapComponent {
       padding: 8px 12px;
       border-radius: 4px;
       border: 0;
-      font-weight: bold;
+      font-size: 11pt;
+      font-weight: normal; 
       z-index: 1000;
       color: #333;
     `;
-    titleDiv.textContent = `국사: '${guksaName}' 경보 장비 (${equipmentCount} 대)`;
+    titleDiv.textContent = `• 국사: '${guksaName}' (연결된 장비: ${equipmentCount} 대)`;
     this.container.appendChild(titleDiv);
   }
 

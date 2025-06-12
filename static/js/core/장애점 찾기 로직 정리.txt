@@ -73,3 +73,227 @@
 ㅇ 수집된 알람에서 A1930이 다량 발생일 경우, IP/전송장비에서 알람이 발생한경우
 장애점 멘트 : “ ㅇㅇㅇ시스템 이상여부 체크 필요”
 ㅇㅇㅇ 시스템은 링크정보(엑셀)에서 맵핑되는 상위장비
+
+
+######################
+MW 장비 SNMP
+######################
+
+아래 요구사항대로 기존 InferFailurePoint 클래스의 _analyze_link_failures와 _analyze_upper_node_failures 사이에 
+'MW 장비 상태 점검'이라는 새로운 단계의 장애점 찾는 로직을 추가해 줘.
+
+1. 조건: 맵에 그려진 노드 중 MW 노드들이 1개 이상 있는 경우에만 로직 실행, MW 노드가 하나도 없는 경우 MW 분석 장비가 없습니다라고 표시.
+2. 장애점 찾기 로직
+2.1 맵에 그려진 MW 노드들의 정보를 일괄 조회하기 위해, 먼저 tblSnmpInfo 테이블에서 equip_id로 MW 노드들의 정보를 추출. 
+2.2 추출한 MW 노드들의 정보를 아래 json 요청 포맷으로 만들어서 새로운 routes.py의 check_mw_status API에 POST로 요청 
+- routes.py에 새로운 API 추가 구현.
+- ### 요청 json 포맷 참고: id는 tblSnmpInfo의 equip_id, snmp_ip는 tblSnmpInfo의 snmp_ip, community는 tblSnmpInfo의 community, equip_type은 tblSnmpInfo의 equip_type.
+2.3 API는 아래 소켓통신을 통해 소켓서버로 경보 정보를 요청하고 응답 json을 확인.
+- ### 소켓통신 함수 샘플: zmp 라이브러리 사용.
+2.4 InferFailurePoint에서 응답 json 값으로 'MW 장비 상태 점검' 장애점을 분석
+- 장애점 판단 로직 1) 여러 slot 중 RSL, TSL, SNR, XPI => value 값이 min, max 범위를 벗어나거나, threshold보다 적으면 '전파 페이딩 의심'으로 판단.
+- 장애점 판단 로직 2) ERR가 1개라도 있으면 '수신 오류로 페이딩이나 대국 장비 장애 의심'으로 판단
+- 장애점 판단 로직 3) VOLT => value 값이 min, max 범위를 벗어나거나, threshold보다 적으면 '배터리 모드로 한전 정전 의심'으로 판단.
+3. 장애점 판단 로직 실행결과 세부내역을 채팅창에 표시.
+
+### 요청 json 포맷:
+payload = {
+    "guksa_id": "12345",
+    "data": [
+        {
+            "id": 1,
+            "snmp_ip": "10.48.0.70",
+            "community": "public",
+            "equip_type": "IP-20"
+        }
+    ]
+}
+
+### 소켓통신 함수 샘플:
+import zmq
+import json 
+
+context = zmq.Context()
+socket = context.socket(zmq.REQ)
+socket.connect("tcp://localhost:5555") 
+socket.setsockopt(zmq..RCVTIMEO, 100000) 
+
+try:
+    socket.send_string(json.dumps(payload))
+    res = socket.recv_string()
+    print("응답:", res)
+
+except:
+    print("응답 없음")
+
+### 응답 json 샘플:
+[
+  {
+    "id": 1,
+    "equip_type": "IP-20",
+    "data": {
+      "interfaces": {
+        "Radio: Slot 3, Port 1": {
+          "RSL": {
+            "value": "-45",
+            "min": "0",
+            "max": "-99",
+            "threshold": "-50"
+          },
+          "TSL": {
+            "value": "22",
+            "min": "1",
+            "max": "22",
+            "threshold": "25"
+          },
+          "SNR": {
+            "value": "39.98",
+            "min": "39.31",
+            "max": "40.21",
+            "threshold": "34"
+          },
+
+          "XPI": {
+            "value": "0",
+            "min": "0",
+            "max": "0",
+            "threshold": "15"
+          },
+
+          "ERR": {
+            "BER": "13",
+            "ES": "0",
+            "SES": "0",
+            "UAS": "0",
+            "BBE": "0"
+          }
+
+        },
+
+        "Radio: Slot 4, Port 1": {
+
+          "RSL": {
+            "value": "-99",
+            "min": "0",
+            "max": "-99",
+            "threshold": "-50"
+          },
+
+          "TSL": {
+            "value": "0",
+            "min": "-50",
+            "max": "50",
+            "threshold": "25"
+          },
+
+          "SNR": {
+            "value": "99.0",
+            "min": "error",
+            "max": "error",
+            "threshold": "34"
+          },
+
+          "XPI": {
+            "value": "9900",
+            "min": "error",
+            "max": "error",
+            "threshold": "15"
+          },
+
+          "ERR": {
+            "BER": "0",
+            "ES": "error",
+            "SES": "error",
+            "UAS": "error",
+            "BBE": "error"
+          }
+        },
+
+        "Radio: Slot 5, Port 1": {
+          "RSL": {
+            "value": "-45",
+            "min": "0",
+            "max": "-99",
+            "threshold": "-50"
+          },
+
+          "TSL": {
+            "value": "22",
+            "min": "1",
+            "max": "22",
+            "threshold": "25"
+          },
+
+          "SNR": {
+            "value": "41.01",
+            "min": "40.06",
+            "max": "41.14",
+            "threshold": "34"
+          },
+
+          "XPI": {
+            "value": "0",
+            "min": "0",
+            "max": "0",
+            "threshold": "15"
+          },
+
+          "ERR": {
+            "BER": "13",
+            "ES": "0",
+            "SES": "0",
+            "UAS": "0",
+            "BBE": "0"
+          }
+        },
+
+        "Radio: Slot 6, Port 1": {
+          "RSL": {
+            "value": "-45",
+            "min": "0",
+            "max": "-99",
+            "threshold": "-50"
+          },
+
+          "TSL": {
+            "value": "22",
+            "min": "1",
+            "max": "22",
+            "threshold": "25"
+          },
+
+          "SNR": {
+            "value": "40.11",
+            "min": "39.11",
+            "max": "40.26",
+            "threshold": "34"
+          },
+
+          "XPI": {
+            "value": "0",
+            "min": "0",
+            "max": "0",
+            "threshold": "15"
+          },
+
+          "ERR": {
+            "BER": "13",
+            "ES": "0",
+            "SES": "0",
+            "UAS": "0",
+            "BBE": "0"
+          }
+        }
+      },
+
+      "VOLT": {
+        "value": "51",
+        "min": "50",
+        "max": "51",
+        "threshold": "38"
+      }
+    },
+
+    "get_datetime": "2025-06-10 16:20:39"
+  }
+]

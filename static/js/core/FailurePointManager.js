@@ -32,8 +32,8 @@ class FailurePointManager {
     try {
       this.isAnalyzing = true;
 
-      // 분석 시작 메시지
-      MessageManager.addAnalyzingMessage('🔍 장애점 분석을 시작합니다...');
+      // 분석 시작 메시지 (제거 - 중복 방지)
+      // MessageManager.addAnalyzingMessage('🔍 장애점 분석을 시작합니다...');
 
       // API 요청 데이터 준비
       const requestData = this.prepareAnalysisData(nodes, links, alarmData);
@@ -124,19 +124,118 @@ class FailurePointManager {
   async callFailurePointAPI(requestData) {
     console.log('🚀 장애점 추정 API 호출 중...');
 
-    const response = await CommonUtils.callApi('/api/infer_failure_point', requestData, {
-      method: 'POST',
-      timeout: 30000,
-      onProgress: (status) => {
-        MessageManager.addAnalyzingMessage(`🔍 장애점을 분석/추정 중...: ${status}`);
-      },
-    });
+    // 세션 ID 생성
+    const sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
-    if (!response || response.error) {
-      throw new Error(response?.error || '장애점 분석 API 호출 실패');
+    // 스트리밍 요청 데이터 준비
+    const streamingRequestData = {
+      ...requestData,
+      streaming: true,
+      session_id: sessionId,
+    };
+
+    try {
+      // 1. 스트리밍 분석 시작 요청
+      const startResponse = await CommonUtils.callApi(
+        '/api/infer_failure_point',
+        streamingRequestData,
+        {
+          method: 'POST',
+          timeout: 10000,
+        }
+      );
+
+      if (!startResponse || !startResponse.success) {
+        throw new Error(startResponse?.error || '장애점 분석 시작 실패');
+      }
+
+      console.log('📡 스트리밍 분석 시작됨, 세션 ID:', sessionId);
+
+      // 2. 스트리밍 데이터 수신
+      return new Promise((resolve, reject) => {
+        const eventSource = new EventSource(`/api/infer_failure_point_stream/${sessionId}`);
+        let finalResult = null;
+
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+
+            switch (data.type) {
+              case 'progress':
+                // 진행 상황을 채팅창에 표시
+                MessageManager.addErrorMessage(data.message);
+                console.log('📋 진행상황:', data.message);
+                break;
+
+              case 'result':
+                // 최종 결과 저장
+                finalResult = data.data;
+                console.log('✅ 분석 결과 수신 완료');
+                break;
+
+              case 'complete':
+                // 분석 완료
+                eventSource.close();
+                if (finalResult) {
+                  resolve(finalResult);
+                } else {
+                  reject(new Error('분석 결과를 받지 못했습니다.'));
+                }
+                break;
+
+              case 'error':
+                // 오류 발생
+                eventSource.close();
+                reject(new Error(data.message || '분석 중 오류 발생'));
+                break;
+
+              case 'heartbeat':
+                // 연결 유지 신호 - 무시
+                break;
+
+              default:
+                console.log('📡 알 수 없는 메시지 타입:', data.type);
+            }
+          } catch (parseError) {
+            console.error('❌ 스트리밍 데이터 파싱 오류:', parseError);
+          }
+        };
+
+        eventSource.onerror = (error) => {
+          console.error('❌ 스트리밍 연결 오류:', error);
+          eventSource.close();
+          reject(new Error('스트리밍 연결 오류'));
+        };
+
+        // 타임아웃 설정 (120초)
+        setTimeout(() => {
+          if (eventSource.readyState !== EventSource.CLOSED) {
+            eventSource.close();
+            reject(new Error('분석 시간이 초과되었습니다.'));
+          }
+        }, 120000);
+      });
+    } catch (error) {
+      console.error('❌ 스트리밍 API 호출 실패:', error);
+
+      // 폴백: 기존 동기 방식으로 재시도
+      console.log('🔄 기존 동기 방식으로 재시도...');
+      MessageManager.addAnalyzingMessage('🔄 기존 방식으로 재시도 중...');
+
+      const response = await CommonUtils.callApi('/api/infer_failure_point', requestData, {
+        method: 'POST',
+        timeout: 30000,
+        onProgress: (status) => {
+          MessageManager.addAnalyzingMessage(`🔍 장애점을 분석/추정 중...: ${status}`);
+        },
+      });
+
+      if (!response || response.error) {
+        throw new Error(response?.error || '장애점 분석 API 호출 실패');
+      }
+
+      return response;
     }
-
-    return response;
   }
 
   /**
@@ -185,15 +284,16 @@ class FailurePointManager {
       const safeSummary = summary || {};
 
       const message = `
-        📌 <strong>장애점 분석/추론이 완료되었습니다.</strong><br><br>
-        • 총 장애점 수: ${safeSummary.total_failure_points || 0}개 (링크: ${
-        safeSummary.link_failures || 0
-      }개, 노드: ${
-        safeSummary.node_failures || 0
-      }개)<br>----------------------------------------------------<br>
-        • 상위 노드 장애점 수: ${safeSummary.upper_node_failures || 0}개<br>
-        • 교환 노드 장애점 수: ${safeSummary.exchange_failures || 0}개<br>
-        • 전송 노드 장애점 수: ${safeSummary.transmission_failures || 0}개
+        📌 장애점 분석/추론이 완료되었습니다.<br><br>
+        • 장애점 추정 결과: 총 ${safeSummary.total_failure_points || 0}개<br>
+        ----------------------------------------------------<br>
+        • 1단계) 선로 장애점: ${safeSummary.link_failures || 0}개<br>
+        • 2단계) MW 장애점: ${safeSummary.mw_equipment_failures || 0}개 (페이딩: ${
+        safeSummary.mw_fading_failures || 0
+      }개, 전압: ${safeSummary.mw_voltage_failures || 0}개)<br>
+        • 3단계) 상위 노드 장애점: ${safeSummary.upper_node_failures || 0}개<br>
+        • 4단계) 교환 장애점: ${safeSummary.exchange_failures || 0}개<br>
+        • 5단계) 전송 장애점: ${safeSummary.transmission_failures || 0}개
       `;
 
       MessageManager.addErrorMessage(message, { type: 'error' });
@@ -648,7 +748,9 @@ class FailurePointManager {
       const alarmListHtml = this.generateAlarmListHTML(relatedAlarms);
 
       const message = `
-      📌 <strong style="color: red;">장애점 ${index + 1}: ${failurePoint.name}</strong><br>
+      📌 <strong style="color: red;">장애점 #${index + 1} <br><br> ${
+        failurePoint.name
+      }</strong><br><br>
       • 유형: ${failurePoint.failure_type}<br>
       • ${failurePoint.type === 'node' ? '노드' : '링크'} ID: ${failurePoint.id}<br>
       • 추정 내역: ${failurePoint.inference_detail}<br>

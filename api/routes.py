@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, render_template
+from flask import Blueprint, jsonify, request, render_template, Response
 import logging
 
 from db.models import *
@@ -34,6 +34,9 @@ import zmq
 
 from flask import has_app_context
 
+import queue
+import threading
+
 
 # LLM 초기화
 from .scripts.llm_loader_2 import (
@@ -52,11 +55,13 @@ from .scripts.llm_response_generator_3 import (
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
-MW_SOCKET_SERVER = "tcp://10.58.241.61:5555"
+MW_SOCKET_SERVER = "tcp://192.168.147.78:5555"
 context = zmq.Context()
 zmq_socket = context.socket(zmq.REQ)
 
 # 장애점 추정 API
+# 장애점 추정 단계별 진행 상황을 저장할 큐
+progress_queues = {}
 
 
 @api_bp.route("/infer_failure_point", methods=["POST"])
@@ -80,281 +85,150 @@ def infer_failure_point():
                 'error': '요청 데이터가 없습니다.'
             }), 400
 
-        # 입력 데이터 추출
-        nodes = data.get('nodes', [])
-        links = data.get('links', [])
-        alarms = data.get('alarms', [])
+        # 스트리밍 요청인지 확인
+        is_streaming = data.get('streaming', False)
 
-        # 기본 데이터 검증
-        if not isinstance(nodes, list) or not isinstance(links, list) or not isinstance(alarms, list):
+        if is_streaming:
+            # 스트리밍 모드: SSE 엔드포인트로 리다이렉트
+            session_id = data.get('session_id', 'default')
+
+            # 분석을 별도 스레드에서 실행
+            def run_analysis():
+                try:
+                    # 진행 상황 큐 생성
+                    progress_queue = queue.Queue()
+                    progress_queues[session_id] = progress_queue
+
+                    # 진행 상황 콜백 함수
+                    def progress_callback(message):
+                        progress_queue.put({
+                            'type': 'progress',
+                            'message': message
+                        })
+
+                    # 입력 데이터 추출
+                    nodes = data.get('nodes', [])
+                    links = data.get('links', [])
+                    alarms = data.get('alarms', [])
+
+                    logging.info(
+                        f"장애점 분석 요청 (스트리밍): 노드 {len(nodes)}개, 링크 {len(links)}개, 경보 {len(alarms)}건")
+
+                    # InferFailurePoint 인스턴스 생성 및 분석 실행
+                    analyzer = InferFailurePoint(
+                        progress_callback=progress_callback)
+                    result = analyzer.analyze(nodes, links, alarms)
+
+                    # 최종 결과 전송
+                    progress_queue.put({
+                        'type': 'result',
+                        'data': result
+                    })
+
+                    # 완료 신호
+                    progress_queue.put({
+                        'type': 'complete'
+                    })
+
+                except Exception as e:
+                    logging.error(f"장애점 분석 중 오류: {str(e)}")
+                    progress_queue.put({
+                        'type': 'error',
+                        'message': str(e)
+                    })
+
+            # 분석 스레드 시작
+            analysis_thread = threading.Thread(target=run_analysis)
+            analysis_thread.daemon = True
+            analysis_thread.start()
+
             return jsonify({
-                'success': False,
-                'error': '입력 데이터 형식이 올바르지 않습니다. (nodes, links, alarms는 배열이어야 함)'
-            }), 400
-
-        logging.info(
-            f"장애점 분석 요청: 노드 {len(nodes)}개, 링크 {len(links)}개, 경보 {len(alarms)}건")
-
-        # InferFailurePoint 인스턴스 생성 및 분석 실행
-        analyzer = InferFailurePoint()
-        result = analyzer.analyze(nodes, links, alarms)
-
-        # 분석 결과 로깅
-        if result.get('success'):
-            failure_count = result.get('summary', {}).get(
-                'total_failure_points', 0)
-            logging.info(f"장애점 분석 완료: {failure_count}개 장애점 발견")
+                'success': True,
+                'session_id': session_id,
+                'stream_url': f'/api/infer_failure_point_stream/{session_id}'
+            })
         else:
-            logging.error(f"장애점 분석 실패: {result.get('error', '알 수 없는 오류')}")
+            # 기존 동기 모드
+            # 입력 데이터 추출
+            nodes = data.get('nodes', [])
+            links = data.get('links', [])
+            alarms = data.get('alarms', [])
 
-        # 결과 반환
-        return jsonify(result), 200
+            # 기본 데이터 검증
+            if not isinstance(nodes, list) or not isinstance(links, list) or not isinstance(alarms, list):
+                return jsonify({
+                    'success': False,
+                    'error': '입력 데이터 형식이 올바르지 않습니다. (nodes, links, alarms는 배열이어야 함)'
+                }), 400
 
-    except Exception as e:
-        # 예외 처리
-        error_message = f"장애점 분석 중 서버 오류 발생: {str(e)}"
-        logging.error(error_message)
-        logging.error(traceback.format_exc())
+            logging.info(
+                f"장애점 분석 요청: 노드 {len(nodes)}개, 링크 {len(links)}개, 경보 {len(alarms)}건")
 
-        return jsonify({
-            'success': False,
-            'error': error_message,
-            'failure_points': [],
-            'summary': {
-                'total_failure_points': 0,
-                'node_failures': 0,
-                'link_failures': 0,
-                'upper_node_failures': 0,
-                'exchange_failures': 0,
-                'transmission_failures': 0
-            }
-        }), 500
+            # InferFailurePoint 인스턴스 생성 및 분석 실행
+            analyzer = InferFailurePoint()
+            result = analyzer.analyze(nodes, links, alarms)
 
-# 추가적인 헬퍼 API (선택사항)
+            # 분석 결과 로깅
+            if result.get('success'):
+                failure_count = result.get('summary', {}).get(
+                    'total_failure_points', 0)
+                logging.info(f"장애점 분석 완료: {failure_count}개 장애점 발견")
+            else:
+                logging.error(f"장애점 분석 실패: {result.get('error', '알 수 없는 오류')}")
 
-
-@api_bp.route("/failure_point_status", methods=["GET"])
-def get_failure_point_status():
-    """
-    장애점 분석 상태 조회 API
-    """
-    try:
-        # 현재 시스템 상태 반환
-        return jsonify({
-            'success': True,
-            'analyzer_available': True,
-            'supported_failure_types': [
-                '선로 장애',
-                '상위 노드 장애',
-                '교환 A1395 경보',
-                '교환 A1930 단독 장애',
-                '교환 A1930 상위 장애',
-                '전송 LOS 경보',
-                '전송 LOF 경보'
-            ],
-            'version': '1.0.0'
-        }), 200
+            # 결과 반환
+            return jsonify(result), 200
 
     except Exception as e:
-        logging.error(f"장애점 분석 상태 조회 실패: {str(e)}")
+        logging.error(f"장애점 분석 API 오류: {str(e)}")
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': f'서버 오류: {str(e)}'
         }), 500
 
 
-# AI RAG 장애사례 조회 팝업창을 위한 데이터 전달용 API
-@api_bp.route('/fault-detector', methods=['POST'])
-def fault_detector_api():
-    try:
-        print("🚀 /api/fault-detector POST 요청 받음")
+@api_bp.route("/infer_failure_point_stream/<session_id>")
+def infer_failure_point_stream(session_id):
+    """
+    장애점 분석 진행 상황 스트리밍 API
+    """
+    def generate():
+        try:
+            progress_queue = progress_queues.get(session_id)
+            if not progress_queue:
+                yield f"data: {json.dumps({'type': 'error', 'message': '세션을 찾을 수 없습니다.'})}\n\n"
+                return
 
-        # JSON 요청만 처리
-        data = request.get_json()
-        print(f"📤 받은 데이터: {data}")
+            while True:
+                try:
+                    # 타임아웃 60초로 설정
+                    item = progress_queue.get(timeout=60)
 
-        if not data:
-            print("❌ 데이터 없음")
-            return {'error': 'No data provided'}, 400
+                    # JSON 형태로 데이터 전송
+                    yield f"data: {json.dumps(item)}\n\n"
 
-        fault_data = {
-            'baseNode': data.get('baseNode', {}),
-            'alarms': data.get('alarms', []),
-            'alarm_count': len(data.get('alarms', []))
-        }
+                    # 완료 신호면 종료
+                    if item.get('type') == 'complete':
+                        break
 
-        print(f"📊 처리된 fault_data:")
-        print(f"  - baseNode: {fault_data['baseNode']}")
-        print(f"  - alarms 개수: {fault_data['alarm_count']}")
-        if fault_data['alarms']:
-            print(f"  - 첫 번째 경보: {fault_data['alarms'][0]}")
+                except queue.Empty:
+                    # 타임아웃 발생시 연결 유지를 위한 heartbeat
+                    yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
+        except Exception as e:
+            logging.error(f"스트리밍 중 오류: {str(e)}")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+        finally:
+            # 세션 정리
+            if session_id in progress_queues:
+                del progress_queues[session_id]
 
-        print(f"🎯 템플릿 변수들: {fault_data}")
-        print(f"✅ fault_detector.html 템플릿 렌더링 시작")
-
-        return render_template('main/fault_detector.html',
-                               equip_id=fault_data['baseNode']['equip_id'],
-                               equip_name=fault_data['baseNode']['equip_name'],
-                               sector=fault_data['baseNode']['sector'],
-                               guksa_name=fault_data['baseNode']['guksa_name'],
-                               alarm_count=fault_data['alarm_count'],
-                               fault_data=fault_data)
-
-    except Exception as e:
-        print(f"❌ 데이터 처리 오류: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return {'error': f'데이터 처리 오류: {str(e)}'}, 500
-
-
-def connect_zmq():
-    try:
-        zmq_socket.connect(MW_SOCKET_SERVER)
-    except zmq.ZMQError as e:
-        print("ZMQ 연결 실패:", str(e))
-
-
-connect_zmq()
-
-
-def send_zmq_request(payload):
-    try:
-        zmq_socket.send_string(payload)
-        return zmq_socket.recv_string()
-    except zmq.ZMQError:
-        print("ZMQ 재연결 시도 중...")
-        zmq_socket.disconnect(MW_SOCKET_SERVER)
-        time.sleep(1)
-        connect_zmq()
-        zmq_socket.send_string(payload)
-        return zmq_socket.recv_string()
-
-
-@api_bp.route("/mw_info", methods=["POST"])
-def get_mwinfo_snmp():
-    guksa_id = request.json.get("guksa_id")
-    if guksa_id is None:
-        return jsonify({"error": "guksa_id is required"}), 400
-
-    # 디버그 테스트용
-    return jsonify({
-        "response": {
-            "results": [
-                {
-                    "국사ID": 10,
-                    "국사명": "목포국사",
-                    "장비ID": 1001,
-                    "장비명": "MW장비1",
-                    "장비유형": "MW",
-                    "snmp수집": "성공",
-                    "fading": "fading 발생",
-                    "전원상태": "배터리 모드",
-                    "수집일시": "2025-04-24 12:11:54"
-                }
-            ],
-            "fading_count": 1,
-            "fading_sample": "목포국사, MW장비1(MW) 등",
-            "battery_mode_count": 1,
-            "battery_sample": "목포국사, MW장비1(MW)"
-        }
+    return Response(generate(),
+                    content_type='text/event-stream',
+                    headers={
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*'
     })
-
-    # 실제 코드
-    # try:
-    #     records = db.session.query(TblSnmpInfo).filter(TblSnmpInfo.guksa_id == guksa_id).all()
-    #     if not records:
-    #         return jsonify({"error": "No data found for guksa_id"}), 404
-
-    #     snmp_data = [{
-    #         "equip_id": r.equip_id,
-    #         "equip_name": r.equip_name,
-    #         "equip_type": r.equip_type,
-    #         "snmp_ip": r.snmp_ip,
-    #         "community": r.community,
-    #         "port": r.port,
-    #         "oid1": r.oid1,
-    #         "oid2": r.oid2,
-    #         "oid3": r.oid3
-    #     } for r in records]
-
-    #     payload = json.dumps({"guksa_id": guksa_id, "data": snmp_data})
-    #     response = send_zmq_request(payload)
-
-    #     result_list = []
-    #     fading_count = 0
-    #     battery_mode_count = 0
-
-    #     fading_samples = []
-    #     battery_samples = []
-
-    #     guksa_name_cache = {}
-
-    #     for item in json.loads(response):
-    #         snmp_id = int(item["id"])
-    #         result_code = item["result_code"]
-    #         result_msg = item["result_msg"]
-    #         get_dt = item["get_datetime"]
-
-    #         snmp_record = db.session.query(TblSnmpInfo).filter(TblSnmpInfo.id == snmp_id).first()
-    #         if not snmp_record:
-    #             continue
-
-    #         if result_code == "1":
-    #             parsed_msg = json.loads(result_msg.replace("'", '"'))
-    #             power = parsed_msg.get("power", "")
-    #             fading = parsed_msg.get("fading", "")
-    #         else:
-    #             power = ""
-    #             fading = ""
-
-    #         snmp_record.result_code = result_code
-    #         snmp_record.result_msg = result_msg
-    #         snmp_record.power = power
-    #         snmp_record.fading = fading
-    #         snmp_record.get_datetime = get_dt
-
-    #         if snmp_record.guksa_id not in guksa_name_cache:
-    #             guksa = db.session.query(guksa).filter(guksa.guksa_id == snmp_record.guksa_id).first()
-    #             guksa_name_cache[snmp_record.guksa_id] = guksa.guksa if guksa else "Unknown"
-
-    #         guksa_name = guksa_name_cache[snmp_record.guksa_id]
-
-    #         # 통계 수치 및 샘플 수집
-    #         if fading == "1":
-    #             fading_count += 1
-    #             if len(fading_samples) < 1:
-    #                 fading_samples.append(f"{guksa_name}, {snmp_record.equip_name}({snmp_record.equip_type})")
-
-    #         if power == "1":
-    #             battery_mode_count += 1
-    #             if len(battery_samples) < 1:
-    #                 battery_samples.append(f"{guksa_name}, {snmp_record.equip_name}({snmp_record.equip_type})")
-
-    #         result_list.append({
-    #             "국사ID": snmp_record.guksa_id,
-    #             "국사명": guksa_name,
-    #             "장비ID": snmp_record.equip_id,
-    #             "장비명": snmp_record.equip_name,
-    #             "장비유형": snmp_record.equip_type,
-    #             "snmp수집": "성공" if result_code == "1" else "실패",
-    #             "fading": "fading 발생" if fading == "1" else "정상",
-    #             "전원상태": "배터리 모드" if power == "1" else "상전",
-    #             "수집일시": get_dt
-    #         })
-
-    #     db.session.commit()
-
-    #     return jsonify({
-    #         "results": result_list,
-    #         "fading_count": fading_count,
-    #         "fading_sample": fading_samples[0] + " 등" if fading_count > 1 else (fading_samples[0] if fading_samples else ""),
-    #         "battery_mode_count": battery_mode_count,
-    #         "battery_sample": battery_samples[0] + " 등" if battery_mode_count > 1 else (battery_samples[0] if battery_samples else "")
-    #     })
-
-    # except Exception as e:
-    #     db.session.rollback()
-    #     return jsonify({"error": str(e)}), 500
 
 
 @api_bp.route("/status")
@@ -816,34 +690,6 @@ def get_latest_alarms():
         return jsonify({"alarms": "", "error": str(e)}), 500
 
 
-# @api_bp.route("/latest_alarms")
-# def get_latest_alarms():
-#     guksa_id = request.args.get("guksa_id")
-
-#     query = (
-#         db.session.query(TblAlarmAllLast.alarm_message, TblEquipment.equipment_name)
-#         .join(TblEquipment, TblAlarmAllLast.equip_id == TblEquipment.id)
-#     )
-
-#     if guksa_id:
-#         query = query.filter(TblAlarmAllLast.guksa_id == str(guksa_id))
-
-#     alarms = (
-#         query
-#         .order_by(TblAlarmAllLast.occur_datetime.desc())
-#         .limit(10)
-#         .all()
-#     )
-
-#     alert_texts = [
-#         f"{equipment_name} 장비에서 경보 발생: {alarm_message}"
-#         for alarm_message, equipment_name in alarms
-#         if alarm_message
-#     ]
-
-#     return jsonify({"alarms": "\n".join(alert_texts)})
-
-
 @api_bp.route("/cable_status")
 def get_cable_status():
     guksa_id = request.args.get("guksa_id")
@@ -903,69 +749,6 @@ def get_cable_status():
             }
         }
     })
-
-
-@api_bp.route("/snmp_info", methods=["POST"])
-def get_snmp_info_by_guksa():
-    data = request.get_json()
-    guksa_id = data.get("guksa_id")
-
-    if not guksa_id:
-        return jsonify({"message": "guksa_id 필요합니다."}), 400
-
-    mw_equip_list = TblSnmpInfo.query.filter_by(guksa_id=guksa_id).all()
-
-    if not mw_equip_list:
-        return jsonify({"message": "해당 guksa_id 대한 장비 정보가 없습니다."}), 404
-
-    power_down_devices = []  # oid1 == "3" → 정전 상태 (배터리 모드)
-    modulation_mismatch = []  # oid2 != oid3 → 변조 방식 불일치 (=> 페이딩 추정)
-
-    for mw_equip in mw_equip_list:
-        oids = list(
-            filter(None, [mw_equip.oid1, mw_equip.oid2, mw_equip.oid3]))
-        snmp_start_time = get_current_time()
-
-        snmp_result = get_multiple_snmp_values(
-            ip=mw_equip.snmp_ip,
-            community=mw_equip.community,
-            oids=oids,
-            port=mw_equip.port or 161,
-        )
-
-        val_oid1 = str(snmp_result.get(mw_equip.oid1)
-                       ) if mw_equip.oid1 else None
-        val_oid2 = str(snmp_result.get(mw_equip.oid2)
-                       ) if mw_equip.oid2 else None
-        val_oid3 = str(snmp_result.get(mw_equip.oid3)
-                       ) if mw_equip.oid3 else None
-
-        base_info = {
-            "수집일시": snmp_start_time,
-            "장비명": mw_equip.equip_name,
-            "장비ID": mw_equip.equip_id,
-            "장비유형": mw_equip.equip_type,
-            "SNMP IP": mw_equip.snmp_ip,
-            "포트": mw_equip.port,
-            "oid1": val_oid1,
-            "oid2": val_oid2,
-            "oid3": val_oid3,
-        }
-
-        # 필터 1: oid1 == "3" (정전 상태 => 배터리 모드)
-        if val_oid1 == "3":
-            power_down_devices.append(base_info)
-
-        # 필터 2: oid2 != oid3 (변조 방식 불일치 => 페이딩 추정)
-        if val_oid2 is not None and val_oid3 is not None and val_oid2 != val_oid3:
-            modulation_mismatch.append(base_info)
-
-    result = {
-        "정전_상태_장비": power_down_devices,
-        "변조_방식_불일치_장비": modulation_mismatch,
-    }
-
-    return jsonify(result)
 
 
 @api_bp.route("/guksa_name", methods=["GET"])
@@ -1944,110 +1727,6 @@ def alarm_dashboard_equip():
         return jsonify({"error": f"서버 오류: {str(e)}"}), 500
 
 
-# MW-MW 구간 페이딩 체크 API
-@api_bp.route('/check_mw_fading', methods=['POST'])
-def check_mw_fading():
-    """
-    Request Body:
-    {
-        "source_equip_id": "MW001",
-        "target_equip_id": "MW002",
-        "check_type": "fading_analysis"
-    }
-
-    Response:
-    {
-        "result_code": "1111",
-        "is_fading": "fading|normal",
-        "result_msg": "분석 결과 메시지"
-    }
-    """
-    try:
-        # POST 방식으로 받은 JSON 데이터 파싱
-        data = request.get_json()
-
-        source_equip_id = data.get('source_equip_id')
-        target_equip_id = data.get('target_equip_id')
-        check_type = data.get('check_type', 'fading_analysis')
-
-        print(f"MW 페이딩 체크 요청: {source_equip_id} <-> {target_equip_id}")
-
-        # 입력 파라미터 유효성 검사
-        if not source_equip_id or not target_equip_id:
-            return jsonify({
-                'result_code': '9999',
-                'is_fading': 'N/A',
-                'result_msg': '필수 파라미터가 누락되었습니다. (source_equip_id, target_equip_id)'
-            }), 400
-
-        # MW 페이딩 분석 수행
-        fading_result = analyze_mw_fading(source_equip_id, target_equip_id)
-
-        return jsonify(fading_result)
-
-    except Exception as e:
-        print(f"MW 페이딩 체크 API 오류: {str(e)}")
-        traceback.print_exc()
-
-        return jsonify({
-            'result_code': '0000',
-            'is_fading': 'N/A',
-            'result_msg': f'SNMP 데이터 수집 실패: {str(e)}'
-        }), 500
-
-
-# MW 장비 한전 정전 체크 API
-@api_bp.route('/check_mw_power', methods=['POST'])
-def check_mw_power():
-    """
-    Request Body:
-    {
-        "equip_id": "MW001",
-        "guksa_name": "도초국사",
-        "check_type": "power_analysis"
-    }
-
-    Response:
-    {
-        "result_code": "1111",
-        "battery_mode": "battery|main_power",
-        "result_msg": "분석 결과 메시지"
-    }
-    """
-    try:
-        # POST 방식으로 받은 JSON 데이터 파싱
-        data = request.get_json()
-
-        equip_id = data.get('equip_id')
-        guksa_name = data.get('guksa_name')
-        check_type = data.get('check_type', 'power_analysis')
-
-        print(f"MW 정전 체크 요청: {equip_id} ({guksa_name})")
-
-        # 입력 파라미터 유효성 검사
-        if not equip_id:
-            return jsonify({
-                'result_code': '9999',
-                'battery_mode': 'N/A',
-                'result_msg': '필수 파라미터가 누락되었습니다. (equip_id)'
-            }), 400
-
-        # MW 정전 분석 수행
-        power_result = analyze_mw_power_status(equip_id, guksa_name)
-
-        return jsonify(power_result)
-
-    except Exception as e:
-        print(f"MW 정전 체크 API 오류: {str(e)}")
-        traceback.print_exc()
-
-        return jsonify({
-            'result_code': '0000',
-            'battery_mode': 'N/A',
-            'result_msg': f'SNMP 데이터 수집 실패: {str(e)}'
-        }), 500
-
-
 # 분야 필터링 적용 함수
 def apply_sector_filter(equipment_dict, links, sectors):
     sector_filter = None
@@ -2315,3 +1994,86 @@ def get_equip_info_from_alarm_all_last(equip_id):
 def get_current_time():
     now = datetime.now()
     return now.strftime("%Y-%m-%d %H:%M:%S")
+
+
+# MW 장비 상태 확인 API: 소켓 서버를 통해 MW 장비의 SNMP 상태를 확인
+@api_bp.route("/check_mw_status", methods=["POST"])
+def check_mw_status():
+    try:
+        # 요청 데이터 검증
+        if not request.is_json:
+            return jsonify({
+                'success': False,
+                'error': 'Content-Type이 application/json이어야 합니다.'
+            }), 400
+
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': '요청 데이터가 없습니다.'
+            }), 400
+
+        guksa_id = data.get('guksa_id')
+        equipment_list = data.get('data', [])
+
+        if not equipment_list:
+            return jsonify({
+                'success': False,
+                'error': 'MW 장비 데이터가 없습니다.'
+            }), 400
+
+        logging.info(
+            f"MW 상태 확인 요청: 국사={guksa_id}, 장비 수={len(equipment_list)}개")
+
+        # 소켓 서버로 요청
+        payload = {
+            "guksa_id": guksa_id,
+            "data": equipment_list
+        }
+
+        try:
+            # ZMQ 소켓 연결 및 요청
+            context = zmq.Context()
+            socket = context.socket(zmq.REQ)
+            socket.connect(MW_SOCKET_SERVER)
+            socket.setsockopt(zmq.RCVTIMEO, 60000)  # 60초 타임아웃
+
+            # 요청 전송
+            socket.send_string(json.dumps(payload))
+            logging.info(f"소켓 서버로 MW 상태 요청 전송: {len(equipment_list)}개 장비")
+
+            # 응답 수신
+            response_str = socket.recv_string()
+            socket.close()
+            context.term()
+
+            # JSON 파싱
+            response_data = json.loads(response_str)
+            logging.info(f"소켓 서버로부터 MW 상태 응답 수신 완료")
+
+            return jsonify(response_data), 200
+
+        except zmq.error.Again:
+            logging.error("소켓 서버 응답 타임아웃")
+            return jsonify({
+                'success': False,
+                'error': '소켓 서버 응답 타임아웃'
+            }), 408
+
+        except Exception as socket_error:
+            logging.error(f"소켓 통신 오류: {str(socket_error)}")
+            return jsonify({
+                'success': False,
+                'error': f'소켓 서버 통신 실패: {str(socket_error)}'
+            }), 500
+
+    except Exception as e:
+        error_message = f"MW 상태 확인 중 오류 발생: {str(e)}"
+        logging.error(error_message)
+        logging.error(traceback.format_exc())
+
+        return jsonify({
+            'success': False,
+            'error': error_message
+        }), 500
