@@ -2078,3 +2078,42 @@ def check_mw_status():
             'success': False,
             'error': error_message
         }), 500
+
+# AI RAG 장애분석 팝업 API 엔드포인트 추가
+
+
+@api_bp.route("/fault-detector", methods=["POST"])
+def fault_detector_api():
+    """AI RAG 장애분석을 위한 API 엔드포인트"""
+    try:
+        # POST 데이터 받기
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': '요청 데이터가 없습니다.'}), 400
+
+        # 기본 노드와 경보 데이터 추출
+        base_node = data.get('baseNode', {})
+        alarms = data.get('alarms', [])
+
+        # fault_data 구성
+        fault_data = {
+            'baseNode': base_node,
+            'alarms': alarms,
+            'alarm_count': len(alarms)
+        }
+
+        logging.info(
+            f"AI RAG 장애분석 요청: 기준장비={base_node.get('equip_name', 'Unknown')}, 경보={len(alarms)}건")
+
+        # HTML 템플릿 렌더링하여 반환
+        return render_template('main/fault_detector.html',
+                               equip_id=base_node.get('equip_id', '-'),
+                               equip_name=base_node.get('equip_name', '-'),
+                               sector=base_node.get('sector', ''),
+                               guksa_name=base_node.get('guksa_name', '-'),
+                               alarm_count=len(alarms),
+                               fault_data=fault_data)
+
+    except Exception as e:
+        logging.error(f"AI RAG 장애분석 API 오류: {str(e)}")
+        return jsonify({'error': f'서버 오류: {str(e)}'}), 500

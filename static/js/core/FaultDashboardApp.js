@@ -2150,11 +2150,11 @@ ${alarmDetails}`;
 
     modalBody.appendChild(iframe);
 
-    console.log('📡 POST 요청 시작 - /api/rag_popup');
+    console.log('📡 POST 요청 시작 - /api/fault-detector');
     console.log('📤 요청 데이터:', JSON.stringify(postData, null, 2));
 
     // fetch로 POST 요청 보내고 응답을 iframe에 표시
-    fetch('/api/rag_popup', {
+    fetch('/api/fault-detector', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
