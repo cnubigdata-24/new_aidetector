@@ -98,11 +98,17 @@ MW 장비 SNMP
 
 ### 요청 json 포맷:
 payload = {
-    "guksa_id": "12345",
+    "guksa_id": 12345,
     "data": [
         {
             "id": 1,
             "snmp_ip": "10.48.0.70",
+            "community": "public",
+            "equip_type": "IP-20"
+        }, 
+        {
+            "id": 2,
+            "snmp_ip": "10.48.0.77",
             "community": "public",
             "equip_type": "IP-20"
         }

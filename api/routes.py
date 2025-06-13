@@ -2038,11 +2038,14 @@ def check_mw_status():
             socket.setsockopt(zmq.RCVTIMEO, 60000)  # 60초 타임아웃
 
             # 요청 전송
+            logging.debug(
+                f"요청 JSON: {json.dumps(payload, ensure_ascii=False)}")
             socket.send_string(json.dumps(payload))
             logging.info(f"소켓 서버로 MW 상태 요청 전송: {len(equipment_list)}개 장비")
 
             # 응답 수신
             response_str = socket.recv_string()
+            logging.debug(f"응답 JSON: {response_str}")
             socket.close()
             context.term()
 

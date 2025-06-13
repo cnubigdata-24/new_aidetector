@@ -91,17 +91,17 @@ class InferFailurePoint:
                 f"• 분석 완료 - 현재 발견된 장애점: {len(self.failure_points)}개")
             self.logger.info("-------------------------------")
 
-            self._analyze_upper_node_failures()  # 3. 상위 장비 장애점
+            self.analyze_upper_node_failures()  # 3. 상위 장비 장애점
             self.logger.info(
                 f"• 분석 완료 - 현재 발견된 장애점: {len(self.failure_points)}개")
             self.logger.info("-------------------------------")
 
-            self._analyze_exchange_failures()   # 4. 교환 장비 장애점
+            self.analyze_exchange_failures()   # 4. 교환 장비 장애점
             self.logger.info(
                 f"• 분석 완료 - 현재 발견된 장애점: {len(self.failure_points)}개")
             self.logger.info("-------------------------------")
 
-            self._analyze_transmission_failures()  # 5. 전송 장비 장애점
+            self.analyze_transmission_failures()  # 5. 전송 장비 장애점
             self.logger.info(
                 f"• 분석 완료 - 현재 발견된 장애점: {len(self.failure_points)}개")
             self.logger.info("-------------------------------")
@@ -261,8 +261,14 @@ class InferFailurePoint:
             step_message += f"<br>• SNMP 정보 수집 완료: {len(mw_equipment_data)}개\n"
             step_message += "<br>• MW 장비 상태 확인 API 호출 중...\n"
 
+            # guksa_id 추출 (노드 중 첫 번째의 guksa_id 사용, 없으면 None)
+            guksa_id = None
+            if mw_nodes:
+                guksa_id = mw_nodes[0].get('guksa_id')
+
             # MW 장비 접속 상태 확인 API 호출
-            mw_status_data = self.call_mw_status_api(mw_equipment_data)
+            mw_status_data = self.call_mw_status_api(
+                guksa_id, mw_equipment_data)
 
             if not mw_status_data:
                 step_message += "<br>&nbsp; → MW SNMP 상태 정보를 가져올 수 없습니다."
@@ -417,15 +423,16 @@ class InferFailurePoint:
             return []
 
     # 2-2. MW 상태 확인 API 호출
-    def call_mw_status_api(self, mw_equipment_data) -> List[Dict]:
+    def call_mw_status_api(self, guksa_id, mw_equipment_data) -> List[Dict]:
         try:
             # 요청 페이로드 생성
             payload = {
+                "guksa_id": guksa_id,
                 "data": mw_equipment_data
             }
 
             self.logger.info(
-                f"• MW 상태 확인 API 호출: {len(mw_equipment_data)}개 장비")
+                f"• MW 상태 확인 API 호출: {len(mw_equipment_data)}개 장비, guksa_id={guksa_id}")
 
             # API 호출
             response = requests.post(
@@ -463,16 +470,22 @@ class InferFailurePoint:
                         'max') != 'error' else None
                     threshold = float(param_data.get('threshold', 0))
 
-                    # 범위 및 임계값 체크
+                    # min/max 차이값 디버깅 출력
                     if min_val is not None and max_val is not None:
-                        if value < min_val or value > max_val:
-                            issues.append(f"{param} 범위 초과 ({value})")
-                        elif param in ['RSL', 'TSL'] and value < threshold:
-                            issues.append(
-                                f"{param} 임계값 미달 ({value} < {threshold})")
-                        elif param in ['SNR', 'XPI'] and value < threshold:
-                            issues.append(
-                                f"{param} 임계값 미달 ({value} < {threshold})")
+                        diff = max_val - min_val
+                        self.logger.info(
+                            f"[DEBUG] {slot_name} {param}: value={value}, min={min_val}, max={max_val}, diff={diff}")
+                    else:
+                        self.logger.info(
+                            f"[DEBUG] {slot_name} {param}: value={value}, min={min_val}, max={max_val}")
+
+                    # 임계값 체크만 유지
+                    if param in ['RSL', 'TSL'] and value < threshold:
+                        issues.append(
+                            f"{param} 임계값 미달 ({value} < {threshold})")
+                    elif param in ['SNR', 'XPI'] and value < threshold:
+                        issues.append(
+                            f"{param} 임계값 미달 ({value} < {threshold})")
 
                 except (ValueError, TypeError):
                     if param_data.get('value') == 'error' or param_data.get('min') == 'error':
@@ -509,11 +522,18 @@ class InferFailurePoint:
                     'max') != 'error' else None
                 threshold = float(volt_data.get('threshold', 0))
 
+                # min/max 차이값 디버깅 출력
                 if min_val is not None and max_val is not None:
-                    if value < min_val or value > max_val:
-                        return f"전압 범위 초과 ({value}V)"
-                    elif value < threshold:
-                        return f"전압 임계값 미달 ({value}V < {threshold}V)"
+                    diff = max_val - min_val
+                    self.logger.info(
+                        f"[DEBUG] VOLT: value={value}, min={min_val}, max={max_val}, diff={diff}")
+                else:
+                    self.logger.info(
+                        f"[DEBUG] VOLT: value={value}, min={min_val}, max={max_val}")
+
+                # 임계값 체크만 유지
+                if value < threshold:
+                    return f"전압 임계값 미달 ({value}V < {threshold}V)"
 
             except (ValueError, TypeError):
                 if volt_data.get('value') == 'error':
@@ -522,7 +542,7 @@ class InferFailurePoint:
         return ""
 
     # 3. 상위 장비 장애점 분석
-    def _analyze_upper_node_failures(self):
+    def analyze_upper_node_failures(self):
         self.logger.info("[3단계] 상위 장비 장애점 분석 시작")
 
         # 노드별 경보 정보 매핑
@@ -616,7 +636,7 @@ class InferFailurePoint:
         self.logger.info("-------------------------------")
 
     # 4. 교환 노드 장애점 분석
-    def _analyze_exchange_failures(self):
+    def analyze_exchange_failures(self):
         self.logger.info("[4단계] 교환 장비 장애점 분석 시작")
 
         exchange_nodes = [node for node in self.nodes if node.get(
@@ -753,7 +773,7 @@ class InferFailurePoint:
             return "장애조건 불일치"
 
     # 5. 전송 노드 장애점 분석
-    def _analyze_transmission_failures(self):
+    def analyze_transmission_failures(self):
         self.logger.info("[5단계] 전송 장애점 분석 시작")
 
         transmission_nodes = [node for node in self.nodes
