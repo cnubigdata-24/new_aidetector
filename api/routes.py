@@ -113,10 +113,13 @@ def infer_failure_point():
                     logging.info(
                         f"장애점 분석 요청 (스트리밍): 노드 {len(nodes)}개, 링크 {len(links)}개, 경보 {len(alarms)}건")
 
-                    # InferFailurePoint 인스턴스 생성 및 분석 실행
-                    analyzer = InferFailurePoint(
-                        progress_callback=progress_callback)
-                    result = analyzer.analyze(nodes, links, alarms)
+                    # Flask 앱 컨텍스트 활성화 후 InferFailurePoint 인스턴스 생성/분석 실행
+                    # Flask-SQLAlchemy ORM(TblSnmpInfo.query)을 사용하도록 수정
+                    from app import app
+                    with app.app_context():
+                        analyzer = InferFailurePoint(
+                            progress_callback=progress_callback)
+                        result = analyzer.analyze(nodes, links, alarms)
 
                     # 최종 결과 전송
                     progress_queue.put({
@@ -2022,7 +2025,7 @@ def check_mw_status():
             }), 400
 
         logging.info(
-            f"MW 상태 확인 요청: 국사={guksa_id}, 장비 수={len(equipment_list)}개")
+            f">> MW 상태 확인 요청: 국사={guksa_id}, 장비 수={len(equipment_list)}개")
 
         # 소켓 서버로 요청
         payload = {
@@ -2031,24 +2034,195 @@ def check_mw_status():
         }
 
         try:
-            # ZMQ 소켓 연결 및 요청
-            context = zmq.Context()
-            socket = context.socket(zmq.REQ)
-            socket.connect(MW_SOCKET_SERVER)
-            socket.setsockopt(zmq.RCVTIMEO, 60000)  # 60초 타임아웃
+            #             # ZMQ 소켓 연결 및 요청
+            #             context = zmq.Context()
+            #             socket = context.socket(zmq.REQ)
+            #             socket.connect(MW_SOCKET_SERVER)
+            #             socket.setsockopt(zmq.RCVTIMEO, 60000)  # 60초 타임아웃
 
-            # 요청 전송
-            logging.debug(
-                f"요청 JSON: {json.dumps(payload, ensure_ascii=False)}")
-            socket.send_string(json.dumps(payload))
-            logging.info(f"소켓 서버로 MW 상태 요청 전송: {len(equipment_list)}개 장비")
+            #             # 요청 전송
+            #             logging.debug(
+            #                 f"요청 JSON: {json.dumps(payload, ensure_ascii=False)}")
+            #             socket.send_string(json.dumps(payload))
+            #             logging.info(f">> 소켓 서버로 MW 상태 요청 전송: {len(equipment_list)}개 장비")
 
-            # 응답 수신
-            response_str = socket.recv_string()
-            logging.debug(f"응답 JSON: {response_str}")
-            socket.close()
-            context.term()
+            #             # 응답 수신
+            #             response_str = socket.recv_string()
+            #             logging.debug(f"응답 JSON: {response_str}")
+            #             socket.close()
+            #             context.term()
 
+            # 임시 테스트용 코드
+            response_str = '''[
+                    {
+                    "id": 209,
+                    "equip_type": "IP-20",
+                    "data": {
+                    "interfaces": {
+                    "Radio: Slot 3, Port 1": {
+                    "RSL": {
+                    "value": "-45",
+                    "min": "0",
+                    "max": "-99",
+                    "threshold": "-50"
+                    },
+                    "TSL": {
+                    "value": "22",
+                    "min": "1",
+                    "max": "22",
+                    "threshold": "25"
+                    },
+                    "SNR": {
+                    "value": "39.98",
+                    "min": "39.31",
+                    "max": "40.21",
+                    "threshold": "34"
+                    },
+
+                    "XPI": {
+                    "value": "0",
+                    "min": "0",
+                    "max": "0",
+                    "threshold": "15"
+                    },
+
+                    "ERR": {
+                    "BER": "13",
+                    "ES": "0",
+                    "SES": "0",
+                    "UAS": "0",
+                    "BBE": "0"
+                    }
+
+                    },
+
+                    "Radio: Slot 4, Port 1": {
+
+                    "RSL": {
+                    "value": "-99",
+                    "min": "0",
+                    "max": "-99",
+                    "threshold": "-50"
+                    },
+
+                    "TSL": {
+                    "value": "0",
+                    "min": "-50",
+                    "max": "50",
+                    "threshold": "25"
+                    },
+
+                    "SNR": {
+                    "value": "99.0",
+                    "min": "error",
+                    "max": "error",
+                    "threshold": "34"
+                    },
+
+                    "XPI": {
+                    "value": "9900",
+                    "min": "error",
+                    "max": "error",
+                    "threshold": "15"
+                    },
+
+                    "ERR": {
+                    "BER": "0",
+                    "ES": "error",
+                    "SES": "error",
+                    "UAS": "error",
+                    "BBE": "error"
+                    }
+                    },
+
+                    "Radio: Slot 5, Port 1": {
+                    "RSL": {
+                    "value": "-45",
+                    "min": "0",
+                    "max": "-99",
+                    "threshold": "-50"
+                    },
+
+                    "TSL": {
+                    "value": "22",
+                    "min": "1",
+                    "max": "22",
+                    "threshold": "25"
+                    },
+
+                    "SNR": {
+                    "value": "41.01",
+                    "min": "40.06",
+                    "max": "41.14",
+                    "threshold": "34"
+                    },
+
+                    "XPI": {
+                    "value": "0",
+                    "min": "0",
+                    "max": "0",
+                    "threshold": "15"
+                    },
+
+                    "ERR": {
+                    "BER": "13",
+                    "ES": "0",
+                    "SES": "0",
+                    "UAS": "0",
+                    "BBE": "0"
+                    }
+                    },
+
+                    "Radio: Slot 6, Port 1": {
+                    "RSL": {
+                    "value": "-45",
+                    "min": "0",
+                    "max": "-99",
+                    "threshold": "-50"
+                    },
+
+                    "TSL": {
+                    "value": "22",
+                    "min": "1",
+                    "max": "22",
+                    "threshold": "25"
+                    },
+
+                    "SNR": {
+                    "value": "40.11",
+                    "min": "39.11",
+                    "max": "40.26",
+                    "threshold": "34"
+                    },
+
+                    "XPI": {
+                    "value": "0",
+                    "min": "0",
+                    "max": "0",
+                    "threshold": "15"
+                    },
+
+                    "ERR": {
+                    "BER": "13",
+                    "ES": "0",
+                    "SES": "0",
+                    "UAS": "0",
+                    "BBE": "0"
+                    }
+                    }
+                    },
+
+                    "VOLT": {
+                    "value": "45",
+                    "min": "50",
+                    "max": "51",
+                    "threshold": "38"
+                    }
+                    },
+
+                    "get_datetime": "2025-06-10 16:20:39"
+                    }
+                    ]'''
             # JSON 파싱
             response_data = json.loads(response_str)
             logging.info(f"소켓 서버로부터 MW 상태 응답 수신 완료")

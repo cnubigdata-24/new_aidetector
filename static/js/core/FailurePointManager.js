@@ -336,15 +336,17 @@ class FailurePointManager {
 
     this.currentFailurePoints.forEach((failurePoint) => {
       const failureType = failurePoint.failure_type || '';
-      const field = failurePoint.field || '';
+      const field = failurePoint.field || failurePoint.sector || '';
       const type = failurePoint.type || '';
+      const equipmentType = failurePoint.equipment_type || '';
 
       // 링크 장애점 (1단계)
       if (type === 'link' || failureType.includes('링크') || failureType.includes('선로')) {
         summary.link_failures++;
       }
-      // MW 장애점 (2단계)
+      // MW 장비 장애점 (2단계) - equipment_type으로 구분
       else if (
+        equipmentType === 'MW' ||
         field === 'MW' ||
         failureType.includes('MW') ||
         failureType.includes('페이딩') ||
@@ -352,11 +354,11 @@ class FailurePointManager {
       ) {
         summary.mw_equipment_failures++;
 
-        // MW 세부 분류
-        if (failureType.includes('페이딩')) {
+        // MW 세부 분류 - 새로운 필드 사용
+        if (failurePoint.mw_fading_failure || failureType.includes('페이딩')) {
           summary.mw_fading_failures++;
         }
-        if (failureType.includes('전압')) {
+        if (failurePoint.mw_voltage_failure || failureType.includes('전압')) {
           summary.mw_voltage_failures++;
         }
       }
@@ -365,6 +367,7 @@ class FailurePointManager {
         failureType.includes('상위 노드') ||
         failureType.includes('상위 장비') ||
         (type === 'node' &&
+          equipmentType !== 'MW' && // MW 장비는 제외
           (field === 'IP' ||
             field === '전송' ||
             field === '교환' ||
@@ -497,6 +500,9 @@ class FailurePointManager {
         if (!circle.empty()) {
           // 안전한 애니메이션 적용
           this.applyNodeAnimation(nodeElement, circle, nodeId);
+
+          // MW 장비인 경우 배지 추가
+          this.addMWBadgesIfNeeded(nodeElement, nodeId);
         } else {
           console.warn(`⚠️ 노드 circle 엘리먼트를 찾을 수 없음: ${nodeId}`);
         }
@@ -514,6 +520,123 @@ class FailurePointManager {
         });
         this._nodeErrorShown = true;
       }
+    }
+  }
+
+  /**
+   * MW 장비에 필요한 배지 추가
+   */
+  addMWBadgesIfNeeded(nodeElement, nodeId) {
+    try {
+      const failurePoint = this.currentFailurePoints.find((fp) => fp.id === nodeId);
+      if (!failurePoint || failurePoint.equipment_type !== 'MW') {
+        return;
+      }
+
+      console.log(`🏷️ MW 배지 추가 시작: ${nodeId}`, failurePoint);
+
+      const hasFading = failurePoint.mw_fading_failure || failurePoint.mw_error_failure;
+      const hasVoltage = failurePoint.mw_voltage_failure;
+
+      // 통합 배지 텍스트 결정
+      let badgeText = '';
+      if (hasFading && hasVoltage) {
+        badgeText = 'fading, 저전압';
+      } else if (hasFading) {
+        badgeText = 'fading';
+      } else if (hasVoltage) {
+        badgeText = '저전압';
+      }
+
+      if (badgeText) {
+        this.addMWBadge(nodeElement, badgeText, nodeId);
+      }
+    } catch (error) {
+      console.error(`❌ MW 배지 추가 오류 (${nodeId}):`, error);
+    }
+  }
+
+  /**
+   * MW 통합 배지 생성 (노드 좌측에 위치)
+   */
+  addMWBadge(nodeElement, badgeText, nodeId) {
+    try {
+      console.log(`🏷️ MW 통합 배지 생성: ${nodeId} - ${badgeText}`);
+
+      // 노드의 위치와 크기 정보 가져오기
+      const nodeRect = nodeElement.node().getBoundingClientRect();
+      const nodeData = d3.select(nodeElement.node()).datum();
+
+      // 노드 중심 좌표 계산
+      const nodeX = nodeData.x || 0;
+      const nodeY = nodeData.y || 0;
+      const nodeRadius = 15; // 기본 노드 반지름
+
+      // 배지를 노드 좌측에 위치 (겹치지 않도록)
+      const badgeX = nodeX - nodeRadius - 35; // 노드 좌측으로 35px 떨어진 위치
+      const badgeY = nodeY - 10; // 노드 중심에서 약간 위쪽
+
+      // 배지 그룹 생성
+      const badgeGroup = d3
+        .select(nodeElement.node().parentNode)
+        .append('g')
+        .attr('class', `mw-badge-${nodeId}`)
+        .attr('transform', `translate(${badgeX}, ${badgeY})`);
+
+      // 배지 배경 (둥근 사각형)
+      const padding = 4;
+      const fontSize = 13;
+      const textWidth = badgeText.length * 9; // 대략적인 텍스트 너비
+      const badgeWidth = textWidth + padding * 2;
+      const badgeHeight = 20;
+
+      // 텍스트 길이에 따른 x 위치 조절
+      let rectX, textX;
+      if (badgeText === 'fading') {
+        // fading만 있는 경우: 우측으로 이동
+        rectX = -badgeWidth / 2.5;
+        textX = 5;
+      } else if (badgeText === '저전압') {
+        // 저전압만 있는 경우: 우측으로 이동
+        rectX = -badgeWidth / 2.5;
+        textX = 5;
+      } else {
+        // fading, 저전압 모두 있는 경우
+        rectX = -badgeWidth / 1.7;
+        textX = -7;
+      }
+
+      badgeGroup
+        .append('rect')
+        .attr('x', rectX)
+        .attr('y', -badgeHeight / 2)
+        .attr('width', badgeWidth)
+        .attr('height', badgeHeight)
+        .attr('rx', 8) // 둥근 모서리
+        .attr('ry', 8)
+        .attr('fill', '#ff4444') // 빨간색 배경
+        .attr('stroke', '#ffffff')
+        .attr('stroke-width', 1)
+        .attr('opacity', 0.9);
+
+      // 배지 텍스트
+      badgeGroup
+        .append('text')
+        .attr('x', textX)
+        .attr('y', 0)
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'central')
+        .attr('fill', 'white')
+        .attr('font-size', `${fontSize}px`)
+        .attr('font-weight', 'bold')
+        .attr('font-family', 'Arial, sans-serif')
+        .text(badgeText);
+
+      console.log(
+        `✅ MW 통합 배지 생성 완료: ${nodeId} - ${badgeText} (위치: ${badgeX}, ${badgeY})`
+      );
+    } catch (error) {
+      console.error(`❌ MW 통합 배지 생성 오류 (${nodeId}):`, error);
     }
   }
 
@@ -1014,6 +1137,11 @@ class FailurePointManager {
               circle
                 .attr('stroke', originalStyles.originalStroke)
                 .attr('stroke-width', originalStyles.originalWidth);
+
+              // MW 통합 배지 제거
+              if (element && !element.empty()) {
+                console.log(`🧹 MW 배지 제거: ${id}`);
+              }
             } else if (type === 'link' && element && !element.empty() && originalStyles) {
               element
                 .attr('stroke', originalStyles.originalStroke)
@@ -1025,6 +1153,16 @@ class FailurePointManager {
           }
         }
       );
+
+      // 모든 MW 통합 배지 강제 제거 (추가 안전장치)
+      try {
+        if (typeof d3 !== 'undefined') {
+          d3.selectAll('[class*="mw-badge-"]').remove();
+          console.log('🧹 모든 MW 배지 강제 제거 완료');
+        }
+      } catch (badgeError) {
+        console.warn('MW 배지 강제 제거 중 오류:', badgeError);
+      }
 
       // 배열 초기화
       this.animationElements = [];
@@ -1047,6 +1185,8 @@ class FailurePointManager {
         if (typeof d3 !== 'undefined') {
           d3.selectAll('.links line').interrupt();
           d3.selectAll('.nodes .node-group circle').interrupt();
+          // MW 통합 배지 강제 제거
+          d3.selectAll('[class*="mw-badge-"]').remove();
         }
       } catch (d3Error) {
         console.warn('D3 트랜지션 강제 중단 중 오류:', d3Error);

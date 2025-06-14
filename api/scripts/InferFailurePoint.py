@@ -21,7 +21,7 @@ class InferFailurePoint:
         self.logger = logging.getLogger(__name__)
         self.progress_callback = progress_callback
 
-    def _send_progress(self, message):
+    def send_progress(self, message):
         """진행 상황을 콜백으로 전달"""
         if self.progress_callback:
             self.progress_callback(message)
@@ -40,7 +40,7 @@ class InferFailurePoint:
             self.failure_points = []
 
             # 진행 상황 전송
-            self._send_progress(
+            self.send_progress(
                 f"📌 NW 장애점 분석을 시작합니다. (1~5단계) <br><br> • AI 분석 입력 데이터: 장비 {len(self.nodes)}대, 링크 {len(self.links)}구간, 경보 {len(self.alarms)}건")
 
             # 입력 데이터 로깅
@@ -52,6 +52,7 @@ class InferFailurePoint:
             # 노드별 세부 정보 로깅
             if self.nodes:
                 self.logger.info(f"✔️ 장비 상세 정보:")
+
                 for i, node in enumerate(self.nodes):
                     node_name = node.get('name', node.get('id', 'Unknown'))
                     node_field = node.get('field', 'Unknown')
@@ -63,6 +64,7 @@ class InferFailurePoint:
             # 링크별 세부 정보 로깅
             if self.links:
                 self.logger.info(f"✔️ 링크 상세 정보:")
+
                 for i, link in enumerate(self.links):
                     link_name = link.get(
                         'link_name', link.get('id', 'Unknown'))
@@ -71,22 +73,24 @@ class InferFailurePoint:
                         f"• [{i+1}] {link_name} (경보: {alarm_count}개)")
 
             # 데이터 검증
-            if not self._validate_input_data():
-                self.logger.warning("❌ 입력 데이터 검증 실패")
-                return self.create_empty_result("입력 데이터가 부족합니다.")
+            if not self.validate_input_data():
+                self.logger.warning("❌ 분석할 경보 데이터 검증 실패")
 
-            self.logger.info("✔️ 입력 데이터 검증 완료")
+                return self.create_empty_result("분석할 경보 데이터가 부족합니다.")
+
+            self.logger.info("✔️ 경보 데이터 여부 검증 완료")
             self.logger.info("-" * 60)
 
-            # 단계별 장애점 분석
+            # 5단계 장애점 분석 ######################################################
             self.logger.info("📌 단계별 장애점 분석 시작")
 
-            self._analyze_link_failures()      # 1. 링크 선로 장애점
+            self.analyze_link_failures()      # 1. 링크 선로 장애점
             self.logger.info(
                 f"• 분석 완료 - 현재 발견된 장애점: {len(self.failure_points)}개")
             self.logger.info("-------------------------------")
 
-            self._analyze_mw_equipment_status()  # 2. MW 장애 (페이딩, 배터리 모드, 오류)
+            # 2. MW 장비 상태 점검
+            self.analyze_mw_equipment_status()
             self.logger.info(
                 f"• 분석 완료 - 현재 발견된 장애점: {len(self.failure_points)}개")
             self.logger.info("-------------------------------")
@@ -124,21 +128,17 @@ class InferFailurePoint:
 
         except Exception as e:
             self.logger.error(f"❌ 장애점 분석 중 오류: {str(e)}")
-            self._send_progress(f"❌ 장애점 분석 중 오류가 발생했습니다: {str(e)}")
+            self.send_progress(f"❌ 장애점 분석 중 오류가 발생했습니다: {str(e)}")
             return self.create_error_result(str(e))
 
     # 입력 데이터 검증
-    def _validate_input_data(self) -> bool:
+    def validate_input_data(self) -> bool:
         if not self.nodes:
             self.logger.warning("노드 데이터가 없습니다.")
             return False
 
         # 노드와 링크 전체 경보 수
         total_alarms_count = 0
-
-        # 전체 경보 배열 확인
-        # if self.alarms:
-        #    total_alarms_count += len([alarm for alarm in self.alarms if alarm])
 
         # 노드 내부 경보 확인
         for node in self.nodes:
@@ -160,13 +160,13 @@ class InferFailurePoint:
             f"• 링크 내부 경보: {sum(len(link.get('alarms', [])) for link in self.links)}건")
 
         if total_alarms_count == 0:
-            self.logger.warning("전체 시스템에 경보가 없습니다.")
+            self.logger.warning("노드와 링크에 경보가 없습니다.")
             return False
 
         return True
 
     # 1. 선로 장애점 분석: 선로에 경보가 있는 경우 (Dr. Cable 경보는 선로 피해 장애임)
-    def _analyze_link_failures(self):
+    def analyze_link_failures(self):
         self.logger.info("-------------------------------")
         self.logger.info("[1단계] 선로 분야 장애점 분석 시작")
 
@@ -218,18 +218,18 @@ class InferFailurePoint:
                 self.logger.info(f"• 경보 없음: 정상")
 
         # 단계 완료 메시지
-        step_message += f"\n<br><br>• 선로 피해 점검 결과:\n" + \
+        step_message += "\n<br><br>• 선로 피해 점검 결과:\n" + \
             "\n".join(link_details)
         step_message += f"\n<br><br>• 장애점 발견: {link_failure_count}개"
 
-        self._send_progress(step_message)
+        self.send_progress(step_message)
 
         self.logger.info(
-            f"[1단계] 선로 분야 장애점 분석 완료 <br>• 📌 발견된 선로 장애점: {link_failure_count}개")
+            f"[1단계] 선로 분야 장애점 분석 완료 => 발견된 선로 장애점: {link_failure_count}개")
         self.logger.info("-------------------------------")
 
     # 2. MW 장비 상태 점검
-    def _analyze_mw_equipment_status(self):
+    def analyze_mw_equipment_status(self):
         self.logger.info("[2단계] MW 장비 상태 점검 시작")
 
         # MW 노드 필터링
@@ -243,196 +243,178 @@ class InferFailurePoint:
 
         if not mw_nodes:
             step_message += "<br>&nbsp; → MW 장비가 없어 2단계 분석을 패스합니다."
-            self._send_progress(step_message)
+            self.send_progress(step_message)
             self.logger.info("• MW 장비가 없습니다. 2단계 분석을 건너뜁니다.")
             return
 
         try:
-            # MW 노드 DB 정보 수집
-            step_message += "<br>• MW 장비 SNMP 정보 수집을 시작합니다.\n"
-            mw_equipment_data = self.get_mw_equipment_info(mw_nodes)
+            # MW 장비 SNMP DB 정보 수집
+            step_message += "<br>• MW 장비 SNMP 데이터를 DB에서 조회합니다.\n"
+            mw_equipment_data, failed_equipments, success_equipments = self.get_mw_snmp_db(
+                mw_nodes)
+
+            # DB 조회 결과를 채팅창에 표시
+            step_message += f"<br>&nbsp; → DB SNMP 데이터 수집 성공: {len(success_equipments)}개"
+            if success_equipments:
+                success_names = [equip['equip_name']
+                                 for equip in success_equipments]
+                step_message += f" ({', '.join(success_names)})"
+
+            step_message += f", 실패: {len(failed_equipments)}개"
+            if failed_equipments:
+                # 실패 장비명만 추출 (HTML 태그 제거)
+                failed_names = []
+                for failed in failed_equipments:
+                    # "MW 장비 '장비명'" 패턴에서 장비명 추출
+                    import re
+                    match = re.search(r"MW 장비 '([^']+)'", failed)
+                    if match:
+                        failed_names.append(match.group(1))
+                if failed_names:
+                    step_message += f" ({', '.join(failed_names)})"
 
             if not mw_equipment_data:
-                step_message += "<br>&nbsp; → MW 장비 SNMP 정보를 찾을 수 없습니다."
-                self._send_progress(step_message)
-                self.logger.warning("→ ⚠️ MW 장비 SNMP 정보를 찾을 수 없습니다.")
+                step_message += f"\n<br>&nbsp; → DB에서 MW 장비 SNMP 데이터를 찾을 수 없습니다."
+                # 실패 상세 내용을 같은 메시지에 추가
+                if failed_equipments:
+                    step_message += f"\n<br>• DB에서 SNMP 데이터 수집 실패 상세:\n" + \
+                        "\n".join(failed_equipments)
+                self.send_progress(step_message)
+                self.logger.warning("→ ⚠️ DB에서 MW 장비 SNMP 데이터를 찾을 수 없습니다.")
                 return
 
-            step_message += f"<br>• SNMP 정보 수집 완료: {len(mw_equipment_data)}개\n"
-            step_message += "<br>• MW 장비 상태 확인 API 호출 중...\n"
+            step_message += f"\n<br>• 다음, 실시간 MW 장비 상태 확인 API를 호출합니다.\n"
 
-            # guksa_id 추출 (노드 중 첫 번째의 guksa_id 사용, 없으면 None)
+            # guksa_id 추출 (장비 중 첫 번째의 guksa_id 사용, 없으면 None)
             guksa_id = None
             if mw_nodes:
-                guksa_id = mw_nodes[0].get('guksa_id')
+                guksa_id = mw_nodes[0].get('guksa_id')  # guksa_id는 별 의미는 없음.
 
-            # MW 장비 접속 상태 확인 API 호출
-            mw_status_data = self.call_mw_status_api(
-                guksa_id, mw_equipment_data)
+            # MW 장비 접속 상태 확인 API 호출 (전체 장비를 한꺼번에)
+            mw_status_data = self.call_mw_snmp_api(guksa_id, mw_equipment_data)
 
             if not mw_status_data:
                 step_message += "<br>&nbsp; → MW SNMP 상태 정보를 가져올 수 없습니다."
-                self._send_progress(step_message)
+                self.send_progress(step_message)
                 self.logger.warning("• ⚠️ MW SNMP 상태 정보를 가져올 수 없습니다.")
                 return
 
-            step_message += f"<br>&nbsp; → MW SNMP 상태 정보를 수신했습니다. ({len(mw_status_data)}개)\n"
-            step_message += "<br>• MW 파라미터별 상세 분석을 진행합니다.\n"
+            step_message += f"<br>&nbsp; → MW SNMP 상태 정보 수신: {len(mw_status_data)}건\n"
+            step_message += "<br><br>• MW 파라미터별 상세 분석을 진행합니다.\n"
 
-            # MW 장애점 분석
-            mw_failure_count, mw_details = self._analyze_mw_status_data_detailed(
-                mw_status_data)
+            # MW 장애점 분석 (요청/응답 ID 매칭 개선)
+            mw_failure_count, mw_details = self.analyze_mw_status_data(
+                mw_status_data, mw_nodes, mw_equipment_data)
 
-            step_message += "<br>• MW 파라미터별 점검 결과:\n" + "\n".join(mw_details)
+            step_message += "\n".join(mw_details)
             step_message += f"\n<br><br>• 장애점 발견: {mw_failure_count}개"
 
-            self._send_progress(step_message)
+            self.send_progress(step_message)
 
             self.logger.info(
-                f"[2단계] MW 장비 상태 점검 완료 <br> • 📌 발견된 MW 장애점: {mw_failure_count}개")
+                f"[2단계] MW 장비 상태 점검 완료 => 발견된 MW 장애점: {mw_failure_count}개")
             self.logger.info("-------------------------------")
 
         except Exception as e:
             step_message += f"<br>• 오류 발생: {str(e)}"
-            self._send_progress(step_message)
+            self.send_progress(step_message)
             self.logger.error(f"• ❌ MW 장비 상태 점검 중 오류: {str(e)}")
 
-    # 2-3. MW 상태 데이터 분석 (상세 버전)
-    def _analyze_mw_status_data_detailed(self, mw_status_data) -> tuple:
-        failure_count = 0
-        details = []
-
-        for equipment_data in mw_status_data:
-            equip_id = equipment_data.get('id')
-            equip_type = equipment_data.get('equip_type')
-            data = equipment_data.get('data', {})
-
-            details.append(f"<br>• {equip_id} ({equip_type}):")
-            self.logger.info(
-                f"• 🔍 MW 장비 분석: ID={equip_id}, Type={equip_type}")
-
-            # 인터페이스 분석
-            interfaces = data.get('interfaces', {})
-
-            for slot_name, slot_data in interfaces.items():
-                self.logger.info(f"• 슬롯 분석: {slot_name}")
-
-                # RSL, TSL, SNR, XPI 분석
-                fading_issues = self.check_fading_parameters(
-                    slot_data, slot_name)
-                if fading_issues:
-                    self.failure_points.append({
-                        'type': 'mw_equipment',
-                        'id': equip_id,
-                        'name': f"MW 장비 {equip_id} ({slot_name})",
-                        'sector': 'MW',
-
-                        'failure_type': 'MW 전파 페이딩 의심',
-                        'inference_detail': f'{slot_name}: {", ".join(fading_issues)}',
-                        'alarms': [],
-                        'confidence': 0.8
-                    })
-                    failure_count += 1
-                    details.append(
-                        f"<br>&nbsp; - {slot_name}: 전파 페이딩 의심 ({', '.join(fading_issues)})")
-                    self.logger.info(
-                        f"• 📌 전파 페이딩 의심 발견: {', '.join(fading_issues)}")
-                else:
-                    details.append(f"<br>  - {slot_name}: RSL/TSL/SNR/XPI 정상")
-
-                # ERR 분석
-                err_issues = self.check_error_parameters(slot_data, slot_name)
-                if err_issues:
-                    self.failure_points.append({
-                        'type': 'mw_equipment',
-                        'id': equip_id,
-                        'name': f"MW 장비 {equip_id} ({slot_name})",
-                        'sector': 'MW',
-
-                        'failure_type': 'MW 전파수신 오류: 페이딩 또는 대국 장비 장애 의심',
-                        'inference_detail': f'{slot_name}: 오류 발생 - {", ".join(err_issues)}',
-                        'alarms': [],
-                        'confidence': 0.9
-                    })
-                    failure_count += 1
-                    details.append(
-                        f"<br>>&nbsp;  - {slot_name}: 전파수신 오류 ({', '.join(err_issues)})")
-                    self.logger.info(
-                        f"• 📌 MW 전파수신 오류 발견: {', '.join(err_issues)}")
-                else:
-                    details.append(f"<br>  - {slot_name}: ERR 파라미터 정상")
-
-            # VOLT 분석
-            volt_issues = self.check_voltage_parameters(data)
-            if volt_issues:
-                self.failure_points.append({
-                    'type': 'mw_equipment',
-                    'id': equip_id,
-                    'name': f"MW 장비 {equip_id}",
-                    'sector': 'MW',
-
-                    'failure_type': 'MW 장비 배터리 모드로 한전 정전 의심',
-                    'inference_detail': f'MW 장비 전압 이상: {volt_issues}',
-                    'alarms': [],
-                    'confidence': 0.85
-                })
-                failure_count += 1
-                details.append(f"<br>  - 전압: 배터리 모드 의심 ({volt_issues})")
-                self.logger.info(f"• 📌 MW 장비 전압 이상 발견: {volt_issues}")
-            else:
-                details.append(f"<br>  - 전압: 정상")
-
-        return failure_count, details
-
-    # 2-1. MW 노드들의 SNMP 정보 수집
-    def get_mw_equipment_info(self, mw_nodes) -> List[Dict]:
+    # 2-1. DB에서 MW 노드들의 SNMP 접속 정보 수집
+    def get_mw_snmp_db(self, mw_nodes) -> tuple:
         try:
             from db.models import TblSnmpInfo
+            from flask import current_app
+
+            # Flask 컨텍스트 확인
+            try:
+                current_app._get_current_object()
+                self.logger.info("• ✅ Flask 애플리케이션 컨텍스트 확인됨")
+            except RuntimeError as e:
+                self.logger.error(f"• ❌ Flask 컨텍스트 없음: {e}")
+                return [], [], []
 
             mw_equipment_data = []
+            failed_equipments = []  # TblSnmpInfo DB 테이블 내 조회 실패 장비 목록
+            success_equipments = []  # 성공한 장비 목록
 
             for node in mw_nodes:
-                equip_id = node.get('equip_id') or node.get('id')
-                if not equip_id:
+                # 노드 정보 디버깅 출력
+                self.logger.info(f"• 🔍 MW 노드 정보 디버깅:")
+                self.logger.info(f"  - node ID: {node.get('id')}")  # equip_id
+                self.logger.info(
+                    f"  - node name: {node.get('name')}")  # equip_name
+                self.logger.info(f"  - field: {node.get('field')}")
+                self.logger.info(f"  - level: {node.get('level')}")
+
+                equip_name = node.get('name')  # or node.get('id')
+
+                if not equip_name:
+                    error_msg = f"MW 장비 'Unknown': equip_name 정보 없음"
+                    self.logger.warning(f"• ⚠️ {error_msg}")
+                    failed_equipments.append(f"<br>&nbsp; - {error_msg}")
                     continue
 
-                # tblSnmpInfo에서 정보 조회
+                self.logger.info(
+                    f"• 🔍 MW 장비 SNMP 정보 검색: equip_name='{equip_name}'")
+
+                # ORM으로 정확히 일치하는 장비 조회
+                # (tbl_snmp_info.equip_name == node.equip_name)
                 snmp_info = TblSnmpInfo.query.filter_by(
-                    equip_id=equip_id).first()
+                    equip_name=str(equip_name)).first()
 
                 if snmp_info:
-                    mw_equipment_data.append({
-                        'id': snmp_info.equip_id,
+                    # SNMP 정보 디버깅 출력
+                    self.logger.info(f"• ✅ TblSnmpInfo 매칭 성공:")
+                    self.logger.info(f"  - SNMP ID: {snmp_info.id}")
+                    self.logger.info(f"  - SNMP IP: {snmp_info.snmp_ip}")
+                    self.logger.info(f"  - Community: {snmp_info.community}")
+                    self.logger.info(f"  - Equip Type: {snmp_info.equip_type}")
+                    self.logger.info(f"  - Equip Name: {snmp_info.equip_name}")
+
+                    # SNMP API 요청을 위한 JSON 데이터 생성
+                    equipment_info = {
+                        'id': snmp_info.id,  # TblSnmpInfo의 Primary Key
                         'snmp_ip': snmp_info.snmp_ip,
                         'community': snmp_info.community,
                         'equip_type': snmp_info.equip_type,
                         'equip_name': snmp_info.equip_name
-                    })
+                    }
+
+                    mw_equipment_data.append(equipment_info)
+                    success_equipments.append(equipment_info)
+
                     self.logger.info(
-                        f"• MW 장비 정보 수집: {snmp_info.equip_name} ({snmp_info.snmp_ip})")
+                        f"• ✅ MW 장비 정보 수집 성공: {snmp_info.equip_name} (ID: {snmp_info.id}, IP: {snmp_info.snmp_ip})")
                 else:
-                    self.logger.warning(
-                        f"• ⚠️ TblSnmpInfo DB에 SNMP 정보 없음: equip_id={equip_id}")
+                    error_msg = f"MW 장비 '{node.get('name', 'Unknown')}' (equip_name: '{equip_name}'): TblSnmpInfo에서 매칭되는 SNMP 정보 없음"
+                    self.logger.warning(f"• ⚠️ {error_msg}")
+                    failed_equipments.append(f"<br>&nbsp; - {error_msg}")
 
             self.logger.info(
-                f"• MW 장비 SNMP 정보 수집 완료: {len(mw_equipment_data)}개")
-            return mw_equipment_data
-
+                f"• ✅ MW 장비 SNMP 정보 수집 완료: 성공 {len(mw_equipment_data)}개, 실패 {len(failed_equipments)}개")
+            return mw_equipment_data, failed_equipments, success_equipments
         except Exception as e:
-            self.logger.error(f"• ❌ MW 장비 정보 수집 실패: {str(e)}")
-            return []
+            self.logger.error(f"• ❌ MW 장비 정보 수집 실패: {e}")
+            return [], [], []
 
-    # 2-2. MW 상태 확인 API 호출
-    def call_mw_status_api(self, guksa_id, mw_equipment_data) -> List[Dict]:
+    # 2-2. MW 상태 확인 API 호출 (전체 장비를 한꺼번에)
+    def call_mw_snmp_api(self, guksa_id, mw_equipment_data) -> List[Dict]:
         try:
-            # 요청 페이로드 생성
+            # 요청 페이로드 생성 (전체 MW 장비를 한꺼번에)
             payload = {
                 "guksa_id": guksa_id,
-                "data": mw_equipment_data
+                "data": mw_equipment_data  # 전체 성공한 장비들의 SNMP 정보
             }
 
+            # 요청 JSON 디버깅 출력 (상세)
             self.logger.info(
                 f"• MW 상태 확인 API 호출: {len(mw_equipment_data)}개 장비, guksa_id={guksa_id}")
+            self.logger.info("=" * 80)
+            self.logger.info("📤 MW API 요청 JSON (상세) - 전체 장비:")
+            self.logger.info("=" * 80)
+            self.logger.info(json.dumps(payload, indent=2, ensure_ascii=False))
+            self.logger.info("=" * 80)
 
             # API 호출
             response = requests.post(
@@ -443,16 +425,220 @@ class InferFailurePoint:
 
             if response.status_code == 200:
                 result = response.json()
-                self.logger.info(f"• MW 상태 데이터 수신 완료")
+
+                # 응답 JSON 디버깅 출력 (상세)
+                self.logger.info(f"• ✅ MW 상태 데이터 수신 완료")
+                self.logger.info("=" * 80)
+                self.logger.info("📥 MW API 응답 JSON (상세) - 전체 장비:")
+                self.logger.info("=" * 80)
+                self.logger.info(json.dumps(
+                    result, indent=2, ensure_ascii=False))
+                self.logger.info("=" * 80)
+
                 return result
             else:
                 self.logger.error(
                     f"• ❌ MW 상태 API 호출 실패: {response.status_code}")
+                self.logger.error(f"• 응답 내용: {response.text}")
                 return []
 
         except Exception as e:
             self.logger.error(f"• ❌ MW 상태 확인 API 호출 실패: {str(e)}")
             return []
+
+    # 2-3. MW 상태 데이터 분석 (요청/응답 ID 매칭 개선)
+    def analyze_mw_status_data(self, mw_status_data, mw_nodes, mw_equipment_data) -> tuple:
+        failure_count = 0
+        details = []
+
+        # 요청한 SNMP ID 목록과 응답받은 ID 목록 비교
+        self.logger.info("• 🔍 요청 vs 응답 ID 비교:")
+        requested_ids = [equip['id'] for equip in mw_equipment_data]
+        self.logger.info(f"  - 요청한 SNMP ID 목록: {requested_ids}")
+
+        received_ids = [equipment_data.get('id')
+                        for equipment_data in mw_status_data]
+        self.logger.info(f"  - 응답받은 SNMP ID 목록: {received_ids}")
+
+        missing_ids = set(requested_ids) - set(received_ids)
+        extra_ids = set(received_ids) - set(requested_ids)
+
+        if missing_ids:
+            self.logger.warning(f"  - 응답에서 누락된 ID: {list(missing_ids)}")
+        if extra_ids:
+            self.logger.warning(f"  - 요청에 없는 추가 ID: {list(extra_ids)}")
+
+        # 요청한 장비별로 응답 매칭 및 분석
+        for requested_equip in mw_equipment_data:
+            requested_id = requested_equip['id']
+            requested_name = requested_equip['equip_name']
+
+            self.logger.info(
+                f"• 🔍 장비별 분석 시작: {requested_name} (ID: {requested_id})")
+
+            # 해당 ID의 응답 데이터 찾기
+            matched_response = None
+            for response_data in mw_status_data:
+                if response_data.get('id') == requested_id:
+                    matched_response = response_data
+                    break
+
+            if not matched_response:
+                # 응답이 없는 경우
+                details.append(
+                    f"<br><br>• 장비: {requested_name} (SNMP ID: {requested_id})")
+                details.append("<br>&nbsp; - SNMP 응답 없음 (API 호출 실패)")
+                self.logger.warning(
+                    f"• ⚠️ MW 장비 '{requested_name}' (SNMP ID: {requested_id}) SNMP 응답 없음")
+                continue
+
+            # 응답이 있는 경우 - 상세 분석
+            self.logger.info(
+                f"• ✅ ID 매칭 성공: SNMP ID {requested_id} → 응답 데이터 존재")
+
+            equip_type = matched_response.get('equip_type', 'MW')
+            data = matched_response.get('data', {})
+
+            # 장비별 장애 분석
+            equipment_failures = {
+                'fading_issues': [],
+                'error_issues': [],
+                'voltage_issues': [],
+                'slot_details': []
+            }
+
+            # 인터페이스 분석
+            interfaces = data.get('interfaces', {})
+
+            for slot_name, slot_data in interfaces.items():
+                self.logger.info(f"• 슬롯 분석: {slot_name}")
+
+                # RSL, TSL, SNR, XPI 분석
+                fading_issues = self.check_fading_parameters(
+                    slot_data, slot_name)
+                fading_details = self.get_fading_parameter_details(
+                    slot_data, slot_name)
+
+                if fading_issues:
+                    equipment_failures['fading_issues'].extend([
+                        f"{slot_name}: {issue}" for issue in fading_issues
+                    ])
+                    equipment_failures['slot_details'].append(
+                        f"<br>&nbsp; - {slot_name}: 전파 페이딩 의심 ({', '.join(fading_issues)})")
+                    self.logger.info(
+                        f"• 📌 전파 페이딩 의심 발견: {', '.join(fading_issues)}")
+                else:
+                    equipment_failures['slot_details'].append(
+                        f"<br>&nbsp; - {slot_name}: RSL/TSL/SNR/XPI 정상 ({fading_details})")
+
+                # ERR 분석
+                err_issues = self.check_error_parameters(slot_data, slot_name)
+                err_details = self.get_error_parameter_details(
+                    slot_data, slot_name)
+
+                if err_issues:
+                    equipment_failures['error_issues'].extend([
+                        f"{slot_name}: {issue}" for issue in err_issues
+                    ])
+                    equipment_failures['slot_details'].append(
+                        f"<br>&nbsp; - {slot_name}: 전파수신 오류 ({', '.join(err_issues)})")
+                    self.logger.info(
+                        f"• 📌 MW 전파수신 오류 발견: {', '.join(err_issues)}")
+                else:
+                    equipment_failures['slot_details'].append(
+                        f"<br>&nbsp; - {slot_name}: ERR 파라미터 정상 ({err_details})")
+
+            # VOLT 분석
+            volt_issues = self.check_voltage_parameters(data)
+            volt_details = self.get_voltage_parameter_details(data)
+
+            if volt_issues:
+                equipment_failures['voltage_issues'].append(volt_issues)
+                equipment_failures['slot_details'].append(
+                    f"<br>&nbsp; - 전압: 배터리 모드 의심 ({volt_issues})")
+                self.logger.info(f"• 📌 MW 장비 전압 이상 발견: {volt_issues}")
+            else:
+                equipment_failures['slot_details'].append(
+                    f"<br>&nbsp; - 전압: 정상 ({volt_details})")
+
+            # 장비별 요약 상태 생성
+            equipment_status = []
+            if equipment_failures['fading_issues']:
+                equipment_status.append("페이딩 의심")
+            else:
+                equipment_status.append("페이딩 양호")
+
+            if equipment_failures['error_issues']:
+                equipment_status.append("전파수신 오류")
+            else:
+                equipment_status.append("전파수신 양호")
+
+            if equipment_failures['voltage_issues']:
+                equipment_status.append("한전정전 의심")
+            else:
+                equipment_status.append("전원 양호")
+
+            # 장비명과 상태 요약 추가
+            details.append(
+                f"<br>• 장비: {requested_name} ({equip_type}, SNMP ID: {requested_id}): {', '.join(equipment_status)}")
+
+            # 슬롯별 상세 내역 추가
+            details.extend(equipment_failures['slot_details'])
+
+            # 장비 간 구분을 위한 빈 줄 추가
+            details.append("<br>")
+
+            # 장애점 생성 (장애가 있는 경우만)
+            has_failure = (
+                equipment_failures['fading_issues'] or
+                equipment_failures['error_issues'] or
+                equipment_failures['voltage_issues']
+            )
+
+            if has_failure:
+                failure_count += 1
+
+                # 장애 타입 및 상세 내역 구성
+                failure_types = []
+                inference_details = []
+
+                if equipment_failures['fading_issues']:
+                    failure_types.append('MW 전파 페이딩 의심')
+                    inference_details.extend(
+                        equipment_failures['fading_issues'])
+
+                if equipment_failures['error_issues']:
+                    failure_types.append('MW 전파수신 오류')
+                    inference_details.extend(
+                        equipment_failures['error_issues'])
+
+                if equipment_failures['voltage_issues']:
+                    failure_types.append('MW 장비 배터리 모드로 한전 정전 의심')
+                    inference_details.extend(
+                        equipment_failures['voltage_issues'])
+
+                # 장애점 추가 (통합된 하나의 장애점)
+                self.failure_points.append({
+                    'type': 'node',  # mw_equipment -> node로 변경하여 애니메이션 처리 가능
+                    # equip_name을 id로 사용
+                    'id': requested_equip.get('equip_name', requested_id),
+                    'name': f"MW 장비 {requested_name}",
+                    'sector': 'MW',
+                    'failure_type': ', '.join(failure_types),
+                    'inference_detail': '<br>'.join(inference_details),
+                    'alarms': [],
+                    'confidence': 0.85,
+                    # 배지 표시를 위한 추가 정보
+                    'mw_fading_failure': bool(equipment_failures['fading_issues']),
+                    'mw_voltage_failure': bool(equipment_failures['voltage_issues']),
+                    'mw_error_failure': bool(equipment_failures['error_issues']),
+                    'equipment_type': 'MW'  # MW 장비임을 명시
+                })
+
+                self.logger.info(
+                    f"• 📌 MW 장비 통합 장애점 생성: {requested_name} (SNMP ID: {requested_id}) - {', '.join(failure_types)}")
+
+        return failure_count, details
 
     def check_fading_parameters(self, slot_data, slot_name) -> List[str]:
         """RSL, TSL, SNR, XPI 파라미터 체크"""
@@ -480,12 +666,9 @@ class InferFailurePoint:
                             f"[DEBUG] {slot_name} {param}: value={value}, min={min_val}, max={max_val}")
 
                     # 임계값 체크만 유지
-                    if param in ['RSL', 'TSL'] and value < threshold:
+                    if param in ['RSL', 'TSL', 'SNR', 'XPI'] and value < threshold:
                         issues.append(
-                            f"{param} 임계값 미달 ({value} < {threshold})")
-                    elif param in ['SNR', 'XPI'] and value < threshold:
-                        issues.append(
-                            f"{param} 임계값 미달 ({value} < {threshold})")
+                            f"{param} 임계값 미달: ({value} < {threshold})")
 
                 except (ValueError, TypeError):
                     if param_data.get('value') == 'error' or param_data.get('min') == 'error':
@@ -503,7 +686,8 @@ class InferFailurePoint:
                 if err_value != 'error' and err_value != '0':
                     try:
                         if int(err_value) > 0:
-                            issues.append(f"{err_type}={err_value}")
+                            issues.append(
+                                f"ERROR 파라미터 발생: {err_type}={err_value}")
                     except (ValueError, TypeError):
                         if err_value == 'error':
                             issues.append(f"{err_type} 측정 오류")
@@ -533,13 +717,82 @@ class InferFailurePoint:
 
                 # 임계값 체크만 유지
                 if value < threshold:
-                    return f"전압 임계값 미달 ({value}V < {threshold}V)"
+                    return f"전압 임계값 미달: 한전정전 의심 ({value}V < {threshold}V)"
 
             except (ValueError, TypeError):
                 if volt_data.get('value') == 'error':
                     return "전압 측정 오류"
 
         return ""
+
+    def get_fading_parameter_details(self, slot_data, slot_name) -> str:
+        """페이딩 파라미터 상세 정보 (정상 상태용)"""
+        details = []
+        parameters = ['RSL', 'TSL', 'SNR', 'XPI']
+
+        for param in parameters:
+            if param in slot_data:
+                param_data = slot_data[param]
+                try:
+                    value = float(param_data.get('value', 0))
+                    threshold = float(param_data.get('threshold', 0))
+
+                    if value >= threshold:
+                        details.append(f"{param}: {value} (기준 {threshold} 이상)")
+                    else:
+                        details.append(f"{param}: {value} (기준 {threshold} 미달)")
+
+                except (ValueError, TypeError):
+                    if param_data.get('value') == 'error':
+                        details.append(f"{param}: 측정오류")
+                    else:
+                        details.append(
+                            f"{param}: {param_data.get('value', 'N/A')}")
+
+        return ', '.join(details) if details else "파라미터 정보 없음"
+
+    def get_error_parameter_details(self, slot_data, slot_name) -> str:
+        """ERR 파라미터 상세 정보 (정상 상태용)"""
+        details = []
+
+        if 'ERR' in slot_data:
+            err_data = slot_data['ERR']
+            for err_type, err_value in err_data.items():
+                if err_value == 'error':
+                    details.append(f"{err_type}: 측정오류")
+                elif err_value == '0' or err_value == 0:
+                    details.append(f"{err_type}: 0 (정상)")
+                else:
+                    try:
+                        if int(err_value) == 0:
+                            details.append(f"{err_type}: 0 (정상)")
+                        else:
+                            details.append(f"{err_type}: {err_value} (오류발생)")
+                    except (ValueError, TypeError):
+                        details.append(f"{err_type}: {err_value}")
+
+        return ', '.join(details) if details else "ERR 파라미터 정보 없음"
+
+    def get_voltage_parameter_details(self, data) -> str:
+        """전압 파라미터 상세 정보 (정상 상태용)"""
+        if 'VOLT' in data:
+            volt_data = data['VOLT']
+            try:
+                value = float(volt_data.get('value', 0))
+                threshold = float(volt_data.get('threshold', 0))
+
+                if value >= threshold:
+                    return f"현재 {value}V로 기준범위 {threshold}V 이상"
+                else:
+                    return f"현재 {value}V로 기준범위 {threshold}V 미달"
+
+            except (ValueError, TypeError):
+                if volt_data.get('value') == 'error':
+                    return "전압 측정오류"
+                else:
+                    return f"전압: {volt_data.get('value', 'N/A')}"
+
+        return "전압 정보 없음"
 
     # 3. 상위 장비 장애점 분석
     def analyze_upper_node_failures(self):
@@ -629,10 +882,10 @@ class InferFailurePoint:
         step_message += "\n".join(analysis_details)
         step_message += f"\n<br><br>• 장애점 발견: {upper_failure_count}개"
 
-        self._send_progress(step_message)
+        self.send_progress(step_message)
 
         self.logger.info(
-            f"[3단계] 상위 장비 장애점 분석 완료 <br>• 발견된 상위 노드 장애점: {upper_failure_count}개")
+            f"[3단계] 상위 장비 장애점 분석 완료 => 발견된 상위 노드 장애점: {upper_failure_count}개")
         self.logger.info("-------------------------------")
 
     # 4. 교환 노드 장애점 분석
@@ -649,7 +902,7 @@ class InferFailurePoint:
 
         if not exchange_nodes:
             step_message += "<br>&nbsp; → 교환 장비가 없어 4단계 분석을 패스합니다."
-            self._send_progress(step_message)
+            self.send_progress(step_message)
             self.logger.info("• 교환 장비가 없어서 4단계 분석을 건너뜁니다.")
             return
 
@@ -723,10 +976,10 @@ class InferFailurePoint:
         step_message += "\n".join(exchange_details)
         step_message += f"\n<br><br>• 장애점 발견: {exchange_failure_count}개"
 
-        self._send_progress(step_message)
+        self.send_progress(step_message)
 
         self.logger.info(
-            f"[4단계] 교환 장비 장애점 분석 완료 <br>• 발견된 교환 장애점: {exchange_failure_count}개")
+            f"[4단계] 교환 장비 장애점 분석 완료 => 발견된 교환 장애점: {exchange_failure_count}개")
         self.logger.info("-------------------------------")
 
     # 4-2. 교환 노드 장애점 분석 (상세 버전)
@@ -786,7 +1039,7 @@ class InferFailurePoint:
 
         if not transmission_nodes:
             step_message += "<br>&nbsp; → 전송 장비가 없어 5단계 분석을 패스합니다."
-            self._send_progress(step_message)
+            self.send_progress(step_message)
             self.logger.info("• 전송 장비가 없어서 5단계 분석을 건너뜁니다.")
             return
 
@@ -881,10 +1134,10 @@ class InferFailurePoint:
         step_message += "\n".join(transmission_details)
         step_message += f"\n<br><br>• 장애점 발견: {transmission_failure_count}개"
 
-        self._send_progress(step_message)
+        self.send_progress(step_message)
 
         self.logger.info(
-            f"[5단계] 전송 장비 장애점 분석 완료 <br>• 발견된 전송 장애점: {transmission_failure_count}대")
+            f"[5단계] 전송 장비 장애점 분석 완료 => 발견된 전송 장애점: {transmission_failure_count}대")
         self.logger.info("-------------------------------")
 
     # 헬퍼 메서드들
@@ -1038,16 +1291,25 @@ class InferFailurePoint:
             elif fp['type'] == 'mw_equipment':
                 summary['mw_equipment_failures'] += 1
 
-                # MW 장애 세부 분류
+                # MW 장애 세부 분류 (하나의 장애점에 여러 타입이 포함될 수 있음)
                 failure_type = fp['failure_type']
+                inference_detail = fp.get('inference_detail', '')
+
+                # 페이딩 관련 장애 카운트
                 if '전파 페이딩' in failure_type or '전파수신 오류' in failure_type:
-                    summary['mw_fading_failures'] += 1
-                elif '배터리 모드' in failure_type or '전압' in failure_type:
+                    # inference_detail에서 실제 페이딩/오류 건수 계산
+                    fading_count = len([detail for detail in inference_detail.split('<br>') if (
+                        'RSL' in detail or 'TSL' in detail or 'SNR' in detail or 'XPI' in detail)])
+                    # 최소 1개
+                    summary['mw_fading_failures'] += max(1, fading_count)
+
+                # 전압 관련 장애 카운트
+                if '배터리 모드' in failure_type or '전압' in failure_type:
                     summary['mw_voltage_failures'] += 1
 
             # 장애 타입별 분류
             failure_type = fp['failure_type']
-            if '상위 노드' in failure_type:
+            if '상위 노드' in failure_type or '상위 장비' in failure_type:
                 summary['upper_node_failures'] += 1
             elif '교환' in failure_type:
                 summary['exchange_failures'] += 1
