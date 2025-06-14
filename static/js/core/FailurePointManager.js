@@ -949,7 +949,7 @@ class FailurePointManager {
         failurePoint.name
       }</strong><br><br>
       • 유형: ${failurePoint.failure_type}<br>
-      • ${failurePoint.type === 'node' ? '노드' : '링크'} ID: ${failurePoint.id}<br>
+      • ${failurePoint.type === 'node' ? '장비' : '링크'} ID: ${failurePoint.id}<br>
       • 추정 내역: ${failurePoint.inference_detail}<br>
       • 경보 현황: 전체 ${relatedAlarms.length}건 (유효 ${validAlarms.length}건, 무효 ${
         relatedAlarms.length - validAlarms.length

@@ -254,13 +254,13 @@ class InferFailurePoint:
                 mw_nodes)
 
             # DB 조회 결과를 채팅창에 표시
-            step_message += f"<br>&nbsp; → DB SNMP 데이터 수집 성공: {len(success_equipments)}개"
+            step_message += f"<br>&nbsp; - 조회 성공: {len(success_equipments)}개"
             if success_equipments:
                 success_names = [equip['equip_name']
                                  for equip in success_equipments]
-                step_message += f" ({', '.join(success_names)})"
+                step_message += f"<br>&nbsp;&nbsp; . {', '.join(success_names)}"
 
-            step_message += f", 실패: {len(failed_equipments)}개"
+            step_message += f"<br>&nbsp; - 조회 실패: {len(failed_equipments)}개"
             if failed_equipments:
                 # 실패 장비명만 추출 (HTML 태그 제거)
                 failed_names = []
@@ -271,19 +271,19 @@ class InferFailurePoint:
                     if match:
                         failed_names.append(match.group(1))
                 if failed_names:
-                    step_message += f" ({', '.join(failed_names)})"
+                    step_message += f" <br>&nbsp;&nbsp; . {', '.join(failed_names)}"
 
             if not mw_equipment_data:
-                step_message += f"\n<br>&nbsp; → DB에서 MW 장비 SNMP 데이터를 찾을 수 없습니다."
+                step_message += f"\n<br>&nbsp; - DB에서 MW 장비 SNMP 데이터를 찾을 수 없습니다."
                 # 실패 상세 내용을 같은 메시지에 추가
                 if failed_equipments:
                     step_message += f"\n<br>• DB에서 SNMP 데이터 수집 실패 상세:\n" + \
                         "\n".join(failed_equipments)
                 self.send_progress(step_message)
-                self.logger.warning("→ ⚠️ DB에서 MW 장비 SNMP 데이터를 찾을 수 없습니다.")
+                self.logger.warning("- ⚠️ DB에서 MW 장비 SNMP 데이터를 찾을 수 없습니다.")
                 return
 
-            step_message += f"\n<br>• 다음, 실시간 MW 장비 상태 확인 API를 호출합니다.\n"
+            step_message += f"\n<br><br>• 다음, 실시간 MW 장비 상태 확인 API를 호출합니다.\n"
 
             # guksa_id 추출 (장비 중 첫 번째의 guksa_id 사용, 없으면 None)
             guksa_id = None
@@ -300,7 +300,7 @@ class InferFailurePoint:
                 return
 
             step_message += f"<br>&nbsp; → MW SNMP 상태 정보 수신: {len(mw_status_data)}건\n"
-            step_message += "<br><br>• MW 파라미터별 상세 분석을 진행합니다.\n"
+            step_message += "<br><br>• 다음, MW 파라미터별 상세 분석을 진행합니다.\n"
 
             # MW 장애점 분석 (요청/응답 ID 매칭 개선)
             mw_failure_count, mw_details = self.analyze_mw_status_data(
@@ -486,8 +486,8 @@ class InferFailurePoint:
             if not matched_response:
                 # 응답이 없는 경우
                 details.append(
-                    f"<br><br>• 장비: {requested_name} (SNMP ID: {requested_id})")
-                details.append("<br>&nbsp; - SNMP 응답 없음 (API 호출 실패)")
+                    f"<br><br>&nbsp; - 장비: {requested_name} (SNMP ID: {requested_id})")
+                details.append("<br>&nbsp;&nbsp; . SNMP 응답 없음 (API 호출 실패)")
                 self.logger.warning(
                     f"• ⚠️ MW 장비 '{requested_name}' (SNMP ID: {requested_id}) SNMP 응답 없음")
                 continue
@@ -524,12 +524,12 @@ class InferFailurePoint:
                         f"{slot_name}: {issue}" for issue in fading_issues
                     ])
                     equipment_failures['slot_details'].append(
-                        f"<br>&nbsp; - {slot_name}: 전파 페이딩 의심 ({', '.join(fading_issues)})")
+                        f"<br>&nbsp;&nbsp; . {slot_name}: 전파 페이딩 의심 ({', '.join(fading_issues)})")
                     self.logger.info(
                         f"• 📌 전파 페이딩 의심 발견: {', '.join(fading_issues)}")
                 else:
                     equipment_failures['slot_details'].append(
-                        f"<br>&nbsp; - {slot_name}: RSL/TSL/SNR/XPI 정상 ({fading_details})")
+                        f"<br&nbsp;&nbsp; . {slot_name}: RSL/TSL/SNR/XPI 정상 ({fading_details})")
 
                 # ERR 분석
                 err_issues = self.check_error_parameters(slot_data, slot_name)
@@ -541,12 +541,12 @@ class InferFailurePoint:
                         f"{slot_name}: {issue}" for issue in err_issues
                     ])
                     equipment_failures['slot_details'].append(
-                        f"<br>&nbsp; - {slot_name}: 전파수신 오류 ({', '.join(err_issues)})")
+                        f"<br>&nbsp;&nbsp; . {slot_name}: 전파수신 오류 ({', '.join(err_issues)})")
                     self.logger.info(
                         f"• 📌 MW 전파수신 오류 발견: {', '.join(err_issues)}")
                 else:
                     equipment_failures['slot_details'].append(
-                        f"<br>&nbsp; - {slot_name}: ERR 파라미터 정상 ({err_details})")
+                        f"<br>&nbsp;&nbsp; . {slot_name}: ERR 파라미터 정상 ({err_details})")
 
             # VOLT 분석
             volt_issues = self.check_voltage_parameters(data)
@@ -555,11 +555,11 @@ class InferFailurePoint:
             if volt_issues:
                 equipment_failures['voltage_issues'].append(volt_issues)
                 equipment_failures['slot_details'].append(
-                    f"<br>&nbsp; - 전압: 배터리 모드 의심 ({volt_issues})")
+                    f"<br>&nbsp;&nbsp; . 전압: 배터리 모드 의심 ({volt_issues})")
                 self.logger.info(f"• 📌 MW 장비 전압 이상 발견: {volt_issues}")
             else:
                 equipment_failures['slot_details'].append(
-                    f"<br>&nbsp; - 전압: 정상 ({volt_details})")
+                    f"<br>&nbsp;&nbsp; . 전압: 정상 ({volt_details})")
 
             # 장비별 요약 상태 생성
             equipment_status = []
@@ -580,7 +580,7 @@ class InferFailurePoint:
 
             # 장비명과 상태 요약 추가
             details.append(
-                f"<br>• 장비: {requested_name} ({equip_type}, SNMP ID: {requested_id}): {', '.join(equipment_status)}")
+                f"<br>&nbsp; → 장비: {requested_name} ({equip_type}, SNMP ID: {requested_id}): {', '.join(equipment_status)}")
 
             # 슬롯별 상세 내역 추가
             details.extend(equipment_failures['slot_details'])
@@ -668,7 +668,7 @@ class InferFailurePoint:
                     # 임계값 체크만 유지
                     if param in ['RSL', 'TSL', 'SNR', 'XPI'] and value < threshold:
                         issues.append(
-                            f"{param} 임계값 미달: ({value} < {threshold})")
+                            f"{param} 임계값 미달: {value} < {threshold}")
 
                 except (ValueError, TypeError):
                     if param_data.get('value') == 'error' or param_data.get('min') == 'error':
@@ -717,7 +717,7 @@ class InferFailurePoint:
 
                 # 임계값 체크만 유지
                 if value < threshold:
-                    return f"전압 임계값 미달: 한전정전 의심 ({value}V < {threshold}V)"
+                    return f"전압 임계값 미달: 한전정전 의심 {value}V < {threshold}V"
 
             except (ValueError, TypeError):
                 if volt_data.get('value') == 'error':
