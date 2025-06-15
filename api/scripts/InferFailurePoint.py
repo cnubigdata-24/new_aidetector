@@ -581,7 +581,7 @@ class InferFailurePoint:
 
             # 장비명과 상태 요약 추가
             details.append(
-                f"<br>&nbsp; → 장비: {requested_name} ({equip_type}, SNMP ID: {requested_id}): {', '.join(equipment_status)}<br>--- 슬롯별 상세 내역 ---<br>")
+                f"<br>&nbsp; → 장비: {requested_name} ({equip_type}, SNMP ID: {requested_id}): {', '.join(equipment_status)}<br><br>--- 슬롯별 상세 내역 ---<br>")
 
             # 슬롯별 상세 내역 추가
             details.extend(equipment_failures['slot_details'])

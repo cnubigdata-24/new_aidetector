@@ -13,7 +13,7 @@ import { failurePointManager } from './FailurePointManager.js';
 
 // 클래스와 함수
 import CommonUtils from '../utils/CommonUtils.js';
-import MessageManager from '../utils/MessageManager.js';
+import MessageManager, { registerMessageGlobalFunctions } from '../utils/MessageManager.js';
 import GuksaMapComponent from './GuksaMapComponent.js';
 import EquipmentMapComponent from './EquipmentMapComponent.js';
 
@@ -2373,3 +2373,6 @@ export function registerFaultDashboardAppGlobalFunctions() {
 
 // 자동 등록
 registerFaultDashboardAppGlobalFunctions();
+
+// MessageManager 전역 함수 등록
+registerMessageGlobalFunctions();

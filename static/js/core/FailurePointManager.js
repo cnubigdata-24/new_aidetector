@@ -162,8 +162,11 @@ class FailurePointManager {
 
             switch (data.type) {
               case 'progress':
-                // 진행 상황을 채팅창에 표시
-                MessageManager.addErrorMessage(data.message);
+                // 진행 상황을 타이핑 효과로 채팅창에 표시
+                MessageManager.addProgressMessageWithTyping(data.message, {
+                  speed: 10, // 매우 빠른 타이핑 속도 (10ms per character)
+                  type: 'analyzing',
+                });
                 console.log('📋 진행상황:', data.message);
                 break;
 
@@ -220,13 +223,15 @@ class FailurePointManager {
 
       // 폴백: 기존 동기 방식으로 재시도
       console.log('🔄 API 서버 호출 재시도 중...');
-      MessageManager.addAnalyzingMessage('🔄 API 서버 호출 재시도 중...');
+      MessageManager.addAnalyzingMessageWithTyping('🔄 API 서버 호출 재시도 중...', { speed: 7 });
 
       const response = await CommonUtils.callApi('/api/infer_failure_point', requestData, {
         method: 'POST',
         timeout: 30000,
         onProgress: (status) => {
-          MessageManager.addAnalyzingMessage(`🔍 장애점을 분석/추정 중...: ${status}`);
+          MessageManager.addAnalyzingMessageWithTyping(`🔍 장애점을 분석/추정 중...: ${status}`, {
+            speed: 10,
+          });
         },
       });
 
@@ -258,7 +263,9 @@ class FailurePointManager {
         await this.highlightFailurePointsOnMap();
         this.showDetailedResults();
       } else {
-        MessageManager.addSuccessMessage('✅ 분석 완료: 현재 감지된 장애점이 없습니다.');
+        MessageManager.addSuccessMessageWithTyping('✅ 분석 완료: 현재 감지된 장애점이 없습니다.', {
+          speed: 10,
+        });
       }
 
       console.log('📋 장애점 분석 결과 처리 완료');
@@ -268,7 +275,9 @@ class FailurePointManager {
       // 안전한 폴백 처리
       this.currentFailurePoints = [];
       try {
-        MessageManager.addErrorMessage('장애점 분석 결과 처리 중 오류가 발생했습니다.');
+        MessageManager.addErrorMessageWithTyping('장애점 분석 결과 처리 중 오류가 발생했습니다.', {
+          speed: 10,
+        });
       } catch (messageError) {
         console.error('❌ 오류 메시지 추가도 실패:', messageError);
       }
@@ -295,7 +304,11 @@ class FailurePointManager {
         • 5단계) 전송 장애점: ${analysisResults.transmission_failures}개
       `;
 
-      MessageManager.addErrorMessage(message, { type: 'error' });
+      // 요약 메시지는 타이핑 효과로 출력
+      MessageManager.addErrorMessageWithTyping(message, {
+        type: 'error',
+        speed: 7, // 매우 빠른 타이핑 속도 (요약 결과)
+      });
 
       // 디버깅을 위한 상세 로그
       console.log('📋 장애점 분석 요약 결과:', analysisResults);
@@ -303,10 +316,10 @@ class FailurePointManager {
     } catch (error) {
       console.error('❌ 요약 메시지 표시 중 오류:', error);
 
-      // 폴백 메시지
+      // 폴백 메시지도 타이핑 효과 적용
       const fallbackMessage = '📌 장애점 분석이 완료되었습니다. 자세한 결과는 콘솔을 확인해주세요.';
       try {
-        MessageManager.addErrorMessage(fallbackMessage, { type: 'error' });
+        MessageManager.addErrorMessageWithTyping(fallbackMessage, { type: 'error', speed: 10 });
       } catch (fallbackError) {
         console.error('❌ 폴백 메시지도 실패:', fallbackError);
       }
@@ -339,35 +352,50 @@ class FailurePointManager {
       const field = failurePoint.field || failurePoint.sector || '';
       const type = failurePoint.type || '';
       const equipmentType = failurePoint.equipment_type || '';
+      const inferenceDetail = failurePoint.inference_detail || '';
 
       // 링크 장애점 (1단계)
       if (type === 'link' || failureType.includes('링크') || failureType.includes('선로')) {
         summary.link_failures++;
       }
-      // MW 장비 장애점 (2단계) - equipment_type으로 구분
+      // MW 장비 장애점 (2단계) - SNMP 페이딩/전압 분석에서 발견된 것만
       else if (
-        equipmentType === 'MW' ||
-        field === 'MW' ||
         failureType.includes('MW') ||
         failureType.includes('페이딩') ||
-        failureType.includes('전압')
+        failureType.includes('전압') ||
+        inferenceDetail.includes('페이딩') ||
+        inferenceDetail.includes('전압') ||
+        inferenceDetail.includes('SNMP')
       ) {
         summary.mw_equipment_failures++;
 
-        // MW 세부 분류 - 새로운 필드 사용
-        if (failurePoint.mw_fading_failure || failureType.includes('페이딩')) {
+        // MW 세부 분류
+        if (
+          failurePoint.mw_fading_failure ||
+          failureType.includes('페이딩') ||
+          inferenceDetail.includes('페이딩')
+        ) {
           summary.mw_fading_failures++;
         }
-        if (failurePoint.mw_voltage_failure || failureType.includes('전압')) {
+        if (
+          failurePoint.mw_voltage_failure ||
+          failureType.includes('전압') ||
+          inferenceDetail.includes('전압')
+        ) {
           summary.mw_voltage_failures++;
         }
       }
-      // 상위 장비 장애점 (3단계)
+      // 상위 장비 장애점 (3단계) - 상위 노드/장비 분석에서 발견된 것
       else if (
         failureType.includes('상위 노드') ||
         failureType.includes('상위 장비') ||
+        inferenceDetail.includes('상위') ||
         (type === 'node' &&
-          equipmentType !== 'MW' && // MW 장비는 제외
+          !failureType.includes('MW') &&
+          !failureType.includes('페이딩') &&
+          !failureType.includes('전압') &&
+          !inferenceDetail.includes('페이딩') &&
+          !inferenceDetail.includes('전압') &&
           (field === 'IP' ||
             field === '전송' ||
             field === '교환' ||
@@ -950,14 +978,18 @@ class FailurePointManager {
       }</strong><br><br>
       • 유형: ${failurePoint.failure_type}<br>
       • ${failurePoint.type === 'node' ? '장비' : '링크'} ID: ${failurePoint.id}<br>
-      • 추정 내역: ${failurePoint.inference_detail}<br>
+      • 추정 내역: ${failurePoint.inference_detail}<br><br>
       • 경보 현황: 전체 ${relatedAlarms.length}건 (유효 ${validAlarms.length}건, 무효 ${
         relatedAlarms.length - validAlarms.length
       }건)
       ${alarmListHtml}
     `;
 
-      MessageManager.addErrorMessage(message, { type: 'warning' });
+      // 타이핑 효과로 출력하여 메시지 순서 보장
+      MessageManager.addWarningMessageWithTyping(message, {
+        type: 'warning',
+        speed: 10, // 빠른 타이핑 속도
+      });
     });
   }
 
@@ -1244,7 +1276,8 @@ class FailurePointManager {
       errorMessage = '분석 결과 처리 중 오류가 발생했습니다.';
     }
 
-    MessageManager.addErrorMessage(errorMessage);
+    // 오류 메시지를 타이핑 효과로 출력
+    MessageManager.addErrorMessageWithTyping(errorMessage, { speed: 7 });
 
     // 오류 발생시 상태 초기화
     this.clearHighlights();
