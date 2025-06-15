@@ -423,6 +423,81 @@ textarea#prompt-input {
   resize: none;
   box-sizing: border-box;
   white-space: pre-wrap;
+
+  /* 스크롤 스타일 추가 - .chat-messages-container와 동일 */
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #ccc #f1f1f1;
+}
+
+/* Webkit 기반 브라우저용 스크롤바 스타일 */
+textarea#prompt-input::-webkit-scrollbar {
+  width: 8px;
+}
+
+textarea#prompt-input::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+textarea#prompt-input::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+textarea#prompt-input::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* AI Search 버튼 스타일 추가 */
+.ai-search-btn {
+  background-color: #1976d2 !important; /* 헤더와 동일한 파란색 */
+  border: 1px solid #1976d2 !important;
+  border-radius: 5px !important;
+
+  padding: 6px 12px;
+  margin-top: 0px;
+  margin-bottom: 0px;
+
+  white-space: nowrap;
+  font-size: 12px;
+  height: 27px;
+  cursor: pointer !important; /* 마우스 커서 포인터 */
+  color: #ffffff !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-weight: normal;
+}
+
+/* 호버 효과 - 더 진한 파란색 */
+.ai-search-btn:hover {
+  background-color: #1565c0 !important; /* 더 진한 파란색 */
+  border-color: #1565c0 !important;
+  color: #ffffff !important;
+}
+
+/* 클릭 효과 */
+.ai-search-btn:active {
+  background-color: #0d47a1 !important; /* 클릭시 더욱 진한 파란색 */
+  border-color: #0d47a1 !important;
+}
+
+/* 비활성화 상태 */
+.ai-search-btn:disabled {
+  background-color: #6c757d !important;
+  border-color: #6c757d !important;
+  cursor: not-allowed !important;
+  color: #ffffff !important;
+  opacity: 0.6;
+}
+
+.ai-search-btn:disabled:hover {
+  background-color: #6c757d !important;
+  border-color: #6c757d !important;
+  transform: none;
+  box-shadow: none;
 }
 
 /* 전송 버튼 */

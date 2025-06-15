@@ -2018,7 +2018,6 @@ ${alarmDetails}`;
 
       if (!currentMapData || !currentMapData.nodes || currentMapData.nodes.length === 0) {
         console.error('❌ 맵 데이터 없음:', currentMapData);
-        MessageManager.addErrorMessage?.('분석할 NW 토폴로지가 없습니다. 장비를 먼저 선택하세요.');
         return;
       }
 
@@ -2077,7 +2076,7 @@ ${alarmDetails}`;
       this.createFaultDetectorModal(postData);
 
       MessageManager.addAnalyzingMessage?.(
-        `🔍 현재 MAP의 모든 경보들과 유사한 사례를 분석합니다. <br><br> • 기준 장비: ${baseNode.name} <br> • 전체 경보 수: ${mapAlarms.length} 건`
+        `🔍 현재 MAP의 경보들과 유사한 장애사례를 분석합니다. <br><br> • 기준 장비: ${baseNode.name} <br> • 전체 경보 수: ${mapAlarms.length} 건`
       );
     } catch (error) {
       console.error('❌ AI 장애분석 팝업 열기 실패:', error);

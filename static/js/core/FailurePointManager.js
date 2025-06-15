@@ -219,8 +219,8 @@ class FailurePointManager {
       console.error('❌ 스트리밍 API 호출 실패:', error);
 
       // 폴백: 기존 동기 방식으로 재시도
-      console.log('🔄 기존 동기 방식으로 재시도...');
-      MessageManager.addAnalyzingMessage('🔄 기존 방식으로 재시도 중...');
+      console.log('🔄 API 서버 호출 재시도 중...');
+      MessageManager.addAnalyzingMessage('🔄 API 서버 호출 재시도 중...');
 
       const response = await CommonUtils.callApi('/api/infer_failure_point', requestData, {
         method: 'POST',
@@ -1236,7 +1236,8 @@ class FailurePointManager {
     let errorMessage = '장애점 분석 중 오류가 발생했습니다.';
 
     if (error.message.includes('fetch')) {
-      errorMessage = '서버와의 통신 중 오류가 발생했습니다. 네트워크 연결을 확인해주세요.';
+      errorMessage =
+        '📌 API 서버와의 통신 중 오류가 발생했습니다. <br> API 서버 네트워크 연결을 확인해 주세요.';
     } else if (error.message.includes('timeout')) {
       errorMessage = '분석 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.';
     } else if (error.message.includes('parse')) {

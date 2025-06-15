@@ -528,7 +528,9 @@
 
         return APIService.getDrCableInfo()
           .then((data) => {
-            botLoading.remove();
+            if (botLoading && botLoading.parentNode) {
+              botLoading.remove();
+            }
 
             const unrecovered = data.unrecovered_alarm || { count: 0 };
             let warningMsg = '';
@@ -560,7 +562,9 @@
             return data;
           })
           .catch((error) => {
-            botLoading.remove(); // 오류 발생 시에도 로딩 메시지 제거
+            if (botLoading && botLoading.parentNode) {
+              botLoading.remove(); // 오류 발생 시에도 로딩 메시지 제거
+            }
             DOMRenderer.addErrorMessage(error);
             summaryItem.classList.add('error');
             throw error; // 오류를 상위로 전파
@@ -577,7 +581,9 @@
 
         return APIService.getMWStatus()
           .then((data) => {
-            botLoading.remove();
+            if (botLoading && botLoading.parentNode) {
+              botLoading.remove();
+            }
 
             // HTML 생성 - 객체로 반환됨
             const { alertHtml, tableHtml } = HTMLGenerator.MWSnmpInfoHTML(data);
@@ -590,7 +596,9 @@
             return data;
           })
           .catch((error) => {
-            botLoading.remove(); // 오류 발생 시에도 로딩 메시지 제거
+            if (botLoading && botLoading.parentNode) {
+              botLoading.remove(); // 오류 발생 시에도 로딩 메시지 제거
+            }
             DOMRenderer.addErrorMessage(error);
             summaryItem.classList.add('error');
             throw error; // 오류를 상위로 전파

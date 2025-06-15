@@ -249,7 +249,7 @@ class InferFailurePoint:
 
         try:
             # MW 장비 SNMP DB 정보 수집
-            step_message += "<br>• MW 장비 SNMP 데이터를 DB에서 조회합니다.\n"
+            step_message += "<br>• ① 먼저, MW 장비 SNMP 정보를 DB에서 조회합니다.\n"
             mw_equipment_data, failed_equipments, success_equipments = self.get_mw_snmp_db(
                 mw_nodes)
 
@@ -275,15 +275,16 @@ class InferFailurePoint:
 
             if not mw_equipment_data:
                 step_message += f"\n<br>&nbsp; - DB에서 MW 장비 SNMP 데이터를 찾을 수 없습니다."
+
                 # 실패 상세 내용을 같은 메시지에 추가
-                if failed_equipments:
-                    step_message += f"\n<br>• DB에서 SNMP 데이터 수집 실패 상세:\n" + \
-                        "\n".join(failed_equipments)
+#                 if failed_equipments:
+#                     step_message += f"\n<br><br>• SNMP DB 데이터 수집 실패\n" + \
+#                         "\n".join(failed_equipments)
                 self.send_progress(step_message)
                 self.logger.warning("- ⚠️ DB에서 MW 장비 SNMP 데이터를 찾을 수 없습니다.")
                 return
 
-            step_message += f"\n<br><br>• 다음, 실시간 MW 장비 상태 확인 API를 호출합니다.\n"
+            step_message += f"\n<br><br>• ② 다음, 실시간 MW 장비 상태 확인 API를 호출합니다.\n"
 
             # guksa_id 추출 (장비 중 첫 번째의 guksa_id 사용, 없으면 None)
             guksa_id = None
@@ -299,8 +300,8 @@ class InferFailurePoint:
                 self.logger.warning("• ⚠️ MW SNMP 상태 정보를 가져올 수 없습니다.")
                 return
 
-            step_message += f"<br>&nbsp; → MW SNMP 상태 정보 수신: {len(mw_status_data)}건\n"
-            step_message += "<br><br>• 다음, MW 파라미터별 상세 분석을 진행합니다.\n"
+            step_message += f"<br>&nbsp; → MW SNMP 상태 정보 수신 성공: {len(mw_status_data)}건\n"
+            step_message += "<br><br>• ③ 다음, MW 파라미터별 분석을 진행합니다.\n"
 
             # MW 장애점 분석 (요청/응답 ID 매칭 개선)
             mw_failure_count, mw_details = self.analyze_mw_status_data(
@@ -486,8 +487,8 @@ class InferFailurePoint:
             if not matched_response:
                 # 응답이 없는 경우
                 details.append(
-                    f"<br><br>&nbsp; - 장비: {requested_name} (SNMP ID: {requested_id})")
-                details.append("<br>&nbsp;&nbsp; . SNMP 응답 없음 (API 호출 실패)")
+                    f"<br>&nbsp; - 장비: {requested_name} (SNMP ID: {requested_id})")
+                details.append("<br>&nbsp;&nbsp; → SNMP 응답 없음 (API 호출 실패)")
                 self.logger.warning(
                     f"• ⚠️ MW 장비 '{requested_name}' (SNMP ID: {requested_id}) SNMP 응답 없음")
                 continue
@@ -580,7 +581,7 @@ class InferFailurePoint:
 
             # 장비명과 상태 요약 추가
             details.append(
-                f"<br>&nbsp; → 장비: {requested_name} ({equip_type}, SNMP ID: {requested_id}): {', '.join(equipment_status)}")
+                f"<br>&nbsp; → 장비: {requested_name} ({equip_type}, SNMP ID: {requested_id}): {', '.join(equipment_status)}<br>--- 슬롯별 상세 내역 ---<br>")
 
             # 슬롯별 상세 내역 추가
             details.extend(equipment_failures['slot_details'])
@@ -744,7 +745,7 @@ class InferFailurePoint:
 
                 except (ValueError, TypeError):
                     if param_data.get('value') == 'error':
-                        details.append(f"{param}: 측정오류")
+                        details.append(f"{param}: 측정 오류")
                     else:
                         details.append(
                             f"{param}: {param_data.get('value', 'N/A')}")
@@ -759,7 +760,7 @@ class InferFailurePoint:
             err_data = slot_data['ERR']
             for err_type, err_value in err_data.items():
                 if err_value == 'error':
-                    details.append(f"{err_type}: 측정오류")
+                    details.append(f"{err_type}: 측정 오류")
                 elif err_value == '0' or err_value == 0:
                     details.append(f"{err_type}: 0 (정상)")
                 else:
@@ -788,7 +789,7 @@ class InferFailurePoint:
 
             except (ValueError, TypeError):
                 if volt_data.get('value') == 'error':
-                    return "전압 측정오류"
+                    return "전압 측정 오류"
                 else:
                     return f"전압: {volt_data.get('value', 'N/A')}"
 
@@ -808,6 +809,7 @@ class InferFailurePoint:
         step_message = "🚩 [3단계] 상위 장비 장애점 분석 (계위별 경보 Tree 탐색)<br>\n"
         step_message += HR_LINE_HTML
         step_message += f"<br>• 전체 장비: {len(self.nodes)}대, 경보발생 장비: {len(node_alarm_map)}대\n"
+        step_message += f"<br>&nbsp; - 하위 장비 모두 경보인 경우 상위 장비 장애 의심 탐색\n"
 
         level_info = []
         for level, nodes in level_nodes.items():
