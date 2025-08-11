@@ -1,0 +1,18 @@
+FROM ktis-bastion01.container.ipc.kt.com:5000/appdu/python:3.11.7-base
+
+
+ENV HOME /root
+WORKDIR /root
+
+ADD  requirements.txt ${HOME}
+ADD  devops/jenkins/pip.conf ${HOME}/.pip/
+
+USER root
+
+ENV TZ Asia/Seoul
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone 
+
+RUN mkdir -p "/etc/config"
+RUN echo "devprdflag=dev"> "/etc/config/env.properties"
+
+RUN  pip install -r requirements.txt
