@@ -6,7 +6,7 @@
 config.ini
 secret.txt
 database.db
-*.exe
+exclude_list.txt
 
 # 특정 폴더
 node_modules
@@ -17,14 +17,15 @@ dist
 111migddddrations copy
 .cursor
 .git
+.gitignore
 소스백업
 venv
 venv_temp
 dist
 
 # 패턴 매칭 (와일드카드)
+*.exe
 *.log
 *.tmp
 *.cache
 backup_*
-temp*

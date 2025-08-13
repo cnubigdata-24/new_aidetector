@@ -1,0 +1,293 @@
+{% extends 'layout/base.html' %}
+{% block content %}
+
+<div class="container-fluid p-0">
+  <div class="row">
+    <!-- 좌측: 토폴로지 맵 -->
+    <div class="col-md-6">
+      <div id="topology-svg" style="width:100%; height:400px; border:1px solid black; background-color: #212529; border-radius: 3%;"></div>
+    </div>    
+
+    <!-- 우측: 국사정보, 장비현황, 경보 목록 -->
+    <div class="col-md-6">
+      <!-- 우측 전체 높이 고정 -->
+      <div style="height: 400px;">
+        <!-- 국사 정보 -->
+        <div class="card-header">
+          <h6 class="card-title mb-0 text-primary">| 🏚️ 국사 정보</h6>
+        </div>
+
+        <div class="card bg-dark text-white mb-3">
+          <div class="card-body">
+            <p class="card-text">
+              [ 국사명 ] <span id="kuksa-name">-</span>
+              [ 국사유형 ] <span id="kuksa-type">-</span>
+            </p>
+            <p class="card-text">
+              [ 운용부서 ] <span id="operation-depart">-</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- 장비 현황 -->
+        <div class="card-header">
+          <h6 class="card-title mb-0 text-primary">| 🛠️ 장비 현황</h6>
+        </div>
+
+        <div class="card bg-dark text-white mb-3">
+          <div class="card-body p-0">
+
+            <!-- 테이블 스크롤 추가 -->
+            <div class="table-responsive" style="max-height: 120px; overflow-y: auto;">
+              <table class="table table-dark table-hover table-sm mb-0">
+                <thead>
+                  <tr>
+                    <th>분야</th>
+                    <th>장비유형</th>
+                    <th>장비모델</th>
+                    <th>장비명</th>
+                  </tr>
+                </thead>
+                <tbody id="equipment-list"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 최근 경보 목록 -->
+        <!-- <div class="card-header">
+          <h6 class="card-title mb-0 text-primary">| 최근 경보현황</h6>
+        </div> -->
+
+        <div class="card bg-dark text-white">
+          <div class="card-body p-0">
+
+            <!-- 테이블 스크롤 추가 -->
+            <div class="table-responsive" style="max-height: 120px; overflow-y: auto;">
+              <table class="table table-dark table-hover table-sm mb-0">
+                <thead>
+                  <tr>
+                    <th>장비명</th>
+                    <th>경보명</th>
+                    <th>등급</th>
+                    <th>발생일시</th>
+                    <th>회복일시</th>
+                  </tr>
+                </thead>
+                <tbody id="alarm-list"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div> <!-- 우측 전체 높이 고정 끝 -->
+    </div> <!-- col-md-6 끝 -->
+  </div> <!-- row 끝 -->
+
+  <!-- 장애점 찾기 버튼 -->
+  <!-- <form method="POST" class="mt-3">
+    <button class="btn btn-danger" style="width: 200px;"><   장애점 찾기   ></button>
+  </form> -->
+
+
+  <!-- 장애점 결과 -->
+  <!-- <div class="mt-3">
+    <textarea class="form-control shadow-sm" rows="3" readonly>{{ result or '--- AI 분석 결과 ---' }}</textarea>
+  </div> -->
+
+  <!-- 전체 경보현황 -->
+  <div class="mt-4">
+    <!-- <h5 class="mt-4">| 경보현황 |</h5> -->
+
+    <div class="mt-4">
+      <h6 class="card-title mb-0 text-primary">| 🔔 최근 경보발생 현황</h6>
+    </div>
+
+    <!-- 테이블 스크롤 추가 -->
+    <div class="table-responsive" style="max-height: 40vh; overflow-y: auto;">
+      <table class="table table-striped table-dark">
+        <thead>
+          <tr>
+            <th>국사명</th><th>분야</th><th>등급</th><th>유효/무효</th><th>장비명</th>
+            <th>발생일시</th><th>알람 메시지</th><th>장애 사유</th>
+          </tr>
+        </thead>
+        <tbody id="alarm_table">
+          {% for alarm in alarms %}
+          <tr>
+            <td>{{ alarm.guksa }}</td>
+            <td>{{ alarm.sector }}</td>
+            <td>{{ alarm.alarm_grade }}</td>
+            <td>{{ alarm.valid_yun }}</td>
+            <td>{{ alarm.equip_name }}</td>
+            <td>{{ alarm.occur_datetime }}</td>
+            <td>{{ alarm.alarm_message }}</td>          
+            <td>{{ alarm.fault_reason }}</td>
+            
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<!-- <link href="https://unpkg.com/vis-network/styles/vis-network.min.css" rel="stylesheet" /> -->
+<link  type="text/css" href="/static/css/vis-network.min.css" rel="stylesheet" />
+
+<!-- <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script> -->
+<script src="/static/js/vis-network.min.js"></script>
+<script src="/static/js/topology_map.js"></script>
+
+<!-- 사이드바 클릭 이벤트 -->
+<script>
+
+  // 국사 클릭 이벤트 핸들러 - 수정된 부분
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.list-group-item').forEach((item) => {
+      item.addEventListener('click', async function (e) {
+        e.preventDefault();
+        const guksaName = this.dataset.name;
+        const guksaId = this.dataset.id;
+
+        // 선택된 항목 강조
+        document.querySelectorAll('.list-group-item').forEach((el) => {
+          el.classList.remove('active');
+        });
+        this.classList.add('active');
+
+        try {
+          console.log(`국사 선택: ${guksaName}, ID: ${guksaId}`);
+
+          // 토폴로지 데이터 가져오기
+          const response = await fetch(`/api/topology/${guksaName}`);
+          if (!response.ok) {
+            throw new Error(`서버 응답 오류: ${response.status}`);
+          }
+
+          const data = await response.json();
+          // print(data)
+          console.log('토폴로지 데이터:', data);
+
+          // 토폴로지 그리기
+          drawTopology(data);
+
+          // 국사 정보 업데이트
+          if (data.guksa_info) {
+            // updateGuksaInfo(data.guksa_info);
+
+            // 장비 현황 업데이트
+            if (data.equipments) {
+              // updateEquipmentList(data.equipments);
+            }
+
+            // 경보 목록 업데이트
+            if (data.alarms) {
+              // updateAlarmList(data.alarms);
+            }
+          } else {
+            console.error('국사 정보가 없습니다');
+          }
+        } catch (error) {
+          console.error('데이터 로딩 실패:', error);
+          alert(`데이터 로딩 중 오류가 발생했습니다: ${error.message}`);
+        }
+      });
+    });
+  });
+
+// 국사 정보 업데이트 함수
+function updateKuksaInfo(info) {
+    document.getElementById('kuksa-name').textContent = info.kuksa_name;
+    document.getElementById('kuksa-type').textContent = info.kuksa_type;
+    document.getElementById('operation-depart').textContent = info.operation_depart;
+}
+
+// 장비 현황 업데이트 함수
+function updateEquipmentList(equipments) {
+    const tbody = document.getElementById('equipment-list');
+    tbody.innerHTML = '';
+    
+    equipments.forEach(equip => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${equip.equip_field}</td>
+            <td>${equip.equip_type}</td>
+            <td>${equip.equip_model}</td>
+            <td>${equip.equip_name}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// 경보 목록 업데이트 함수
+// function updateAlarmList(alarms) {
+//     const tbody = document.getElementById('alarm-list');
+//     tbody.innerHTML = '';
+    
+//     // 경보발생일시 기준 내림차순 정렬
+//     alarms.sort((a, b) => new Date(b.alarm_datetime) - new Date(a.alarm_datetime));
+    
+//     alarms.forEach(alarm => {
+//         const row = document.createElement('tr');
+//         row.innerHTML = `
+//             <td>${alarm.equip.equip_name}</td>
+//             <td>${alarm.alarm_message}</td>
+//             <td>${alarm.alarm_grade}</td>
+//             <td>${alarm.alarm_date}</td>
+//             <td>${alarm.recover_date || '-'}</td>
+//         `;
+//         tbody.appendChild(row);
+//     });
+// }
+
+    // 경보발생 현황 업데이트
+      document.addEventListener("DOMContentLoaded", function () {
+            const kuksaItems = document.querySelectorAll("#kuksa-list .list-group-item");
+
+            kuksaItems.forEach(item => {
+              item.addEventListener("click", async () => {
+                const kuksaName = item.dataset.name;
+                const response = await fetch(`/api/alarms/${kuksaName}`);
+                const alarms = await response.json();
+                const tbody = document.getElementById("alarm_table");
+                
+        
+
+                tbody.innerHTML = "";
+                // CONSOLE.LOG(tbody)
+                alarms.alarms.forEach(item => {
+                  const alarm = item.alarms; // alarms 객체 가져오기
+                  const row = `<tr>
+                    <td>${item.guksa}</td>
+                    <td>${alarm.sector}</td>
+                    <td>${alarm.alarm_grade}</td>
+                    <td>${alarm.valid_yn}</td>
+                    <td>${alarm.equip_name}</td>
+                    <td>${alarm.occur_datetime}</td>
+                    <td>${alarm.alarm_message}</td>
+                    <td>${alarm.fault_reason}</td>
+                  </tr>`;
+
+                  tbody.innerHTML += row;  // tbody에 행 추가
+                });
+
+                // document.getElementById("alarm-table-container").style.display = "block";
+                console.log(alarms.alarms.length)
+                if(alarms.alarms.length==0){
+                  document.getElementById('selected_guksa').textContent = ''  
+                }else{
+                  document.getElementById('selected_guksa').textContent = alarms.alarms[0].guksa_id  
+                }
+
+              });
+            });
+
+            
+          });
+
+
+</script>
+
+{% endblock %}

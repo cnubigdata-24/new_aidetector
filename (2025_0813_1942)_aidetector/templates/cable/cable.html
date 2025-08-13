@@ -1,0 +1,308 @@
+{% extends 'layout/base.html' %}
+{% block content %}
+
+<link href="/static/css/main.css" rel="stylesheet" type="text/css">
+<link href="/static/css/toast_icon.css" rel="stylesheet" type="text/css">
+<script type="text/javascript" src="/static/js/jquery/jquery-3.2.1.min.js" crossorigin="anonymous"></script>
+
+<style>
+
+    
+    .justify_center{
+        display: flex;
+        justify-content: center;
+    }
+
+    body {
+      background-color: white;
+    }
+
+    .selected{
+        border-radius: 0.325rem;
+        font-weight: 800;
+        background-color: #333839;
+    }
+
+    .title{
+        color: black;
+        font-size: 26px;
+        margin-left: 23px;
+        margin-top: 15px;
+
+    }
+
+    .select_type{
+    }
+
+    #btn_right_margin{
+        margin-right: 23px;
+    }
+
+.responsive-table {
+  li {
+    border-radius: 3px;
+    padding: 25px 30px;
+    display: flex;
+    justify-content: space-between;
+    border: 2px solid #00000045;
+    padding: 9px 17px;
+    margin-bottom: 8px;
+    overflow: auto;
+  }
+  .table-header {
+    background-color: #333839;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #ffffff;
+    text-align: center;
+  }
+  .table-row {
+    background-color: #ffffff;
+    box-shadow: 0px 0px 9px 0px rgba(0,0,0,0.1);
+    color: black;
+    text-align: center;
+    align-items: center;
+    font-size: 13px;
+  }
+  .col-110 {
+    flex-basis: 1%;
+  }
+  .col-1 {
+    flex-basis: 10%;
+  }
+  .col-2 {
+    flex-basis: 40%;
+  }
+  .col-3 {
+    flex-basis: 25%;
+  }
+  .col-4 {
+    flex-basis: 25%;
+  }
+  
+  @media all and (max-width: 767px) {
+    .table-header {
+      display: none;
+    }
+    .table-row{
+      
+    }
+    li {
+      display: block;
+    }
+    .col {
+      
+      flex-basis: 100%;
+      
+    }
+    .col {
+      display: flex;
+      padding: 10px 0;
+      &:before {
+        color: #6C7A89;
+        padding-right: 10px;
+        content: attr(data-label);
+        flex-basis: 50%;
+        text-align: right;
+      }
+    }
+
+
+
+    
+  }
+
+
+}
+
+  </style>
+
+<div class="container-fluid p-0">
+    <div class="row">
+        <div class="title">
+        ■ 선로 피해 현황 🚧
+        </div>
+    </div>
+    <div class="row">
+        <div class="container">
+            <div>
+                <div class="" style="display: flex; justify-content: flex-end;">
+                    <div class="select_type">
+                        <div class="dropend" id="btn_right_margin">
+                            <button id="selectSector" class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                              복구 상태
+                            </button>
+                            <ul class="dropdown-menu">
+                              <li><a class="dropdown-item" href="#" onclick="selectSector('전체')">전체</a></li>
+                              <li><a class="dropdown-item" href="#" onclick="selectSector('미복구')">미복구</a></li>
+                              <li><a class="dropdown-item" href="#" onclick="selectSector('복구완료')">복구완료</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div style="display: flex;">
+                        <span class="text-muted" style="font-size: 24px;">피해 발생일 :&nbsp;</span>
+                        <div class="d-flex align-items-center gap-1 me-4" style="display: flex;">
+                            <input type="date" id="startDate" name="startDate" class="form-control" value="{{ query_startDate }}">
+                            &nbsp;~&nbsp;
+                            <input type="date" id="endDate" name="endDate" class="form-control" value="{{ query_endDate }}">
+                        </div>
+                    </div>
+                    <div  id="btn_right_margin">
+                        <button type="button" class="btn btn-primary" onclick="search()">검색</button>
+                    </div>
+                </div>
+            </div>
+            <ul class="responsive-table" style="margin-top: 20px;">
+              <li class="table-header">
+                <div class="col"></div>
+                <div class="col">상태</div>
+                <div class="col">국사</div>
+                <div class="col">담당부서</div>
+                <div class="col">장애구간</div>
+                <div class="col">상황</div>
+                <div class="col">고객회선수</div>
+                <div class="col">알람 발생 시간</div>
+                <div class="col">복구 완료 시간</div>
+              </li>
+              {% for alarm in alarms %}
+              <li class="table-row">
+                <div class="col">
+                    {% if alarm.alarm_recover_datetime %}
+		                <label for="t-success"  class="toast-icon icon-success"></label>
+                    {% else %}
+		                <label for="t-error" class="toast-icon icon-error"></label>
+                    {% endif %}
+                </div>
+                <div class="col">
+                    {% if alarm.alarm_recover_datetime %}
+		                복구 완료
+                    {% else %}
+		                미 복구
+                    {% endif %}
+                </div>
+                <div class="col">{{ alarm.guksa_name }}</div>
+                <div class="col">{{ alarm.op_team_name_1 }}</div>
+                <div class="col">{{ alarm.fault_sector }}</div>
+                <div class="col">{{ alarm.status }}</div>
+                <div class="col">{{ alarm.customer_count }}</div>
+                <div class="col">{{ alarm.alarm_occur_datetime }}</div>
+                <div class="col">{{ alarm.alarm_recover_datetime }}</div>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+    </div>
+
+    <nav aria-label="Another pagination example" class="justify_center">
+    <ul class="pagination pagination-lg flex-wrap" style="--bs-pagination-padding-x: 0.7rem; --bs-pagination-padding-y: 0.25rem;">
+        {% if current_page > 1 %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ current_page - 1 }}">Previous</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <a class="page-link">Previous</a>
+        </li>
+        {% endif %}
+
+        {% for item in page_range %}
+            {% if item == '...' %}
+            <li class="page-item ellipsis">
+                <a class="page-link">...</a>
+            </li>
+            {% elif item == current_page %}
+            <li class="page-item active" aria-current="page">
+                <a class="page-link">{{ item }}</a>
+            </li>
+            {% else %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ item }}">{{ item }}</a>
+            </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if current_page < total_pages %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ current_page + 1 }}">Next</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <a class="page-link">Next</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+
+
+</div>
+
+
+<script>
+    function selectSector(sector){
+        // $modal.find('.modal-title2').text(chatInfo.title);
+        document.getElementById('selectSector').textContent = sector
+    }
+
+    function search() {
+      // 선택한 분야, 시작 날짜, 종료 날짜 가져오기
+      var selectSector = document.getElementById('selectSector').textContent.trim(); // 공백 제거
+      var startDate = document.getElementById('startDate').value; // 시작 날짜
+      var endDate = document.getElementById('endDate').value; // 종료 날짜
+      const urlParams = new URLSearchParams(window.location.search);
+      const page = 1 // 현재 페이지 번호 가져오기
+
+      // '분야 선택' 기본 텍스트일 경우 null로 설정
+      if (selectSector === '상태') {
+          selectSector = null;
+      }
+
+      // URL 생성
+      let url = `/cable?`;
+
+      // 선택된 분야가 유효할 경우 URL에 추가
+      if (selectSector) {
+          url += `selectSector=${encodeURIComponent(selectSector)}&`; // URL 인코딩
+      }
+
+      // 시작 날짜가 유효할 경우 URL에 추가
+      if (startDate) {
+          url += `startDate=${encodeURIComponent(startDate)}&`; // URL 인코딩
+      }
+
+      // 종료 날짜가 유효할 경우 URL에 추가
+      if (endDate) {
+          url += `endDate=${encodeURIComponent(endDate)}&`; // URL 인코딩
+      }
+
+      // 현재 페이지가 유효할 경우 URL에 추가
+      if (page) {
+          url += `page=${encodeURIComponent(page)}`; // URL 인코딩
+      }
+
+      // URL 이동
+      window.location.href = url; // URL로 이동
+
+        // $.ajax({
+        //     method: "GET",
+        //     url: "/alarm",
+        //     headers: {
+        //         'X-CSRFTOKEN': '{{ csrf_token }}'
+        //     },
+        //     data: {
+        //         page: page,               // page 파라미터
+        //         startDate: startDate,     // 시작 날짜
+        //         endDate: endDate,         // 종료 날짜
+        //         selectSector: selectSector // 선택한 섹터
+        //     },
+        //     success: function(res) {
+        //         // 서버에서 반환된 데이터를 기반으로 DOM 업데이트
+        //         $('#alarm-container').html(res);  // 새로운 HTML로 대체
+        //     },
+        //     error: function(request, status, error) {
+        //         console.log("Error!");
+        //     }
+        // });
+    }
+</script>
+{% endblock %}

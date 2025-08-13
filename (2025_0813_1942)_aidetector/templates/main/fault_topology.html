@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>AI Detector Topology</title>
+    <link rel="stylesheet" href="/static/css/fault_topology.css" />
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+  </head>
+  <body>
+    <!-- 상단 메뉴 바 -->
+    <div class="menu-bar">
+      <button onclick="triggerNodeAlarm('A')">A국사 경보</button>
+      <button onclick="triggerNodeAlarm('B')">B국사 경보</button>
+      <button onclick="triggerLinkAlarm('link3')">링크3 경보</button>
+      <button onclick="triggerLinkAlarm('link3-2')">링크3-2 경보</button>
+      <button onclick="triggerLinkAlarm('MW-Link')">MW 링크 경보</button>
+      <button onclick="resetAlarms()">경보 해제</button>
+      <button onclick="randomizePositions()">랜덤 배치</button>
+      <button onclick="centerOnNode('A')">A국사 중앙</button>
+      <button onclick="fitAllNodes()">전체 노드 보기</button>
+
+      <div class="zoom-controls">
+        <button class="zoom-btn" onclick="zoomIn()">+</button>
+        <button class="zoom-btn" onclick="zoomOut()">-</button>
+        <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+      </div>
+    </div>
+
+    <!-- 맵 컨테이너 -->
+    <div class="map-container">
+      <svg></svg>
+    </div>
+
+    <!-- 하단 범례 -->
+    <div class="legend-bar">
+      <div class="legend-item">
+        <div class="legend-color" style="background-color: #3b82f6"></div>
+        <span>선택된 노드</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background-color: #f6ad55"></div>
+        <span>노드 경보</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background-color: #ff0000"></div>
+        <span>링크 경보</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background-color: #4a4a4a"></div>
+        <span>MW 간 연결</span>
+      </div>
+    </div>
+
+    <!-- 팝업 -->
+    <div id="popup" class="popup">
+      <span class="popup-close" onclick="closePopup()">&times;</span>
+      <h3 id="popup-title">상세 정보</h3>
+      <div id="popup-content">
+        <table class="popup-table" id="popup-table"></table>
+      </div>
+    </div>
+
+    <script>
+      // ------------- 노드 및 링크 데이터 생성 함수 -------------
+      function createInitialData() {
+        // // 노드 타입 배열
+        // const nodeTypes = ['IP', 'MW', '전송', '교환'];
+
+        // // 기본 노드 생성
+        // const nodes = [
+        //   {
+        //     id: 'a1',
+        //     name: 'a1국사',
+        //     type: 'IP',
+        //     equipmentId: 'IP-001',
+        //     equipmentName: 'IP 라우터 1',
+        //     status: '정상',
+        //     alarmTime: '',
+        //     alarmDetail: '',
+        //     affectedCustomers: 0,
+        //     selected: false,
+        //   },
+        //   {
+        //     id: 'a2',
+        //     name: 'a2국사',
+        //     type: 'IP',
+        //     equipmentId: 'IP-002',
+        //     equipmentName: 'IP 라우터 2',
+        //     status: '정상',
+        //     alarmTime: '',
+        //     alarmDetail: '',
+        //     affectedCustomers: 0,
+        //     selected: false,
+        //   },
+        //   {
+        //     id: 'A',
+        //     name: 'A국사',
+        //     type: '전송',
+        //     equipmentId: 'TR-001',
+        //     equipmentName: '전송장비 1',
+        //     status: '정상',
+        //     alarmTime: '',
+        //     alarmDetail: '',
+        //     affectedCustomers: 0,
+        //     selected: true,
+        //   },
+        //   {
+        //     id: 'B',
+        //     name: 'B국사',
+        //     type: '교환',
+        //     equipmentId: 'EX-001',
+        //     equipmentName: '교환기 1',
+        //     status: '정상',
+        //     alarmTime: '',
+        //     alarmDetail: '',
+        //     affectedCustomers: 0,
+        //     selected: false,
+        //   },
+        //   {
+        //     id: 'b1',
+        //     name: 'b1국사',
+        //     type: 'MW',
+        //     equipmentId: 'MW-001',
+        //     equipmentName: 'MW 장비 1',
+        //     status: '정상',
+        //     alarmTime: '',
+        //     alarmDetail: '',
+        //     affectedCustomers: 0,
+        //     selected: false,
+        //   },
+        //   {
+        //     id: 'b2',
+        //     name: 'b2국사',
+        //     type: 'MW',
+        //     equipmentId: 'MW-002',
+        //     equipmentName: 'MW 장비 2',
+        //     status: '정상',
+        //     alarmTime: '',
+        //     alarmDetail: '',
+        //     affectedCustomers: 0,
+        //     selected: false,
+        //   },
+        // ];
+
+        // // 추가 노드 생성 (총 20개가 되도록)
+        // for (let i = 1; i <= 14; i++) {
+        //   const type = nodeTypes[Math.floor(Math.random() * nodeTypes.length)];
+        //   const prefix =
+        //     type === 'IP' ? 'ip' : type === 'MW' ? 'mw' : type === '전송' ? 'tr' : 'ex';
+
+        //   nodes.push({
+        //     id: `${prefix}${i}`,
+        //     name: `${prefix}${i}국사`,
+        //     type: type,
+        //     equipmentId: `${prefix.toUpperCase()}-${i.toString().padStart(3, '0')}`,
+        //     equipmentName: `${type} 장비 ${i}`,
+        //     status: '정상',
+        //     alarmTime: '',
+        //     alarmDetail: '',
+        //     affectedCustomers: 0,
+        //     selected: false,
+        //   });
+        // }
+
+        // // 기본 링크 생성
+        // const links = [
+        //   {
+        //     id: 'link1',
+        //     source: 'a1',
+        //     target: 'A',
+        //     name: 'link1',
+        //     type: 'DWDM',
+        //     status: '정상',
+        //     alarmTime: '',
+        //     alarmDetail: '',
+        //     affectedCustomers: 0,
+        //   },
+        //   {
+        //     id: 'link2',
+        //     source: 'a2',
+        //     target: 'A',
+        //     name: 'link2',
+        //     type: 'DWDM',
+        //     status: '정상',
+        //     alarmTime: '',
+        //     alarmDetail: '',
+        //     affectedCustomers: 0,
+        //   },
+        //   {
+        //     id: 'link3',
+        //     source: 'A',
+        //     target: 'B',
+        //     name: 'link3',
+        //     type: 'Metro',
+        //     curvature: 0.5,
+        //     status: '정상',
+        //     alarmTime: '',
+        //     alarmDetail: '',
+        //     affectedCustomers: 0,
+        //   },
+        //   {
+        //     id: 'link3-2',
+        //     source: 'A',
+        //     target: 'B',
+        //     name: 'link3-2',
+        //     type: 'Metro',
+        //     curvature: -0.5,
+        //     status: '정상',
+        //     alarmTime: '',
+        //     alarmDetail: '',
+        //     affectedCustomers: 0,
+        //   },
+        //   {
+        //     id: 'link4',
+        //     source: 'B',
+        //     target: 'b1',
+        //     name: 'link4',
+        //     type: 'Metro',
+        //     status: '정상',
+        //     alarmTime: '',
+        //     alarmDetail: '',
+        //     affectedCustomers: 0,
+        //   },
+        //   {
+        //     id: 'link5',
+        //     source: 'B',
+        //     target: 'b2',
+        //     name: 'link5',
+        //     type: 'Metro',
+        //     status: '정상',
+        //     alarmTime: '',
+        //     alarmDetail: '',
+        //     affectedCustomers: 0,
+        //   },
+        //   // MW 간 직접 연결 링크 추가
+        //   {
+        //     id: 'link-mw',
+        //     source: 'b1',
+        //     target: 'b2',
+        //     name: 'MW-Link',
+        //     type: 'MW-Direct',
+        //     curvature: 0.3,
+        //     status: '정상',
+        //     alarmTime: '',
+        //     alarmDetail: '',
+        //     affectedCustomers: 0,
+        //   },
+        // ];
+
+        // // 추가 링크 생성
+        // const usedNodes = new Set(['a1', 'a2', 'A', 'B', 'b1', 'b2']);
+        // let linkCounter = 6;
+
+        // // 나머지 노드들을 연결
+        // nodes.forEach((node) => {
+        //   if (!usedNodes.has(node.id)) {
+        //     // 이미 연결된 노드 중 하나를 무작위로 선택
+        //     const connectedNodes = Array.from(usedNodes);
+        //     const target = connectedNodes[Math.floor(Math.random() * connectedNodes.length)];
+
+        //     links.push({
+        //       id: `link${linkCounter}`,
+        //       source: node.id,
+        //       target: target,
+        //       name: `link${linkCounter}`,
+        //       type: Math.random() > 0.5 ? 'Metro' : 'DWDM',
+        //       curvature: Math.random() > 0.7 ? Math.random() * 0.3 - 0.15 : 0,
+        //       status: '정상',
+        //       alarmTime: '',
+        //       alarmDetail: '',
+        //       affectedCustomers: 0,
+        //     });
+
+        //     usedNodes.add(node.id);
+        //     linkCounter++;
+        //   }
+        // });
+
+        // // 몇 개의 추가 링크 생성하여 네트워크 복잡성 증가
+        // for (let i = 0; i < 20; i++) {
+        //   const sourceIndex = Math.floor(Math.random() * nodes.length);
+        //   let targetIndex;
+        //   do {
+        //     targetIndex = Math.floor(Math.random() * nodes.length);
+        //   } while (sourceIndex === targetIndex);
+
+        //   // 이미 존재하는 링크인지 확인
+        //   const sourceId = nodes[sourceIndex].id;
+        //   const targetId = nodes[targetIndex].id;
+
+        //   // 두 노드 사이의 링크 개수 카운트
+        //   const existingLinks = links.filter(
+        //     (l) =>
+        //       (l.source === sourceId && l.target === targetId) ||
+        //       (l.source.id === sourceId && l.target.id === targetId) ||
+        //       (l.source === targetId && l.target === sourceId) ||
+        //       (l.source.id === targetId && l.target.id === sourceId)
+        //   );
+
+        //   // 두 노드 사이에 링크가 있다면 곡률 조정
+        //   let curvature = 0;
+        //   if (existingLinks.length > 0) {
+        //     // 이미 존재하는 링크가 있으면 곡률 증가
+        //     curvature = 0.3 + existingLinks.length * 0.2;
+        //     if (Math.random() > 0.5) curvature = -curvature;
+        //   }
+
+        //   links.push({
+        //     id: `link${linkCounter}`,
+        //     source: sourceId,
+        //     target: targetId,
+        //     name: `link${linkCounter}`,
+        //     type: Math.random() > 0.5 ? 'Metro' : 'DWDM',
+        //     curvature: curvature,
+        //     status: '정상',
+        //     alarmTime: '',
+        //     alarmDetail: '',
+        //     affectedCustomers: 0,
+        //   });
+
+        //   linkCounter++;
+        // }
+
+        // return { nodes, links };
+      }
+
+      // ------------- 외부 JSON 데이터로부터 토폴로지 생성 함수 -------------
+      function createTopologyFromJson(jsonData) {
+        // JSON 데이터에서 노드와 링크 추출
+        const nodes = jsonData.nodes || [];
+        const links = jsonData.links || [];
+
+        // 기존 시각화 초기화
+        svg.selectAll('*').remove();
+
+        // 새 그룹 생성
+        const g = svg.append('g');
+
+        // 링크, 노드 생성
+        createVisualization(nodes, links, g);
+
+        return { nodes, links };
+      }
+
+      // ------------- 노드 및 링크 시각화 생성 함수 -------------
+      function createVisualization(nodes, links, g) {
+        // 링크 그룹을 먼저 생성하여 노드 아래에 표시되도록 함
+        const linkGroup = g.append('g').attr('class', 'links-group');
+        const linkLabelGroup = g.append('g').attr('class', 'link-labels-group');
+        const nodeGroup = g.append('g').attr('class', 'nodes-group');
+
+        // 링크 생성
+        const link = linkGroup
+          .selectAll('path')
+          .data(links)
+          .join('path')
+          .attr('id', (d) => d.id)
+          .attr('class', (d) => {
+            // 소스와 타겟 노드 확인
+            const sourceNode =
+              typeof d.source === 'object' ? d.source : nodes.find((n) => n.id === d.source);
+            const targetNode =
+              typeof d.target === 'object' ? d.target : nodes.find((n) => n.id === d.target);
+
+            // MW 노드 간 연결 확인
+            let classes = 'link ' + d.name;
+            if (sourceNode && targetNode && sourceNode.type === 'MW' && targetNode.type === 'MW') {
+              classes += ' mw-link';
+            }
+
+            return classes;
+          })
+          .on('click', function (event, d) {
+            // 우클릭에서 좌클릭으로 변경
+            event.stopPropagation();
+            d3.selectAll('.link').classed('selected', false);
+            d3.select(this).classed('selected', true);
+            showPopup(event, d, 'link');
+          })
+          .call(
+            d3
+              .drag()
+              .subject(dragLinkSubject)
+              .on('start', dragLinkStarted)
+              .on('drag', draggedLink)
+              .on('end', dragLinkEnded)
+          );
+
+        // 링크 라벨 생성
+        const linkLabel = linkLabelGroup
+          .selectAll('text')
+          .data(links)
+          .join('text')
+          .attr('class', 'link-label')
+          .text((d) => d.name);
+
+        // 노드 생성
+        const node = nodeGroup
+          .selectAll('g')
+          .data(nodes)
+          .join('g')
+          .attr('class', (d) => {
+            let classes = `node node-${d.id}`;
+            if (d.selected) classes += ' selected';
+            return classes;
+          })
+          .on('click', function (event, d) {
+            // 우클릭에서 좌클릭으로 변경
+            event.stopPropagation();
+            showPopup(event, d, 'node');
+
+            // 노드 선택 상태 업데이트
+            nodes.forEach((n) => (n.selected = false));
+            d.selected = true;
+
+            // 시각적으로 선택 상태 업데이트
+            d3.selectAll('.node').classed('selected', false);
+            d3.select(this).classed('selected', true);
+          })
+          .call(d3.drag().on('start', dragstarted).on('drag', dragged).on('end', dragended));
+
+        // 노드 모양 추가
+        node.append('rect').attr('x', -60).attr('y', -20).attr('width', 120).attr('height', 40);
+
+        // 노드 타입 텍스트 추가
+        node
+          .append('text')
+          .attr('class', (d) => `node-type node-type-${d.type}`)
+          .attr('dy', -25)
+          .attr('text-anchor', 'middle')
+          .text((d) => d.type);
+
+        // 노드 이름 텍스트 추가
+        node
+          .append('text')
+          .attr('class', 'node-name')
+          .attr('dy', 5)
+          .attr('text-anchor', 'middle')
+          .text((d) => d.name);
+
+        return { link, linkLabel, node };
+      }
+
+      // ------------- 경보 함수 -------------
+      function triggerNodeAlarm(nodeId) {
+        const now = new Date();
+        const timeStr = now.toLocaleString();
+
+        // 노드에 경보 정보 설정
+        const node = nodes.find((n) => n.id === nodeId);
+        if (node) {
+          node.status = '이상';
+          node.alarmTime = timeStr;
+          node.alarmDetail = '장비 통신 불가';
+          node.affectedCustomers = Math.floor(Math.random() * 100) + 1;
+        }
+
+        // 시각적 경보 효과 추가
+        d3.select('.node-' + nodeId).classed('alarm-node', true);
+      }
+
+      function triggerLinkAlarm(linkName) {
+        const now = new Date();
+        const timeStr = now.toLocaleString();
+
+        // 링크에 경보 정보 설정
+        const link = links.find((l) => l.name === linkName);
+        if (link) {
+          link.status = '이상';
+          link.alarmTime = timeStr;
+          link.alarmDetail = '링크 품질 저하';
+          link.affectedCustomers = Math.floor(Math.random() * 100) + 1;
+        }
+
+        // 시각적 경보 효과 추가
+        d3.selectAll('.' + linkName).classed('alarm-link', true);
+      }
+
+      function resetAlarms() {
+        // 모든 노드 경보 상태 초기화
+        nodes.forEach((node) => {
+          node.status = '정상';
+          node.alarmTime = '';
+          node.alarmDetail = '';
+          node.affectedCustomers = 0;
+        });
+
+        // 모든 링크 경보 상태 초기화
+        links.forEach((link) => {
+          link.status = '정상';
+          link.alarmTime = '';
+          link.alarmDetail = '';
+          link.affectedCustomers = 0;
+        });
+
+        // 시각적 경보 효과 제거
+        d3.selectAll('.alarm-node').classed('alarm-node', false);
+        d3.selectAll('.alarm-link').classed('alarm-link', false);
+      }
+
+      // ------------- 초기화 및 설정 -------------
+      // SVG 및 줌 설정
+      const svg = d3.select('svg');
+      const width = window.innerWidth;
+      const height = window.innerHeight - 100; // 메뉴 및 범례 영역 제외
+
+      // 줌 기능 추가
+      const zoom = d3.zoom().scaleExtent([0.1, 10]).on('zoom', zoomed);
+
+      svg.call(zoom);
+
+      // 그룹 생성
+      const g = svg.append('g');
+
+      // 줌 처리 함수
+      function zoomed(event) {
+        g.attr('transform', event.transform);
+        closePopup(); // 전체 이동 시 팝업창 닫기
+      }
+
+      // 줌 인/아웃 함수
+      function zoomIn() {
+        svg.transition().duration(300).call(zoom.scaleBy, 1.3);
+      }
+
+      function zoomOut() {
+        svg.transition().duration(300).call(zoom.scaleBy, 0.7);
+      }
+
+      function resetZoom() {
+        svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity);
+      }
+
+      // 모든 노드를 화면에 맞추는 함수
+      function fitAllNodes() {
+        // 모든 노드의 영역 계산
+        let minX = Infinity,
+          minY = Infinity,
+          maxX = -Infinity,
+          maxY = -Infinity;
+
+        nodes.forEach((d) => {
+          minX = Math.min(minX, d.x || 0);
+          minY = Math.min(minY, d.y || 0);
+          maxX = Math.max(maxX, d.x || 0);
+          maxY = Math.max(maxY, d.y || 0);
+        });
+
+        // 여백 추가
+        const padding = 100;
+        minX -= padding;
+        minY -= padding;
+        maxX += padding;
+        maxY += padding;
+
+        // 화면 비율 계산
+        const graphWidth = maxX - minX;
+        const graphHeight = maxY - minY;
+        const screenWidth = width;
+        const screenHeight = height;
+
+        // 화면에 맞추기 위한 스케일 계산
+        const scaleX = screenWidth / graphWidth;
+        const scaleY = screenHeight / graphHeight;
+        const scale = Math.min(scaleX, scaleY, 2); // 최대 2배까지 제한
+
+        // 중앙점 계산
+        const centerX = minX + graphWidth / 2;
+        const centerY = minY + graphHeight / 2;
+
+        // 변환 적용
+        svg
+          .transition()
+          .duration(750)
+          .call(
+            zoom.transform,
+            d3.zoomIdentity
+              .translate(width / 2, height / 2)
+              .scale(scale)
+              .translate(-centerX, -centerY)
+          );
+
+        closePopup();
+      }
+
+      // 초기 데이터 생성
+      const initialData = createInitialData();
+      const nodes = initialData.nodes;
+      const links = initialData.links;
+
+      // 시각화 생성
+      const { link, linkLabel, node } = createVisualization(nodes, links, g);
+
+      // 시뮬레이션 설정
+      const simulation = d3
+        .forceSimulation(nodes)
+        .force(
+          'link',
+          d3
+            .forceLink(links)
+            .id((d) => d.id)
+            .distance(150)
+        )
+        .force('charge', d3.forceManyBody().strength(-600))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collide', d3.forceCollide(70))
+        .stop();
+
+      // 메인 노드들의 고정 위치 설정
+      const positions = {
+        a1: { x: 900, y: 500 },
+        a2: { x: 900, y: 200 },
+        A: { x: 700, y: 350 },
+        B: { x: 400, y: 350 },
+        b1: { x: 200, y: 200 },
+        b2: { x: 200, y: 500 },
+      };
+
+      // 메인 노드 위치 고정
+      Object.keys(positions).forEach((id) => {
+        const node = nodes.find((n) => n.id === id);
+        if (node) {
+          node.fx = positions[id].x;
+          node.fy = positions[id].y;
+        }
+      });
+
+      // 나머지 노드들 랜덤 위치 설정
+      function randomizePositions() {
+        nodes.forEach((node) => {
+          if (!positions[node.id]) {
+            node.fx = null;
+            node.fy = null;
+            node.x = Math.random() * width;
+            node.y = Math.random() * height;
+          }
+        });
+
+        simulation.alpha(1).restart();
+      }
+
+      simulation.on('tick', updateDisplay);
+
+      // 화면 업데이트 함수
+      function updateDisplay() {
+        link.attr('d', (d) => {
+          const sourceX =
+            typeof d.source === 'object' ? d.source.x : nodes.find((n) => n.id === d.source).x;
+          const sourceY =
+            typeof d.source === 'object' ? d.source.y : nodes.find((n) => n.id === d.source).y;
+          const targetX =
+            typeof d.target === 'object' ? d.target.x : nodes.find((n) => n.id === d.target).x;
+          const targetY =
+            typeof d.target === 'object' ? d.target.y : nodes.find((n) => n.id === d.target).y;
+
+          const dx = targetX - sourceX;
+          const dy = targetY - sourceY;
+
+          // 곡선 효과
+          let dr = Math.sqrt(dx * dx + dy * dy) * 2;
+          if (d.curvature) {
+            dr = dr / Math.abs(d.curvature);
+          } else {
+            dr = 0; // 곡선 효과 없음
+          }
+
+          if (dr === 0) {
+            return `M${sourceX},${sourceY} L${targetX},${targetY}`;
+          } else {
+            return `M${sourceX},${sourceY} A${dr},${dr} 0 0,${
+              d.curvature > 0 ? 1 : 0
+            } ${targetX},${targetY}`;
+          }
+        });
+
+        linkLabel
+          .attr('x', (d) => {
+            const sourceX =
+              typeof d.source === 'object' ? d.source.x : nodes.find((n) => n.id === d.source).x;
+            const targetX =
+              typeof d.target === 'object' ? d.target.x : nodes.find((n) => n.id === d.target).x;
+
+            // 곡선 링크의 경우 라벨 위치 조정
+            const midX = (sourceX + targetX) / 2;
+            if (d.curvature) {
+              return midX + d.curvature * 50;
+            }
+            return midX;
+          })
+          .attr('y', (d) => {
+            const sourceY =
+              typeof d.source === 'object' ? d.source.y : nodes.find((n) => n.id === d.source).y;
+            const targetY =
+              typeof d.target === 'object' ? d.target.y : nodes.find((n) => n.id === d.target).y;
+
+            // 곡선 링크의 경우 라벨 위치 조정
+            const midY = (sourceY + targetY) / 2;
+            if (d.curvature) {
+              return midY + Math.abs(d.curvature) * 50;
+            }
+            return midY;
+          });
+
+        node.attr('transform', (d) => `translate(${d.x},${d.y})`);
+      }
+
+      // A국사를 중앙에 배치하고 초기 뷰 설정
+      function centerOnNode(nodeId) {
+        const node = nodes.find((n) => n.id === nodeId);
+        if (node) {
+          const scale = 1;
+          const x = width / 2 - (node.x || 0) * scale;
+          const y = height / 2 - (node.y || 0) * scale;
+
+          svg
+            .transition()
+            .duration(750)
+            .call(zoom.transform, d3.zoomIdentity.translate(x, y).scale(scale));
+        }
+      }
+
+      // 초기화 시 A국사 중심으로 설정 - 애니메이션 효과 추가
+      // 시뮬레이션이 진행 중에는 시각적으로 업데이트되도록 설정
+      simulation.alpha(1);
+      simulation.alphaDecay(0.01); // 느리게 감소하도록 설정하여 애니메이션 효과 연장
+      simulation.on('tick', updateDisplay).restart();
+
+      // 시뮬레이션이 완료되면 선택된 노드를 중앙으로 배치
+      simulation.on('end', function () {
+        // 선택된 노드 찾기
+        const selectedNode = nodes.find((n) => n.selected);
+        if (selectedNode) {
+          setTimeout(() => {
+            centerOnNode(selectedNode.id);
+          }, 100);
+        } else {
+          // 선택된 노드가 없으면 A국사를 중앙에 배치
+          setTimeout(() => {
+            centerOnNode('A');
+          }, 100);
+        }
+
+        // 모든 노드가 화면에 보이도록 조정
+        setTimeout(() => {
+          fitAllNodes();
+        }, 500);
+      });
+
+      // ------------- 드래그 함수 -------------
+      function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+      }
+
+      function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+        updateDisplay();
+      }
+
+      function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+      }
+
+      // 링크 드래그 관련 함수들
+      function dragLinkSubject(event) {
+        return event.subject;
+      }
+
+      function dragLinkStarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d3.selectAll('.link').classed('selected', false);
+        d3.select(this).classed('selected', true);
+      }
+
+      function draggedLink(event, d) {
+        const sourceNode =
+          typeof d.source === 'object' ? d.source : nodes.find((n) => n.id === d.source);
+        const targetNode =
+          typeof d.target === 'object' ? d.target : nodes.find((n) => n.id === d.target);
+
+        const midX = (sourceNode.x + targetNode.x) / 2;
+        const midY = (sourceNode.y + targetNode.y) / 2;
+
+        const dy = event.y - midY;
+        const dx = event.x - midX;
+
+        const linkDx = targetNode.x - sourceNode.x;
+        const linkDy = targetNode.y - sourceNode.y;
+        const linkLength = Math.sqrt(linkDx * linkDx + linkDy * linkDy);
+
+        const perpDistance = (dx * linkDy - dy * linkDx) / linkLength;
+
+        d.curvature = perpDistance / 100;
+
+        updateDisplay();
+      }
+
+      function dragLinkEnded(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+      }
+
+      // ------------- 팝업 관련 함수 -------------
+      // 팝업 표시 함수
+      function showPopup(event, data, type) {
+        const popup = document.getElementById('popup');
+        const title = document.getElementById('popup-title');
+        const table = document.getElementById('popup-table');
+
+        // 팝업 위치 설정
+        popup.style.left = event.pageX + 10 + 'px';
+        popup.style.top = event.pageY + 10 + 'px';
+
+        // 제목 설정
+        title.textContent = type === 'node' ? data.name + ' 상세 정보' : data.name + ' 상세 정보';
+
+        // 테이블 내용 설정
+        table.innerHTML = '';
+
+        if (type === 'node') {
+          // 노드 정보 표시
+          const rows = [
+            ['분야', data.type],
+            ['국사명', data.name],
+            ['장비 ID', data.equipmentId],
+            ['장비명', data.equipmentName],
+            ['장비유형', data.type + '장비'],
+            ['상태', data.status],
+          ];
+
+          // 경보 발생 시 추가 정보
+          if (data.status === '이상') {
+            rows.push(['경보발생일시', data.alarmTime]);
+            rows.push(['경보내역', data.alarmDetail]);
+            rows.push(['영향 회선', data.affectedCustomers + '개']);
+          }
+
+          rows.forEach((row) => {
+            const tr = document.createElement('tr');
+            const th = document.createElement('th');
+            const td = document.createElement('td');
+
+            th.textContent = row[0];
+            td.textContent = row[1];
+
+            tr.appendChild(th);
+            tr.appendChild(td);
+            table.appendChild(tr);
+          });
+        } else {
+          // 링크 정보 표시
+          const sourceNode =
+            typeof data.source === 'object' ? data.source : nodes.find((n) => n.id === data.source);
+          const targetNode =
+            typeof data.target === 'object' ? data.target : nodes.find((n) => n.id === data.target);
+
+          const rows = [
+            ['출발 국사', sourceNode.name],
+            ['도착 국사', targetNode.name],
+            ['링크 ID', data.id],
+            ['링크명', data.name],
+            ['링크유형', data.type],
+            ['상태', data.status],
+          ];
+
+          // 경보 발생 시 추가 정보
+          if (data.status === '이상') {
+            rows.push(['경보발생일시', data.alarmTime]);
+            rows.push(['경보내역', data.alarmDetail]);
+            rows.push(['영향 회선', data.affectedCustomers + '개']);
+          }
+
+          rows.forEach((row) => {
+            const tr = document.createElement('tr');
+            const th = document.createElement('th');
+            const td = document.createElement('td');
+
+            th.textContent = row[0];
+            td.textContent = row[1];
+
+            tr.appendChild(th);
+            tr.appendChild(td);
+            table.appendChild(tr);
+          });
+        }
+
+        // 팝업 표시
+        popup.style.display = 'block';
+      }
+
+      // 팝업 닫기 함수
+      function closePopup() {
+        document.getElementById('popup').style.display = 'none';
+      }
+
+      // 배경 클릭 시 팝업 닫기
+      svg.on('click', function () {
+        closePopup();
+        d3.selectAll('.link').classed('selected', false);
+      });
+
+      // 윈도우 리사이즈 처리
+      window.addEventListener('resize', function () {
+        const width = window.innerWidth;
+        const height = window.innerHeight - 100;
+
+        simulation.force('center', d3.forceCenter(width / 2, height / 2));
+        simulation.alpha(0.3).restart();
+
+        closePopup(); // 창 크기 변경 시 팝업 닫기
+      });
+    </script>
+  </body>
+</html>

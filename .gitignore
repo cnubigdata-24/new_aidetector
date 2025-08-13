@@ -26,7 +26,6 @@ out/
 # 테스트
 test/
 test*
-temp*
 zmq_test/
 
 # 파이썬 캐시
