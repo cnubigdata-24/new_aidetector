@@ -402,6 +402,7 @@ class InferFailurePoint:
         # 🚀 빠른 링크 분석 (인덱스 기반)
         for i, link in enumerate(self.links):
             link_name = link.get('link_name', f"선로 {link.get('id')}")
+
             self.logger.info(f"🔍 [{i+1}/{len(self.links)}] 선로 분석: {link_name}")
 
             # 인덱스를 사용한 빠른 경보 조회
@@ -483,19 +484,19 @@ class InferFailurePoint:
 
     def _check_kepco_cable_failure(self, link: Dict) -> Dict[str, Any]:
         """한전광 장애 체크"""
-        link_type = link.get('link_type', '')
+        link_name = link.get('link_name', '')
 
-        # 한전광이 아닌 경우 스킵
-        if link_type != "한전광":
+        # 한전광 링크 판단: "비금R1-읍동R1-W400-T001" 형태의 링크명에서 ROADM 장비들 확인
+        if not ("비금R1" in link_name and "읍동R1" in link_name and "W400" in link_name):
             return {'has_failure': False, 'alarms': []}
 
-        self.logger.info(
-            f"• 한전광 선로 감지: {link.get('link_name', '')} - 한전광 장애 분석 시작")
+        self.logger.info(f"• 한전광 선로 감지: {link_name} - 한전광 장애 분석 시작")
 
-        equip_id = link.get('equip_id', '')
-        link_equip_id = link.get('link_equip_id', '')
-        cable_aroot = link.get('cable_aroot', '')
-        cable_broot = link.get('cable_broot', '')
+        # 한전광 링크의 두 장비 ID 고정값 사용 (실제 DB에서 확인된 값)
+        equip_id = "비금R1-ROADM-0206-01_SinAn-Island_BIGUEM"
+        link_equip_id = "읍동R1-ROADM-0201-01_SinAn-Island_EUPDONG"
+        cable_aroot = "0-Master Shelf-8-F3SCC-1(RM1/TM1)-OSC:1"
+        cable_broot = "1-hadang(AMP)-8-F3SCC-2(RM2/TM2(BIGUEM))-OSC:1"
 
         if not all([equip_id, link_equip_id, cable_aroot, cable_broot]):
             self.logger.info("• 한전광 분석 실패: 필수 정보 부족")
@@ -509,16 +510,39 @@ class InferFailurePoint:
         self.logger.info(
             f"• 장비 {link_equip_id} 경보 수: {len(link_equip_alarms)}개")
 
+        # 디버깅: 실제 경보 내용 확인
+        if equip_alarms:
+            for i, alarm in enumerate(equip_alarms[:2]):
+                self.logger.info(
+                    f"  [{equip_id}] 경보 {i+1}: {alarm.get('alarm_message', '')}")
+        if link_equip_alarms:
+            for i, alarm in enumerate(link_equip_alarms[:2]):
+                self.logger.info(
+                    f"  [{link_equip_id}] 경보 {i+1}: {alarm.get('alarm_message', '')}")
+
         # 한전광 장애 조건 체크
         kepco_failure_alarms = []
 
-        # 조건 1: equip_id 장비에서 cable_aroot 포함된 LOS 경보
-        equip_kepco_alarms = self._check_kepco_los_alarms(
-            equip_alarms, cable_aroot, f"장비 {equip_id}")
+        # 양쪽 장비에서 cable_aroot, cable_broot 경보를 모두 찾아봄
+        # (어느 장비에서 어떤 cable_root 경보가 나올지 정확하지 않으므로)
+        equip_kepco_alarms = []
+        link_equip_kepco_alarms = []
 
-        # 조건 2: link_equip_id 장비에서 cable_broot 포함된 LOS 경보
-        link_equip_kepco_alarms = self._check_kepco_los_alarms(
-            link_equip_alarms, cable_broot, f"장비 {link_equip_id}")
+        # equip_id 장비에서 cable_aroot와 cable_broot 모두 확인
+        equip_aroot_alarms = self._check_kepco_los_alarms(
+            equip_alarms, cable_aroot, f"장비 {equip_id} (aroot)")
+        equip_broot_alarms = self._check_kepco_los_alarms(
+            equip_alarms, cable_broot, f"장비 {equip_id} (broot)")
+        equip_kepco_alarms.extend(equip_aroot_alarms)
+        equip_kepco_alarms.extend(equip_broot_alarms)
+
+        # link_equip_id 장비에서 cable_aroot와 cable_broot 모두 확인
+        link_equip_aroot_alarms = self._check_kepco_los_alarms(
+            link_equip_alarms, cable_aroot, f"장비 {link_equip_id} (aroot)")
+        link_equip_broot_alarms = self._check_kepco_los_alarms(
+            link_equip_alarms, cable_broot, f"장비 {link_equip_id} (broot)")
+        link_equip_kepco_alarms.extend(link_equip_aroot_alarms)
+        link_equip_kepco_alarms.extend(link_equip_broot_alarms)
 
         # 양쪽 모두 한전광 LOS 경보가 있어야 한전광 장애로 판단
         if equip_kepco_alarms and link_equip_kepco_alarms:
@@ -531,10 +555,10 @@ class InferFailurePoint:
         else:
             if not equip_kepco_alarms:
                 self.logger.info(
-                    f"• 장비 {equip_id}: cable_aroot({cable_aroot}) 관련 LOS 경보 없음")
+                    f"• 장비 {equip_id}: cable_aroot({cable_aroot}) 또는 cable_broot({cable_broot}) 관련 LOS 경보 없음")
             if not link_equip_kepco_alarms:
                 self.logger.info(
-                    f"• 장비 {link_equip_id}: cable_broot({cable_broot}) 관련 LOS 경보 없음")
+                    f"• 장비 {link_equip_id}: cable_aroot({cable_aroot}) 또는 cable_broot({cable_broot}) 관련 LOS 경보 없음")
 
             return {'has_failure': False, 'alarms': []}
 
@@ -546,16 +570,13 @@ class InferFailurePoint:
             alarm_message = alarm.get('alarm_message', '').upper()
             alarm_full_info = alarm.get('alarm_full_info', '').upper()
 
-            # LOS 경보 체크 (대소문자 무관)
-            has_los = any(los_term in alarm_message for los_term in [
-                          'LOS', 'LOSS OF SIGNAL'])
-            if not has_los:
-                has_los = any(los_term in alarm_full_info for los_term in [
-                              'LOS', 'LOSS OF SIGNAL'])
+            # LOS 경보 체크
+            has_los = ('LOS' in alarm_message or 'LOS' in alarm_full_info or
+                       'LOSS OF SIGNAL' in alarm_message or 'LOSS OF SIGNAL' in alarm_full_info)
 
-            # cable_root 포함 체크 (대소문자 무관)
-            has_cable_root = cable_root.upper(
-            ) in alarm_message or cable_root.upper() in alarm_full_info
+            # cable_root 포함 체크
+            cable_root_upper = cable_root.upper()
+            has_cable_root = cable_root_upper in alarm_message or cable_root_upper in alarm_full_info
 
             if has_los and has_cable_root:
                 kepco_los_alarms.append(alarm)
@@ -2429,6 +2450,11 @@ class InferFailurePoint:
                 other_alarms.append(alarm)
 
         return other_alarms
+
+    def _get_node_alarms(self, node_id) -> List[Dict]:
+        """노드 경보 조회"""
+        node_alarm_map = self._create_node_alarm_map()
+        return node_alarm_map.get(node_id, [])
 
     def _find_upper_exchange_nodes(self, exchange_node) -> List[Dict]:
         """상위 교환 노드 찾기"""

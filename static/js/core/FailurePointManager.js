@@ -1108,11 +1108,15 @@ class FailurePointManager {
         return;
       }
 
-      // 모든 링크 엘리먼트 조회
-      const allLinks = linksContainer.selectAll('line');
+      // 모든 링크 엘리먼트 조회 (path 또는 line)
+      let allLinks = linksContainer.selectAll('path');
       if (allLinks.empty()) {
-        console.warn('⚠️ 링크 엘리먼트(line)가 없습니다.');
-        return;
+        // path가 없으면 line으로 시도
+        allLinks = linksContainer.selectAll('line');
+        if (allLinks.empty()) {
+          console.warn('⚠️ 링크 엘리먼트(path 또는 line)가 없습니다.');
+          return;
+        }
       }
 
       // 여러 방법으로 링크 엘리먼트 찾기

@@ -459,10 +459,17 @@ export class MessageManager {
       return String(content);
     }
 
+    // 1. 먼저 보안상 위험한 태그들만 제거
     let sanitized = content
       .replace(/<script[^>]*>.*?<\/script>/gi, '')
       .replace(/on\w+="[^"]*"/gi, '')
       .replace(/javascript:/gi, '');
+
+    // 2. 경보 메시지의 경보 코드를 안전하게 이스케이프
+    // <OSC_LOS>, <LOS>, <LOF> 등의 경보 코드를 HTML 엔티티로 변환
+    sanitized = sanitized
+      .replace(/<([A-Z_]+[A-Z0-9_]*)>/g, '&lt;$1&gt;')
+      .replace(/<([A-Z]+)>/g, '&lt;$1&gt;');
 
     return sanitized;
   }

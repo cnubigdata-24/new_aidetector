@@ -3,7 +3,7 @@ import time
 import threading
 from api.scripts.fault_prediction_core_4 import initialize_vector_db_background
 from api.scripts.llm_loader_2 import initialize_llm_background
-from zmqtest.routes import zmqtest_bp
+
 from cable.routes import cable_bp
 from alarm.routes import alarm_bp
 from main.routes import main_bp
@@ -79,7 +79,6 @@ app.register_blueprint(api_bp, url_prefix='/api')
 app.register_blueprint(main_bp)
 app.register_blueprint(alarm_bp)
 app.register_blueprint(cable_bp)
-app.register_blueprint(zmqtest_bp)
 
 
 # Flask 디버그 모드에서 중복 실행 방지
