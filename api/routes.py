@@ -2007,7 +2007,16 @@ def check_mw_status():
 
         # 재시도 로직 구현 (개선됨)
         max_retries = 2  # 재시도 횟수 2회
-        timeout_ms = 2000  # 2초로 단축
+
+        # 장비 수에 따른 동적 타임아웃 계산 (기본 2초 * 장비 수)
+        equipment_count = len(equipment_list)
+        base_timeout_ms = 2000  # 기본 2초
+        timeout_ms = base_timeout_ms * \
+            max(1, equipment_count)  # 최소 2초, 장비 수만큼 배수
+
+        logging.info(
+            f">> 타임아웃 설정: 장비 {equipment_count}개 -> {timeout_ms/1000:.1f}초")
+
         context = None
         socket = None
 

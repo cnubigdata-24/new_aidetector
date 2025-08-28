@@ -561,51 +561,15 @@ function setupValidAlarmHighlighting() {
 }
 
 // 경보 테이블 유효 경보 행에 클래스 추가 함수
-// fault_dashboard.js의 updateAlarmTableContent 함수를 훅하여 사용하는 방식으로 변경
+// 더 이상 사용하지 않음 - 새로운 모듈 시스템에서 처리
 function patchAlarmTableContentFunction() {
-  // 원본 함수가 있는지 확인
-  if (
-    typeof window.updateAlarmTableContent === 'function' &&
-    typeof window.originalUpdateAlarmTableContent === 'undefined'
-  ) {
-    console.log('[TableSearch] 원본 테이블 렌더링 함수를 확장합니다');
-
-    // 원본 함수 저장
-    window.originalUpdateAlarmTableContent = window.updateAlarmTableContent;
-
-    // 함수 재정의
-    window.updateAlarmTableContent = function (data) {
-      // 원본 함수 호출
-      window.originalUpdateAlarmTableContent(data);
-
-      // 테이블 행 처리 (이미 DOM에 추가된 행에 클래스 추가)
-      const tbody = document.getElementById('alarmTableBody');
-      if (!tbody) return;
-
-      // 모든 행 확인
-      const rows = tbody.querySelectorAll('tr');
-      rows.forEach((row) => {
-        // 유효/무효 셀은 3번째 컬럼 (인덱스 2)
-        const validCell = row.querySelector('td:nth-child(3)');
-
-        if (validCell && validCell.textContent.trim() === '유효') {
-          row.classList.add('valid-alarm');
-        } else {
-          row.classList.remove('valid-alarm');
-        }
-      });
-
-      console.log('[TableSearch] 유효 경보 행 스타일 적용 완료');
-    };
-  }
+  console.log('[TableSearch] patchAlarmTableContentFunction은 더 이상 사용되지 않습니다.');
 }
 
 // 간소화된 페이지네이션 관련 코드
 document.addEventListener('DOMContentLoaded', function () {
-  // 원본 테이블 렌더링 함수 패치
-  setTimeout(() => {
-    patchAlarmTableContentFunction();
-  }, 1000); // 테이블 렌더링 함수가 로드된 후 실행
+  // 더 이상 테이블 렌더링 함수 패치를 하지 않음
+  console.log('[TableSearch] 레거시 테이블 패치 기능은 비활성화되었습니다.');
 });
 
 // 테이블 검색 필터 초기화 함수 (전역에서 호출 가능)
