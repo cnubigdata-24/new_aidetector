@@ -1940,9 +1940,10 @@ def get_current_time():
     now = datetime.now()
     return now.strftime("%Y-%m-%d %H:%M:%S")
 
-
 # AI RAG 장애분석 팝업 API 엔드포인트 추가
 # 장애분석 팝업 화면 렌더링
+
+
 @api_bp.route("/check_mw_status", methods=["POST"])
 def check_mw_status():
     try:
@@ -2145,117 +2146,6 @@ def check_mw_status():
 
     finally:
         logging.info(f"테스트 완료")
-
-        #     try:
-        #         context = zmq.Context()
-
-        #         for attempt in range(max_retries):
-        #             try:
-        #                 start_time = time.time()
-        #                 logging.info(f">> MW 상태 확인 시도 {attempt + 1}/{max_retries}")
-
-        #                 # 재시도 시 기존 소켓이 있으면 닫기
-        #                 if socket:
-        #                     socket.close()
-
-        #                 # ZMQ 소켓 연결 및 요청 (타임아웃 최적화)
-        #                 socket = context.socket(zmq.REQ)
-
-        #                 # 모든 타임아웃 설정 (밀리초 단위)
-        #                 socket.setsockopt(zmq.RCVTIMEO, timeout_ms)    # 수신 타임아웃
-        #                 socket.setsockopt(zmq.SNDTIMEO, timeout_ms)    # 송신 타임아웃
-        #                 # 소켓 종료 시 즉시 닫기
-        #                 socket.setsockopt(zmq.LINGER, 0)
-
-        #                 # 연결 시도
-        #                 socket.connect(MW_SOCKET_SERVER)
-
-        #                 # 요청 전송
-        #                 logging.debug(
-        #                     f"요청 JSON: {json.dumps(payload, ensure_ascii=False)}")
-        #                 socket.send_string(json.dumps(payload))
-        #                 logging.info(
-        #                     f">> 소켓 서버로 MW 상태 요청 전송: {len(equipment_list)}개 장비")
-
-        #                 # 응답 수신
-        #                 response_str = socket.recv_string()
-        #                 logging.debug(f"응답 JSON: {response_str}")
-
-        #                 # JSON 파싱
-        #                 response_data = json.loads(response_str)
-        #                 elapsed_time = time.time() - start_time
-        #                 logging.info(
-        #                     f"소켓 서버로부터 MW 상태 응답 수신 완료 (시도 {attempt + 1}, {elapsed_time:.2f}초)")
-
-        #                 return jsonify(response_data), 200
-
-        #             except zmq.error.Again:
-        #                 elapsed_time = time.time() - start_time
-        #                 logging.warning(
-        #                     f"소켓 서버 응답 타임아웃 (시도 {attempt + 1}/{max_retries}, {elapsed_time:.2f}초)")
-        #                 if attempt == max_retries - 1:  # 마지막 시도
-        #                     logging.error("모든 재시도 실패: 소켓 서버 응답 타임아웃")
-        #                     return jsonify({
-        #                         'success': False,
-        #                         'error': f'소켓 서버 응답 타임아웃 ({max_retries}회 시도 후 실패)'
-        #                     }), 408
-
-        #             except zmq.error.ZMQError as zmq_error:
-        #                 elapsed_time = time.time() - start_time
-        #                 logging.warning(
-        #                     f"ZMQ 오류 (시도 {attempt + 1}/{max_retries}, {elapsed_time:.2f}초): {str(zmq_error)}")
-        #                 if attempt == max_retries - 1:
-        #                     logging.error(f"모든 재시도 실패: ZMQ 오류: {str(zmq_error)}")
-        #                     return jsonify({
-        #                         'success': False,
-        #                         'error': f'소켓 서버 통신 실패: {str(zmq_error)} ({max_retries}회 시도 후 실패)'
-        #                     }), 500
-
-        #             except Exception as socket_error:
-        #                 elapsed_time = time.time() - start_time
-        #                 logging.warning(
-        #                     f"소켓 통신 오류 (시도 {attempt + 1}/{max_retries}, {elapsed_time:.2f}초): {str(socket_error)}")
-        #                 if attempt == max_retries - 1:  # 마지막 시도
-        #                     logging.error(
-        #                         f"모든 재시도 실패: 소켓 통신 오류: {str(socket_error)}")
-        #                     return jsonify({
-        #                         'success': False,
-        #                         'error': f'소켓 서버 통신 실패: {str(socket_error)} ({max_retries}회 시도 후 실패)'
-        #                     }), 500
-
-        #     except Exception as e:
-        #         logging.error(f"소켓 통신 초기화 오류: {str(e)}")
-        #         return jsonify({
-        #             'success': False,
-        #             'error': f'소켓 통신 초기화 실패: {str(e)}'
-        #         }), 500
-
-        #     finally:
-        #         # 소켓과 컨텍스트 안전하게 정리
-        #         try:
-        #             if socket:
-        #                 socket.close()
-        #                 logging.debug("소켓 연결 종료")
-        #             if context:
-        #                 context.term()
-        #                 logging.debug("ZMQ 컨텍스트 종료")
-        #         except Exception as cleanup_error:
-        #             logging.warning(f"소켓 정리 중 오류: {str(cleanup_error)}")
-
-        # except Exception as e:
-        #     error_message = f"MW 상태 확인 중 오류 발생: {str(e)}"
-        #     logging.error(error_message)
-        #     logging.error(traceback.format_exc())
-
-        #     return jsonify({
-        #         'success': False,
-        #         'error': error_message
-        #     }), 500
-
-        # AI RAG 장애분석 팝업 API 엔드포인트 추가
-        # 장애분석 팝업 화면 렌더링
-
-
 @api_bp.route("/fault-detector", methods=["POST"])
 def fault_detector_api():
     try:

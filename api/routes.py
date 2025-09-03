@@ -522,10 +522,6 @@ async def rag_query():
     guksa_id = data.get("guksa_id")
 
     try:
-        if get_llm_pipeline() is None:
-            print("LLM 모델이 로드되어 있지 않아 초기화합니다...")
-            initialize_llm()
-
         user_id = f"web_user_{request.remote_addr}_{int(time.time())}"
 
         print("\n mode: " + mode)
@@ -2241,4 +2237,27 @@ def initialize_vectordb():
         return jsonify({
             'success': False,
             'message': f'초기화 중 오류 발생: {str(e)}'
+        }), 500
+
+
+@api_bp.route("/initialization_status", methods=["GET"])
+def get_initialization_status():
+    """백그라운드 초기화 상태를 확인하는 API"""
+    try:
+        from api.scripts.llm_loader_2 import get_llm_initialization_status
+        from api.scripts.fault_prediction_core_4 import get_vector_db_initialization_status
+
+        llm_status = get_llm_initialization_status()
+        vectordb_status = get_vector_db_initialization_status()
+
+        return jsonify({
+            "success": True,
+            "llm_status": llm_status,
+            "vectordb_status": vectordb_status,
+            "overall_ready": llm_status["initialized"] and vectordb_status["initialized"]
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
         }), 500

@@ -727,11 +727,29 @@ class InferFailurePoint:
         self.logger.info("[2단계] MW 장비 상태 점검 시작")
 
         # 디버깅: isMwRealTimeCheck 값 확인
+        self.logger.info("=" * 80)
         self.logger.info(
-            f"🔍 [디버깅] isMwRealTimeCheck 값: {self.isMwRealTimeCheck} (타입: {type(self.isMwRealTimeCheck)})")
+            f"🔧 [하드코딩 디버깅] isMwRealTimeCheck 값: {self.isMwRealTimeCheck} (타입: {type(self.isMwRealTimeCheck)})")
+        self.logger.info("=" * 80)
 
         mw_nodes = [node for node in self.nodes if node.get(
             'field', '').upper() == 'MW']
+
+        # 🔧 하드코딩 디버깅: MW 노드 상세 정보 로깅
+        self.logger.info("🔧 [하드코딩 디버깅] 전체 노드 수: {}개".format(len(self.nodes)))
+        self.logger.info("🔧 [하드코딩 디버깅] MW 노드 수: {}개".format(len(mw_nodes)))
+
+        if mw_nodes:
+            self.logger.info("🔧 [하드코딩 디버깅] MW 노드 상세 정보:")
+            for idx, node in enumerate(mw_nodes):
+                self.logger.info(f"🔧 [하드코딩 디버깅] MW 노드 {idx+1}: {node}")
+        else:
+            self.logger.info("🔧 [하드코딩 디버깅] MW 노드가 없습니다!")
+            self.logger.info("🔧 [하드코딩 디버깅] 전체 노드 필드 정보:")
+            for idx, node in enumerate(self.nodes[:5]):  # 첫 5개만 로깅
+                field = node.get('field', 'NO_FIELD')
+                self.logger.info(
+                    f"🔧 [하드코딩 디버깅] 노드 {idx+1} field: '{field}' (전체: {node})")
 
         step_message = self._build_step_message(
             "2", "도서 MW 장애점 분석", "SNMP 페이딩/한전정전")
@@ -1076,13 +1094,23 @@ class InferFailurePoint:
         rsl_fading = rsl_value is not None and rsl_value <= self.RSL_FADING_THRESHOLD
         snr_fading = snr_value is not None and snr_value > 0 and snr_value <= 30
 
+        # 🔧 하드코딩 테스트: 디버깅 로그 강화
+        self.logger.info(f"[DEBUG] {slot_name} 페이딩 조건 체크:")
+        self.logger.info(
+            f"  - RSL 값: {rsl_value}, 임계값: {self.RSL_FADING_THRESHOLD}, 조건 만족: {rsl_fading}")
+        self.logger.info(
+            f"  - SNR 값: {snr_value}, 조건 (0 < SNR <= 30): {snr_fading}")
+
         # 두 조건을 모두 만족할 때만 페이딩으로 판단
         if rsl_fading and snr_fading:
             issues.append(
                 f"전파 페이딩 추정: RSL 저하({rsl_value}dBm), SNR 저하({snr_value}dB)")
 
             self.logger.info(
-                f"• 📌 페이딩 판단: RSL={rsl_value}, SNR={snr_value}")
+                f"• 📌 🔴 페이딩 판단 성공!: RSL={rsl_value}, SNR={snr_value}")
+        else:
+            self.logger.info(
+                f"• ⚪ 페이딩 조건 미충족: RSL 조건={rsl_fading}, SNR 조건={snr_fading}")
 
         return issues
 

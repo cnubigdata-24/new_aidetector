@@ -119,9 +119,11 @@ def infer_failure_point():
                     alarmDataWithoutCable = data.get(
                         'alarms', [])  # 선로 제외 모든 분야 경보
                     cableAlarms = data.get('cableAlarms', [])  # 선로 분야 경보만
+                    isMwRealTimeCheck = data.get(
+                        'isMwRealTimeCheck', False)  # MW 실시간 점검 모드
 
                     logging.info(
-                        f"장애점 분석 요청 (스트리밍): 노드 {len(nodes)}개, 링크 {len(links)}개, 선로제외경보 {len(alarmDataWithoutCable)}건, 선로경보 {len(cableAlarms)}건")
+                        f"장애점 분석 요청 (스트리밍): 노드 {len(nodes)}개, 링크 {len(links)}개, 선로 이외 경보 {len(alarmDataWithoutCable)}건, 선로 경보 {len(cableAlarms)}건, MW 실시간 SNMP 점검: {'활성화' if isMwRealTimeCheck else '비활성화'}")
 
                     # Flask 앱 컨텍스트 활성화 후 InferFailurePoint 인스턴스 생성/분석 실행
                     # Flask-SQLAlchemy ORM(TblSnmpInfo.query)을 사용하도록 수정
@@ -130,7 +132,7 @@ def infer_failure_point():
                         analyzer = InferFailurePoint(
                             progress_callback=progress_callback)
                         result = analyzer.analyze(
-                            nodes, links, alarmDataWithoutCable, cableAlarms)
+                            nodes, links, alarmDataWithoutCable, cableAlarms, isMwRealTimeCheck)
 
                     # 최종 결과 전송
                     progress_queue.put({
@@ -167,6 +169,8 @@ def infer_failure_point():
             links = data.get('links', [])
             alarmDataWithoutCable = data.get('alarms', [])  # 선로 제외 모든 분야 경보
             cableAlarms = data.get('cableAlarms', [])  # 선로 분야 경보만
+            isMwRealTimeCheck = data.get(
+                'isMwRealTimeCheck', False)  # MW 실시간 점검 모드
 
             # 기본 데이터 검증
             if not isinstance(nodes, list) or not isinstance(links, list) or not isinstance(alarmDataWithoutCable, list):
@@ -176,12 +180,12 @@ def infer_failure_point():
                 }), 400
 
             logging.info(
-                f"장애점 분석 요청: 노드 {len(nodes)}개, 링크 {len(links)}개, 선로제외경보 {len(alarmDataWithoutCable)}건, 선로경보 {len(cableAlarms)}건")
+                f"장애점 분석 요청: 노드 {len(nodes)}개, 링크 {len(links)}개, 선로 이외 경보 {len(alarmDataWithoutCable)}건, 선로 경보 {len(cableAlarms)}건, MW 실시간 SNMP 점검: {'활성화' if isMwRealTimeCheck else '비활성화'}")
 
             # InferFailurePoint 인스턴스 생성 및 분석 실행
             analyzer = InferFailurePoint()
             result = analyzer.analyze(
-                nodes, links, alarmDataWithoutCable, cableAlarms)
+                nodes, links, alarmDataWithoutCable, cableAlarms, isMwRealTimeCheck)
 
             # 분석 결과 로깅
             if result.get('success'):
@@ -518,10 +522,6 @@ async def rag_query():
     guksa_id = data.get("guksa_id")
 
     try:
-        if get_llm_pipeline() is None:
-            print("LLM 모델이 로드되어 있지 않아 초기화합니다...")
-            initialize_llm()
-
         user_id = f"web_user_{request.remote_addr}_{int(time.time())}"
 
         print("\n mode: " + mode)
@@ -1617,7 +1617,8 @@ def alarm_dashboard_equip():
                 'link_name': link_info['link_name'],
                 'up_down': up_down,
                 'cable_aroot': cable_aroot,
-                'cable_broot': cable_broot
+                'cable_broot': cable_broot,
+                'link_type': link_info.get('link_type', '')
             }
             link_list.append(link_detail)
 
@@ -1787,6 +1788,10 @@ def load_links_by_guksa(guksa_name):
 
             print(
                 f"[DEBUG] 링크 처리: {link.equip_id} -> {link.link_equip_id}, up_down: {link.up_down}")
+            # link_type 그대로 가져오기 (비어있을 수 있음)
+            link_type = link.link_type if hasattr(link, 'link_type') else None
+
+            print(f"[DEBUG] link_type: '{link_type}'")
 
             # 양방향 링크 생성 (중복 제거 후)
             if link.equip_id not in link_map:
@@ -1800,7 +1805,8 @@ def load_links_by_guksa(guksa_name):
                 'up_down': link.up_down,
                 'link_name': link.link_name,
                 'cable_aroot': link.cable_aroot,
-                'cable_broot': link.cable_broot
+                'cable_broot': link.cable_broot,
+                'link_type': link_type
             })
             print(
                 f"[DEBUG] 원본 방향 추가: {link.equip_id} -> {link.link_equip_id} (up_down: {link.up_down})")
@@ -1814,7 +1820,8 @@ def load_links_by_guksa(guksa_name):
                 'up_down': reverse_up_down,
                 'link_name': link.link_name,
                 'cable_aroot': link.cable_aroot,
-                'cable_broot': link.cable_broot
+                'cable_broot': link.cable_broot,
+                'link_type': link_type
             })
             print(
                 f"[DEBUG] 역방향 추가: {link.link_equip_id} -> {link.equip_id} (up_down: {reverse_up_down})")
@@ -1900,7 +1907,8 @@ def find_all_connected_equip(equip_id, link_map):
                             'link_name': link_name,
                             'up_down': final_up_down,
                             'cable_aroot': connection.get('cable_aroot', ''),
-                            'cable_broot': connection.get('cable_broot', '')
+                            'cable_broot': connection.get('cable_broot', ''),
+                            'link_type': connection.get('link_type', '')
                         }
 
                     # 재귀적으로 하위 노드들 탐색 (현재 노드를 부모로 전달)
@@ -1995,7 +2003,16 @@ def check_mw_status():
 
         # 재시도 로직 구현 (개선됨)
         max_retries = 2  # 재시도 횟수 2회
-        timeout_ms = 2000  # 2초로 단축
+
+        # 장비 수에 따른 동적 타임아웃 계산 (기본 2초 * 장비 수)
+        equipment_count = len(equipment_list)
+        base_timeout_ms = 2000  # 기본 2초
+        timeout_ms = base_timeout_ms * \
+            max(1, equipment_count)  # 최소 2초, 장비 수만큼 배수
+
+        logging.info(
+            f">> 타임아웃 설정: 장비 {equipment_count}개 -> {timeout_ms/1000:.1f}초")
+
         context = None
         socket = None
 
@@ -2220,4 +2237,27 @@ def initialize_vectordb():
         return jsonify({
             'success': False,
             'message': f'초기화 중 오류 발생: {str(e)}'
+        }), 500
+
+
+@api_bp.route("/initialization_status", methods=["GET"])
+def get_initialization_status():
+    """백그라운드 초기화 상태를 확인하는 API"""
+    try:
+        from api.scripts.llm_loader_2 import get_llm_initialization_status
+        from api.scripts.fault_prediction_core_4 import get_vector_db_initialization_status
+
+        llm_status = get_llm_initialization_status()
+        vectordb_status = get_vector_db_initialization_status()
+
+        return jsonify({
+            "success": True,
+            "llm_status": llm_status,
+            "vectordb_status": vectordb_status,
+            "overall_ready": llm_status["initialized"] and vectordb_status["initialized"]
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
         }), 500

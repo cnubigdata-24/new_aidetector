@@ -259,9 +259,13 @@ async def fetch_external_factors_async(guksa_id=None):
 async def run_query(mode, query, user_id="default_user"):
     """사용자 쿼리를 처리하여 유사 장애사례를 검색하고 종합 의견을 생성하는 메인 함수 (비동기 버전)"""
     start_time = time.time()
+    step_times = {}  # 단계별 처리시간 추적
 
     # 벡터 DB 컬렉션 가져오기
+    collection_start = time.time()
     collection, error = get_vector_db_collection()
+    step_times['collection_load'] = time.time() - collection_start
+
     if error:
         # 오류 타입으로 비교
         error_msg = error["message"] if isinstance(error, dict) else str(error)
@@ -289,10 +293,14 @@ async def run_query(mode, query, user_id="default_user"):
     external_factors_task = fetch_external_factors_async(get_guksa_id())
 
     # 하이브리드 검색 수행 (벡터 + 키워드 + 패턴)
+    search_start = time.time()
     sorted_results, search_results = await hybrid_search_async(query, collection)
+    step_times['hybrid_search'] = time.time() - search_start
 
     # 외부 요인 결과 기다리기
+    external_start = time.time()
     external_factors = await external_factors_task
+    step_times['external_factors'] = time.time() - external_start
 
     # 결과가 없을 경우 처리
     if not sorted_results:
@@ -304,6 +312,7 @@ async def run_query(mode, query, user_id="default_user"):
     top_results = sorted_results[:3]
 
     # 결과 데이터 구성 - 먼저 실행하여 신뢰도 확보
+    processing_start = time.time()
     summary_rows = build_summary_rows(top_results)
     details = build_details(top_results)
 
@@ -313,18 +322,32 @@ async def run_query(mode, query, user_id="default_user"):
     # 장애점 추론 1 - 경보/증상 패턴 기반 (패턴 분석기 사용)
     pattern_analyzer = get_pattern_analyzer()
     fault_infer_1 = await pattern_analyzer.predict_fault_patterns(query, top_results, external_factors, fault_infer_2)
+    step_times['inference'] = time.time() - processing_start
 
     # 종합 의견 생성
+    opinion_start = time.time()
     comprehensive_opinion = await generate_brief_async(
         query, top_results, external_factors, fault_infer_1, fault_infer_2
     )
+    step_times['opinion_generation'] = time.time() - opinion_start
+
+    total_time = time.time() - start_time
+
+    # 성능 로깅 (5초 이상일 때만)
+    if total_time > 5.0:
+        logger.warning(f"⚠️ 느린 쿼리 감지 (총 {total_time:.1f}초): " +
+                       f"컬렉션로드: {step_times['collection_load']:.1f}s, " +
+                       f"검색: {step_times['hybrid_search']:.1f}s, " +
+                       f"추론: {step_times['inference']:.1f}s, " +
+                       f"의견생성: {step_times['opinion_generation']:.1f}s")
 
     # 결과 JSON 구성
     result_dict = {
         "opinion": comprehensive_opinion,
         "summary": summary_rows,
         "details": details,
-        "processing_time": time.time() - start_time
+        "processing_time": total_time,
+        "step_times": step_times  # 개발/디버깅용
     }
 
     # opinion이 비어있으면 기본 안내 메시지로 대체
@@ -712,10 +735,10 @@ async def hybrid_search_async(query, collection, top_k=5):
         if current_time - cached_item['timestamp'] < _VECTOR_CACHE_EXPIRY:
             return copy.deepcopy(cached_item['results']), copy.deepcopy(cached_item['search_results'])
 
-    # 🔧 핵심 수정: n_results 대폭 증가
+    # 🔧 성능 최적화: 검색 결과 수 줄이기 (속도 향상)
     search_params = {
         "query_texts": [query],
-        "n_results": min(top_k * 20, 100),  # 15 → 100으로 변경
+        "n_results": min(top_k * 5, 30),  # 100 → 30으로 줄여서 속도 향상
         "include": ["documents", "metadatas", "distances"]
     }
 
@@ -738,9 +761,9 @@ async def hybrid_search_async(query, collection, top_k=5):
     metas = search_results["metadatas"][0]
     distances = search_results["distances"][0]
 
-    # 🔍 디버깅: 벡터 검색 결과 상위 20개 로깅
-    logger.info("=== 벡터 검색 상위 20개 결과 ===")
-    for i in range(min(20, len(metas))):
+    # 🔍 간소화된 벡터 검색 결과 로깅 (성능 향상)
+    logger.info(f"=== 벡터 검색 상위 {min(5, len(metas))}개 결과 ===")
+    for i in range(min(5, len(metas))):
         fault_point = metas[i].get("장애점", "N/A")
         fault_number = metas[i].get("장애번호", "N/A")
         vector_distance = distances[i]
@@ -862,13 +885,11 @@ async def compute_document_similarity(query_norm, doc, query_codes):
     analysis_text = doc.get("analysis", "")
     reception_text = doc.get("reception", "")
 
-    # 디버깅 로그
-    logger.info(f"=== 문서 구성 요소 디버깅 ===")
-    logger.info(f"alerts 텍스트 길이: {len(alerts_text)}")
-    logger.info(f"analysis 텍스트 길이: {len(analysis_text)}")
-    logger.info(f"reception 텍스트 길이: {len(reception_text)}")
-    if alerts_text:
-        logger.info(f"alerts 미리보기: {alerts_text[:100]}")
+    # 간소화된 디버깅 로그 (성능 향상)
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug(f"=== 문서 구성 요소 ===")
+        logger.debug(
+            f"alerts({len(alerts_text)}), analysis({len(analysis_text)}), reception({len(reception_text)})")
 
     doc_full_text = (alerts_text + " " + analysis_text +
                      " " + reception_text).lower()
@@ -876,27 +897,23 @@ async def compute_document_similarity(query_norm, doc, query_codes):
     # 2. 동적으로 의미있는 구문들 추출 (하드코딩 없음)
     query_phrases = extract_dynamic_phrases(query_norm.lower())
 
-    # 디버깅 로그 추가
-    logger.info(f"쿼리 구문들: {query_phrases}")
-
     # 3. 매칭 분석 및 비율 계산
     matching_result = analyze_phrase_matching(query_phrases, doc_full_text)
 
-    # 디버깅 로그 추가
-    logger.info(f"매칭 결과: {matching_result}")
-    logger.info(f"장애번호: {doc.get('metadata', {}).get('장애번호', 'N/A')}")
+    # 중요한 매칭 결과만 로깅
+    if matching_result["match_count"] > 0:
+        logger.info(
+            f"매칭 성공: {matching_result['match_count']}개, 비율: {matching_result['match_ratio']:.1%}")
 
     # 4. 비율 우선 + 매칭 개수 기반 점수 계산
     if matching_result["match_count"] > 0:
         score = calculate_ratio_based_score(
             matching_result, len(query_phrases))
-        logger.info(f"ratio_based_score: {score}")
         return score
 
     # 5. 매칭이 없는 경우 - 매우 낮은 기본 점수
     else:
         score = calculate_basic_similarity(query_norm, doc, query_codes)
-        logger.info(f"basic_similarity_score: {score}")
         return score
 
 
